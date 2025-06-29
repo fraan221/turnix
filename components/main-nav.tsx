@@ -3,7 +3,6 @@
 import Image from "next/image"
 
 import { cn } from "@/lib/utils"
-import CustomLink from "./custom-link"
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -19,7 +18,6 @@ import { Button } from "./ui/button"
 export function MainNav() {
   return (
     <div className="flex items-center gap-4">
-      <CustomLink href="/">
         <Button variant="ghost" className="p-0">
           <Image
             src="/logo.png"
@@ -29,7 +27,6 @@ export function MainNav() {
             className="min-w-8"
           />
         </Button>
-      </CustomLink>
       <NavigationMenu>
         <NavigationMenuList>
           <NavigationMenuItem>
@@ -80,7 +77,7 @@ const ListItem = React.forwardRef<
           {...props}
         >
           <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
+          <p className="text-sm leading-snug text-muted-foreground line-clamp-2">
             {children}
           </p>
         </a>

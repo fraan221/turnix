@@ -1,38 +1,32 @@
-import CustomLink from "@/components/custom-link"
-import { auth } from "auth"
+import { Button } from "@/components/ui/button";
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  CardFooter 
+} from "../components/ui/card";
 
-export default async function Index() {
-  const session = await auth()
-
+export default function HomePage() {
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold">NextAuth.js Example</h1>
-      <div>
-        This is an example site to demonstrate how to use{" "}
-        <CustomLink href="https://nextjs.authjs.dev">NextAuth.js</CustomLink>{" "}
-        for authentication. Check out the{" "}
-        <CustomLink href="/server-example" className="underline">
-          Server
-        </CustomLink>{" "}
-        and the{" "}
-        <CustomLink href="/client-example" className="underline">
-          Client
-        </CustomLink>{" "}
-        examples to see how to secure pages and get session data.
-      </div>
-      <div>
-        WebAuthn users are reset on every deploy, don't expect your test user(s)
-        to still be available after a few days. It is designed to only
-        demonstrate registration, login, and logout briefly.
-      </div>
-      <div className="flex flex-col rounded-md bg-gray-100">
-        <div className="rounded-t-md bg-gray-200 p-4 font-bold">
-          Current Session
-        </div>
-        <pre className="whitespace-pre-wrap break-all px-4 py-6">
-          {JSON.stringify(session, null, 2)}
-        </pre>
-      </div>
-    </div>
-  )
+    <main className="flex flex-col items-center justify-center min-h-screen bg-slate-100">
+      <Card className="w-[450px]">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold">Bienvenido a Turnix</CardTitle>
+          <CardDescription className="pt-2">Tu entorno de desarrollo está listo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-center text-slate-700">
+            <p>✅ Next.js 14</p>
+            <p>✅ Prisma + PostgreSQL</p>
+            <p>✅ shadcn/ui</p>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full">Acceder al Panel</Button>
+        </CardFooter>
+      </Card>
+    </main>
+  );
 }
