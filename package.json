@@ -8,7 +8,7 @@
   "homepage": "https://next-auth-example.vercel.app",
   "scripts": {
     "dev": "next",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start"
   },
   "author": "Iain Collins <me@iaincollins.com>",
