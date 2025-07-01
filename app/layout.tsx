@@ -1,26 +1,22 @@
 import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import Header from "@/components/header"
+import { SessionProvider } from "next-auth/react"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "NextAuth.js Example",
-  description:
-    "This is an example site to demonstrate how to use NextAuth.js for authentication",
+  title: "Turnix",
+  description: "La plataforma definitiva para la gestión de tu barbería.",
 }
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={inter.className}>
-        <div className="flex flex-col justify-between w-full h-full min-h-screen">
-          <Header />
-          <main className="flex-auto w-full max-w-3xl px-4 py-4 mx-auto sm:px-6 md:py-6">
-            {children}
-          </main>
-        </div>
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   )

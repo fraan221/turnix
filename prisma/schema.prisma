@@ -9,26 +9,30 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  barbershopName String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   accounts Account[]
   sessions Session[]
 
-  services Service[]
-  bookings Booking[]
+  services     Service[]
+  bookings     Booking[]
+  workingHours WorkingHours[]
+  timeBlocks   TimeBlock[]
 }
 
 model Client {
   id        String   @id @default(cuid())
   phone     String   @unique
   name      String
+  notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -98,4 +102,27 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model WorkingHours {
+  id        String  @id @default(cuid())
+  dayOfWeek Int // 0 para Domingo, 1 para Lunes, etc.
+  startTime String
+  endTime   String
+  isWorking Boolean @default(true)
+
+  barber   User   @relation(fields: [barberId], references: [id])
+  barberId String
+
+  @@unique([barberId, dayOfWeek])
+}
+
+model TimeBlock {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
+
+  barber   User   @relation(fields: [barberId], references: [id])
+  barberId String
 }

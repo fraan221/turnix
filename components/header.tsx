@@ -1,13 +1,18 @@
-import { MainNav } from "./main-nav"
-import UserButton from "./user-button"
+import { auth } from "@/auth";
+import { MainNav } from "./MainNav"; 
+import UserButton from "./UserButton"; 
 
-export default function Header() {
+export default async function Header() {
+  const session = await auth();
+
+  const barbershopName = (session?.user as any)?.barbershopName || null;
+
   return (
-    <header className="sticky flex justify-center border-b">
-      <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-4 sm:px-6">
-        <MainNav />
+    <header className="sticky top-0 z-50 flex justify-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center justify-between w-full h-16 px-4 mx-auto max-w-7xl sm:px-6">
+        <MainNav barbershopName={barbershopName} />
         <UserButton />
       </div>
     </header>
-  )
+  );
 }
