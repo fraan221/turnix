@@ -1,17 +1,12 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { updateClientNotes } from "@/actions/dashboard.actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { updateClientNotes } from "@/actions/dashboard.actions";
 
-
-interface ClientDetailPageProps {
-  params: { clientId: string };
-}
-
-export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
+export default async function ClientDetailPage({ params }: { params: { clientId: string } }) {
   const session = await auth();
   if (!session?.user?.id) return <p>No autorizado</p>;
 
@@ -25,7 +20,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
   return (
     <div>
-      <h1 className="mb-4 text-3xl font-bold">{client.name}</h1>
+      <h1 className="mb-4 text-3xl font-bold">Ficha de Cliente: {client.name}</h1>
       <Card>
         <CardHeader>
           <CardTitle>Notas Privadas</CardTitle>
@@ -36,10 +31,11 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         <CardContent>
           <form action={updateNotesAction}>
             <div className="grid w-full gap-2">
+              <Label htmlFor="notes">Notas sobre {client.name}</Label>
               <Textarea 
                 id="notes" 
                 name="notes"
-                placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, etc." 
+                placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, alérgico a..." 
                 defaultValue={client.notes || ""}
                 rows={6}
               />
