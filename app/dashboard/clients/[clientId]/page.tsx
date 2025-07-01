@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+interface ClientDetailPageProps {
+  params: { clientId: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+}
 
-export default async function ClientDetailPage({ params }: { params: { clientId: string } }) {
+export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
   const session = await auth();
   if (!session?.user?.id) return <p>No autorizado</p>;
 
