@@ -15,7 +15,7 @@ export default function RegisterPage() {
     <main className="flex flex-col items-center justify-center py-12">
       <Card className="max-w-sm mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Registro</CardTitle>
+          <CardTitle className="text-2xl">Registrate</CardTitle>
           <CardDescription>
             Ingresa tus datos para crear tu cuenta en Turnix
           </CardDescription>
@@ -23,7 +23,7 @@ export default function RegisterPage() {
         <CardContent>
           <form action={registerBarber} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Tu Nombre</Label>
+              <Label htmlFor="name">Nombre</Label>
               <Input id="name" name="name" placeholder="Ej: Juan Pérez" required />
             </div>
 
@@ -46,7 +46,7 @@ export default function RegisterPage() {
               <Label htmlFor="password">Contraseña</Label>
               <Input id="password" name="password" type="password" required />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full text-white bg-black">
               Crear Cuenta
             </Button>
           </form>

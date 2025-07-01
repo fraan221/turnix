@@ -175,3 +175,41 @@ export async function createBooking(formData: FormData) {
 
   revalidatePath('/dashboard');
 }
+
+export async function updateUserProfile(prevState: any, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('No autorizado');
+
+  const name = formData.get('name')?.toString();
+  const barbershopName = formData.get('barbershopName')?.toString();
+  let slug = formData.get('slug')?.toString();
+
+  if (!name || !slug) {
+    return { error: "El nombre y la URL personalizada son requeridos." };
+  }
+
+  slug = slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  const existingSlug = await prisma.user.findFirst({
+    where: {
+      slug: slug,
+      id: { not: session.user.id },
+    },
+  });
+
+  if (existingSlug) {
+    return { error: "Esa URL personalizada ya está en uso. Por favor, elige otra." };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      name,
+      barbershopName,
+      slug,
+    },
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { success: "¡Perfil actualizado con éxito!" };
+}

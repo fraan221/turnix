@@ -27,7 +27,7 @@ export default function LoginForm() {
     if (result?.error) {
       setError("Credenciales inválidas. Por favor, intenta de nuevo.");
     } else if (result?.ok) {
-      router.push("/dashboard"); 
+      router.push("/dashboard");
     }
   };
 
@@ -61,9 +61,11 @@ export default function LoginForm() {
         </Button>
       </form>
       <div className="mt-4 text-sm text-center">
-        ¿No tienes una cuenta?{" "}
-        <Link href="/register" className="underline">
-          Regístrate
+        ¿No tienes una cuenta?
+        <Link href="/register" passHref legacyBehavior>
+          <Button asChild variant="link">
+            <a>Regístrate</a>
+          </Button>
         </Link>
       </div>
     </>

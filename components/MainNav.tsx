@@ -12,7 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-import { Menu, Scissors, Clock, Users, Calendar } from "lucide-react";
+import { Menu, Scissors, Clock, Users, Calendar, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -20,6 +20,7 @@ const navLinks = [
   { href: "/dashboard/services", label: "Servicios", icon: Scissors },
   { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
+  { href: "/dashboard/settings", label: "Ajustes", icon: Settings },
 ];
 
 interface MainNavProps {
