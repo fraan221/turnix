@@ -6,6 +6,8 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { updateUserProfile } from "@/actions/dashboard.actions";
 import { useFormState, useFormStatus } from "react-dom";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -18,6 +20,19 @@ function SubmitButton() {
 
 export default function SettingsForm({ user }: { user: User }) {
   const [state, formAction] = useFormState(updateUserProfile, null);
+
+  useEffect(() => {
+    if (state?.success) {
+      toast.success("¡Perfil Actualizado!", {
+        description: state.success,
+      });
+    }
+    if (state?.error) {
+      toast.error("Error al guardar", {
+        description: state.error,
+      });
+    }
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -36,11 +51,8 @@ export default function SettingsForm({ user }: { user: User }) {
           <Input id="slug" name="slug" className="rounded-l-none" defaultValue={user.slug || ""} required />
         </div>
       </div>
-
+      
       <SubmitButton />
-
-      {state?.error && <p className="text-sm text-center text-red-500">{state.error}</p>}
-      {state?.success && <p className="text-sm text-center text-green-500">{state.success}</p>}
     </form>
   );
 }

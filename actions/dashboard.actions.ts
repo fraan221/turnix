@@ -4,81 +4,109 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-export async function createService(formData: FormData) {
+export async function createService(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) return { error: 'No autorizado' };
 
   const name = formData.get('name')?.toString();
   const price = parseFloat(formData.get('price')?.toString() || '0');
   const duration = parseInt(formData.get('duration')?.toString() || '0');
 
   if (!name || price <= 0 || duration <= 0) {
-    throw new Error('Datos del servicio inválidos.');
+    return { error: 'Datos del servicio inválidos.' };
   }
 
-  await prisma.service.create({
-    data: {
-      name,
-      price,
-      durationInMinutes: duration,
-      barberId: session.user.id,
-    },
-  });
-
-  revalidatePath('/dashboard/services');
+  try {
+    await prisma.service.create({
+      data: { name, price, durationInMinutes: duration, barberId: session.user.id },
+    });
+    revalidatePath('/dashboard/services');
+    return { success: `Servicio "${name}" creado con éxito.` };
+  } catch (error) {
+    return { error: 'No se pudo crear el servicio.' };
+  }
 }
 
 export async function deleteService(serviceId: string) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) return { error: 'No autorizado' };
 
-  const service = await prisma.service.findUnique({
-    where: { id: serviceId },
-  });
-
-  if (service?.barberId !== session.user.id) {
-    throw new Error('No tienes permiso para borrar este servicio.');
+  try {
+    const service = await prisma.service.findUnique({ where: { id: serviceId } });
+    if (service?.barberId !== session.user.id) {
+      return { error: 'No tienes permiso para borrar este servicio.' };
+    }
+    await prisma.service.delete({ where: { id: serviceId } });
+    revalidatePath('/dashboard/services');
+    return { success: 'Servicio eliminado con éxito.' };
+  } catch (error) {
+    return { error: 'No se pudo eliminar el servicio.' };
   }
-
-  await prisma.service.delete({
-    where: { id: serviceId },
-  });
-
-  revalidatePath('/dashboard/services');
 }
 
-export async function updateWorkingHours(formData: FormData) {
+export async function updateWorkingHours(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) return { error: 'No autorizado' };
 
-  const days = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  try {
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    for (let i = 0; i < days.length; i++) {
+      const day = days[i];
+      const isWorking = formData.get(`${day}-isWorking`) === 'on';
+      const startTime = formData.get(`${day}-startTime`)?.toString() || '09:00';
+      const endTime = formData.get(`${day}-endTime`)?.toString() || '18:00';
 
-  for (let i = 0; i < days.length; i++) {
-    const day = days[i];
-    const isWorking = formData.get(`${day}-isWorking`) === 'on';
-    const startTime = formData.get(`${day}-startTime`)?.toString() || '09:00';
-    const endTime = formData.get(`${day}-endTime`)?.toString() || '18:00';
-
-    await prisma.workingHours.upsert({
-      where: { barberId_dayOfWeek: { barberId: session.user.id, dayOfWeek: i } },
-      update: { isWorking, startTime, endTime },
-      create: {
-        barberId: session.user.id,
-        dayOfWeek: i,
-        isWorking,
-        startTime,
-        endTime,
-      },
-    });
+      await prisma.workingHours.upsert({
+        where: { barberId_dayOfWeek: { barberId: session.user.id, dayOfWeek: i } },
+        update: { isWorking, startTime, endTime },
+        create: { barberId: session.user.id, dayOfWeek: i, isWorking, startTime, endTime },
+      });
+    }
+    revalidatePath('/dashboard/schedule');
+    return { success: 'Horario semanal guardado con éxito.' };
+  } catch (error) {
+    return { error: 'No se pudo guardar el horario.' };
   }
-
-  revalidatePath('/dashboard/schedule');
 }
 
-export async function createTimeBlock(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+type DaySchedule = {
+  dayOfWeek: number;
+  isWorking: boolean;
+  startTime: string;
+  endTime: string;
+};
 
+export async function saveSchedule(schedule: DaySchedule[]) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: 'No autorizado' };
+  }
+  
+  const barberId = session.user.id;
+
+  try {
+    await prisma.$transaction(
+      schedule.map(day => 
+        prisma.workingHours.upsert({
+          where: { barberId_dayOfWeek: { barberId: barberId, dayOfWeek: day.dayOfWeek } },
+          update: { isWorking: day.isWorking, startTime: day.startTime, endTime: day.endTime },
+          create: { barberId: barberId, dayOfWeek: day.dayOfWeek, isWorking: day.isWorking, startTime: day.startTime, endTime: day.endTime },
+        })
+      )
+    );
+
+    revalidatePath('/dashboard/schedule');
+    return { success: '¡Horario guardado con éxito!' };
+  } catch (error) {
+    console.error("Error al guardar el horario:", error);
+    return { error: 'No se pudo guardar el horario.' };
+  }
+}
+
+export async function createTimeBlock(prevState: any, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: 'No autorizado' };
+  
   const startDate = formData.get('startDate')?.toString();
   const startTime = formData.get('startTime')?.toString();
   const endDate = formData.get('endDate')?.toString();
@@ -86,45 +114,50 @@ export async function createTimeBlock(formData: FormData) {
   const reason = formData.get('reason')?.toString();
 
   if (!startDate || !startTime || !endDate || !endTime) {
-    throw new Error('Fechas y horas de inicio y fin son requeridas.');
+    return { error: 'Fechas y horas de inicio y fin son requeridas.' };
   }
 
   const startDateTime = new Date(`${startDate}T${startTime}`);
   const endDateTime = new Date(`${endDate}T${endTime}`);
 
   if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-     throw new Error('Formato de fecha u hora inválido.');
+    return { error: 'Formato de fecha u hora inválido.' };
   }
 
-  await prisma.timeBlock.create({
-    data: {
-      startTime: startDateTime,
-      endTime: endDateTime,
-      reason: reason,
-      barberId: session.user.id,
-    },
-  });
-
-  revalidatePath('/dashboard/schedule');
+  try {
+    await prisma.timeBlock.create({
+      data: { startTime: startDateTime, endTime: endDateTime, reason: reason, barberId: session.user.id },
+    });
+    revalidatePath('/dashboard/schedule');
+    return { success: 'Bloqueo de tiempo creado con éxito.' };
+  } catch (error) {
+    return { error: 'No se pudo crear el bloqueo.' };
+  }
 }
 
-export async function deleteTimeBlock(blockId: string) {
+export async function deleteTimeBlock(prevState: any, blockId: string) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) return { error: 'No autorizado' };
 
-  const block = await prisma.timeBlock.findUnique({
-    where: { id: blockId },
-  });
+  try {
+    const block = await prisma.timeBlock.findUnique({
+      where: { id: blockId },
+    });
 
-  if (block?.barberId !== session.user.id) {
-    throw new Error('No tienes permiso para borrar este bloqueo.');
+    if (block?.barberId !== session.user.id) {
+      return { error: 'No tienes permiso para borrar este bloqueo.' };
+    }
+
+    await prisma.timeBlock.delete({
+      where: { id: blockId },
+    });
+
+    revalidatePath('/dashboard/schedule');
+    return { success: 'Bloqueo eliminado con éxito.' };
+
+  } catch (error) {
+    return { error: 'No se pudo eliminar el bloqueo.' };
   }
-
-  await prisma.timeBlock.delete({
-    where: { id: blockId },
-  });
-
-  revalidatePath('/dashboard/schedule');
 }
 
 export async function updateClientNotes(clientId: string, formData: FormData) {

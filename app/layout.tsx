@@ -2,6 +2,7 @@ import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { SessionProvider } from "next-auth/react"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
       <body className={inter.className}>
         <SessionProvider>
           {children}
+          <Toaster richColors />
         </SessionProvider>
       </body>
     </html>
