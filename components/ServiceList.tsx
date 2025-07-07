@@ -3,57 +3,102 @@
 import { Service } from "@prisma/client";
 import { Button } from "./ui/button";
 import { deleteService } from "@/actions/dashboard.actions";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect } from "react";
+import { useTransition } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react"; 
 import { formatPrice, formatDuration } from "@/lib/utils";
-
-function DeleteButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button variant="destructive" size="icon" type="submit" disabled={pending}>
-            <Trash2 className="w-4 h-4" />
-        </Button>
-    )
-}
+import Link from "next/link";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function ServiceItem({ service }: { service: Service }) {
-    const [state, formAction] = useFormState(deleteService.bind(null, service.id), null);
+    const [isPending, startTransition] = useTransition();
 
-    useEffect(() => {
-        if (state?.success) {
-            toast.success("¡Éxito!", { description: state.success });
-        }
-        if (state?.error) {
-            toast.error("Error", { description: state.error });
-        }
-    }, [state]);
+    const handleDelete = () => {
+        startTransition(async () => {
+            const result = await deleteService(service.id);
+            if (result?.success) {
+                toast.success("¡Éxito!", { description: result.success });
+            }
+            if (result?.error) {
+                toast.error("Error", { description: result.error });
+            }
+        });
+    };
 
     return (
-        <li className="flex items-center justify-between p-3 border rounded-md bg-slate-50">
+        <li className="flex items-center justify-between p-4 border rounded-lg bg-slate-50">
             <div>
                 <p className="font-semibold">{service.name}</p>
-                <p className="text-sm text-gray-600">{formatPrice(service.price)} - {formatDuration(service.durationInMinutes)}</p>
+                
+                {service.description && (
+                    <p className="mt-1 text-xs text-gray-500">{service.description}</p>
+                )}
+
+                <div className="flex items-center mt-1 text-sm text-gray-600 gap-x-2">
+                    <span>{formatPrice(service.price)}</span>
+                    {service.durationInMinutes && service.durationInMinutes > 0 && (
+                        <>
+                            <span className="text-gray-400">•</span>
+                            <span>{formatDuration(service.durationInMinutes)}</span>
+                        </>
+                    )}
+                </div>
             </div>
-            <form action={formAction}>
-                <DeleteButton />
-            </form>
+            <div className="flex items-center gap-x-2">
+                <Link href={`/dashboard/services/${service.id}/edit`}>
+                    <Button variant="outline" size="icon">
+                        <Pencil className="w-4 h-4" />
+                    </Button>
+                </Link>
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio
+                                <span className="font-semibold"> "{service.name}"</span>.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                {isPending ? "Eliminando..." : "Sí, eliminar"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
         </li>
     );
 }
 
 
 export default function ServiceList({ services }: { services: Service[] }) {
-  if (services.length === 0) {
+    if (services.length === 0) {
     return <p>Aún no has añadido ningún servicio.</p>;
-  }
+    }
 
-  return (
+    return (
     <ul className="space-y-2">
-      {services.map((service) => (
+        {services.map((service) => (
         <ServiceItem key={service.id} service={service} />
-      ))}
+        ))}
     </ul>
-  );
+    );
 }

@@ -81,3 +81,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+.fc {
+  /* Cambiamos el color del borde de los botones */
+  --fc-button-border-color: hsl(var(--border));
+  /* Cambiamos el color de fondo de los botones */
+  --fc-button-bg-color: hsl(var(--background));
+  /* Cambiamos el color del texto de los botones */
+  --fc-button-text-color: hsl(var(--foreground));
+  /* Cambiamos el color de fondo al pasar el mouse */
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  /* Cambiamos el color del texto al pasar el mouse */
+  --fc-button-hover-text-color: hsl(var(--accent-foreground));
+  /* Cambiamos el color del botón activo (ej. "Semana" cuando está seleccionada) */
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-text-color: hsl(var(--primary-foreground));
+  /* Cambia el color de fondo del día de hoy a blanco */
+  --fc-today-bg-color: hsl(var(--background));
+}
+
+/* Pequeño ajuste para que los íconos de las flechas se vean mejor */
+.fc .fc-icon {
+  vertical-align: middle;
+}

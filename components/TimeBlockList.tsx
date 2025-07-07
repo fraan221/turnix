@@ -3,35 +3,36 @@
 import { TimeBlock } from "@prisma/client";
 import { Button } from "./ui/button";
 import { deleteTimeBlock } from "@/actions/dashboard.actions";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect } from "react";
+import { useTransition } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
-
-function DeleteButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button variant="destructive" size="icon" type="submit" disabled={pending}>
-            <Trash2 className="w-4 h-4" />
-        </Button>
-    )
-}
+import { Trash2, Pencil } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function TimeBlockItem({ block }: { block: TimeBlock }) {
-    const deleteTimeBlockWithId = async (prevState: any, formData: FormData) => {
-        return deleteTimeBlock(prevState, block.id);
+    const [isPending, startTransition] = useTransition();
+
+    const handleDelete = () => {
+        startTransition(async () => {
+            const result = await deleteTimeBlock(block.id);
+            if (result?.success) {
+                toast.success("¡Éxito!", { description: result.success });
+            }
+            if (result?.error) {
+                toast.error("Error", { description: result.error });
+            }
+        });
     };
-
-    const [state, formAction] = useFormState(deleteTimeBlockWithId, null);
-
-    useEffect(() => {
-        if (state?.success) {
-            toast.success("¡Éxito!", { description: state.success });
-        }
-        if (state?.error) {
-            toast.error("Error", { description: state.error });
-        }
-    }, [state]);
 
     return (
         <div className="flex items-center justify-between p-3 border rounded-md bg-slate-100">
@@ -41,9 +42,35 @@ function TimeBlockItem({ block }: { block: TimeBlock }) {
                     {new Date(block.startTime).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} - {new Date(block.endTime).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
                 </p>
             </div>
-            <form action={formAction}>
-                <DeleteButton />
-            </form>
+            
+            <div className="flex items-center gap-x-2">
+                <Link href={`/dashboard/schedule/${block.id}/edit`}>
+                    <Button variant="outline" size="icon">
+                        <Pencil className="w-4 h-4" />
+                    </Button>
+                </Link>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon">
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Esto eliminará permanentemente este bloqueo de tiempo.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                {isPending ? "Eliminando..." : "Sí, eliminar"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
         </div>
     );
 }

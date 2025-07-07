@@ -1,8 +1,8 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import ScheduleForm from "@/components/ScheduleForm";
-import TimeBlockForm from "@/components/TimeBlockForm";
 import TimeBlockList from "@/components/TimeBlockList";
+import AddTimeBlockModal from "@/components/AddTimeBlockModal";
 
 export default async function SchedulePage() {
   const session = await auth();
@@ -24,22 +24,33 @@ export default async function SchedulePage() {
   return (
     <div className="space-y-12">
       <div>
-        <h1 className="mb-4 text-3xl font-bold">Definir Mi Horario Semanal</h1>
-        <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
+        <h2 className="text-2xl font-bold md:text-3xl">Horario Semanal</h2>
+        <p className="mt-1 text-muted-foreground">
+          Define tus horas de trabajo para cada día.
+        </p>
+        <div className="mt-6">
+          <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
+        </div>
       </div>
 
       <hr />
 
       <div>
-        <h2 className="mb-4 text-3xl font-bold">Bloqueos de Tiempo Específicos</h2>
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <div className="md:col-span-1">
-            <TimeBlockForm />
+        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="grid gap-1">
+            <h2 className="text-2xl font-bold md:text-3xl">Bloqueos Horarios</h2>
+            <p className="text-muted-foreground">
+              Añade fechas y horas en las que no estarás disponible.
+            </p>
           </div>
-          <div className="md:col-span-2">
-            <h3 className="mb-4 text-xl font-semibold">Mis Bloqueos Activos</h3>
+          <div className="w-full md:w-auto">
+            <AddTimeBlockModal />
+          </div>
+        </div>
+        
+        <div className="mt-6">
+            <h3 className="mb-4 text-lg font-semibold">Mis Bloqueos Activos</h3>
             <TimeBlockList timeBlocks={timeBlocks} />
-          </div>
         </div>
       </div>
     </div>

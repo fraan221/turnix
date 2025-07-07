@@ -1,9 +1,8 @@
-// app/dashboard/services/page.tsx
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ServiceForm from "@/components/ServiceForm";
-import ServiceList from "@/components/ServiceList"; 
+import ServiceList from "@/components/ServiceList";
+import AddServiceModal from "@/components/AddServiceModal";
 
 export default async function ServicesPage() {
   const session = await auth();
@@ -15,30 +14,34 @@ export default async function ServicesPage() {
   });
 
   return (
-    <div>
-      <h1 className="mb-4 text-3xl font-bold">Servicios</h1>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Añadir Servicio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ServiceForm />
-            </CardContent>
-          </Card>
+    <div className="space-y-6">
+      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="grid gap-1">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            Servicios
+          </h1>
+          <p className="text-muted-foreground">
+            Añade, edita y gestiona los servicios que ofreces.
+          </p>
         </div>
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Mis Servicios</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ServiceList services={services} />
-            </CardContent>
-          </Card>
+        <div className="w-full md:w-auto">
+          <AddServiceModal />
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Servicios</CardTitle>
+          <CardDescription>
+            {services.length > 0
+              ? `Actualmente tienes ${services.length} servicios cargados.`
+              : "Aún no has añadido ningún servicio. ¡Crea el primero!"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ServiceList services={services} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

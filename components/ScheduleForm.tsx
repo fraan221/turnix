@@ -31,7 +31,7 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
         dayOfWeek: index,
         isWorking: dayData?.isWorking ?? false,
         startTime: dayData?.startTime || "09:00",
-        endTime: dayData?.endTime || "18:00",
+        endTime: dayData?.endTime || "22:00",
       };
     })
   );

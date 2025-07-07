@@ -40,11 +40,6 @@ export default async function BarberPublicPage({ params }: BarberPublicPageProps
             <CardTitle className="text-3xl font-bold">
               {barber.barbershopName || barber.name}
             </CardTitle>
-            {barber.barbershopName && (
-              <CardDescription className="text-lg">
-                Atendido por {barber.name}
-              </CardDescription>
-            )}
           </CardHeader>
         </Card>
         <BookingComponent services={barber.services} barberId={barber.id} />

@@ -33,7 +33,7 @@ export default function BarberCalendar({ bookings, services }: BarberCalendarPro
   const isMobile = width < 768;
 
   const events = bookings.map(booking => {
-    const endTime = new Date(booking.startTime.getTime() + booking.service.durationInMinutes * 60000);
+    const endTime = new Date(booking.startTime.getTime() + (booking.service.durationInMinutes || 0) * 60000);
     return {
       id: booking.id,
       title: `${booking.service.name} - ${booking.client.name}`,
@@ -88,6 +88,25 @@ export default function BarberCalendar({ bookings, services }: BarberCalendarPro
         slotMaxTime="23:00:00"
         contentHeight="auto"
         nowIndicator={true}
+        
+        
+        // 1. Formatea el título principal (ej: "Julio 2024")
+        titleFormat={{ year: 'numeric', month: 'long' }}
+        
+        // 2. Formatea las cabeceras de los días (ej: "Lun 8")
+        dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
+        
+        // 3. Formatea las etiquetas de las horas y añade "hs"
+        slotLabelFormat={{
+          hour: '2-digit',
+          minute: '2-digit',
+          omitZeroMinute: false,
+          meridiem: false,
+          hour12: false,
+        }}
+        slotLabelContent={(arg) => {
+          return `${arg.text} hs`;
+        }}
       />
 
       <Dialog open={open} onOpenChange={setOpen}>

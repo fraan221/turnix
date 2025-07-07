@@ -2,23 +2,34 @@
 
 import { createTimeBlock } from "@/actions/dashboard.actions";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { PlusCircle } from "lucide-react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "Bloqueando..." : "Bloquear Horario"}
     </Button>
   );
 }
 
-export default function TimeBlockForm() {
+export default function AddTimeBlockModal() {
+  const [open, setOpen] = useState(false);
   const [state, formAction] = useFormState(createTimeBlock, null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -26,6 +37,7 @@ export default function TimeBlockForm() {
     if (state?.success) {
       toast.success("¡Éxito!", { description: state.success });
       formRef.current?.reset();
+      setOpen(false);
     }
     if (state?.error) {
       toast.error("Error", { description: state.error });
@@ -33,12 +45,21 @@ export default function TimeBlockForm() {
   }, [state]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Crear Nuevo Bloqueo</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form ref={formRef} action={formAction} className="space-y-4">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Bloquear Horario
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Crear Nuevo Bloqueo</DialogTitle>
+          <DialogDescription>
+            Define un período en el que no estarás disponible. Los clientes no podrán reservar en este rango.
+          </DialogDescription>
+        </DialogHeader>
+        <form ref={formRef} action={formAction} className="pt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Fecha de Inicio</Label>
@@ -61,11 +82,16 @@ export default function TimeBlockForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="reason">Razón (Opcional)</Label>
-            <Input id="reason" name="reason" placeholder="Ej: Vacaciones, Feriado" />
+            <Input id="reason" name="reason" placeholder="Ej: Vacaciones, Viaje de Trabajo..." />
           </div>
-          <SubmitButton />
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">Cancelar</Button>
+            </DialogClose>
+            <SubmitButton />
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

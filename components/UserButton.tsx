@@ -1,18 +1,21 @@
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
-import { auth } from "auth"
+import { auth } from "@/auth"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "./ui/dropdown-menu"
-import { SignIn, SignOut } from "./auth-components"
+import { SignIn } from "./auth-components"
+import { User, LogOut } from "lucide-react"
 
 export default async function UserButton() {
   const session = await auth()
   if (!session?.user) return <SignIn />
+  
   return (
     <div className="flex items-center gap-2">
       <span className="hidden text-sm sm:inline-flex">
@@ -22,13 +25,10 @@ export default async function UserButton() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative w-8 h-8 rounded-full">
             <Avatar className="w-8 h-8">
-              <AvatarImage
-                src={
-                  session.user.image ??
-                  `https://api.dicebear.com/9.x/thumbs/svg?seed=${Math.floor(Math.random() * 100000) + 1}&randomizeIds=true`
-                }
-                alt={session.user.name ?? ""}
-              />
+              {session.user.image && <AvatarImage src={session.user.image} alt={session.user.name ?? ""} />}
+              <AvatarFallback>
+                <User className="w-4 h-4" />
+              </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
@@ -43,9 +43,21 @@ export default async function UserButton() {
               </p>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuItem>
-            <SignOut />
-          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <form
+            action={async () => {
+              "use server"
+              const { signOut } = await import("@/auth")
+              await signOut()
+            }}
+          >
+            <DropdownMenuItem asChild>
+              <button type="submit" className="flex items-center w-full text-red-500 cursor-pointer">
+                <LogOut className="w-4 h-4 mr-2" />
+                <span>Cerrar Sesión</span>
+              </button>
+            </DropdownMenuItem>
+          </form>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
