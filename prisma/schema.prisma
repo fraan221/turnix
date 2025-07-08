@@ -10,16 +10,17 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  name           String
-  barbershopName String?
-  slug           String?   @unique
-  email          String    @unique
-  emailVerified  DateTime?
-  image          String?
-  password       String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  name                String
+  barbershopName      String?
+  slug                String?   @unique
+  onboardingCompleted Boolean   @default(false)
+  email               String    @unique
+  emailVerified       DateTime?
+  image               String?
+  password            String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   accounts Account[]
   sessions Session[]
@@ -109,7 +110,7 @@ model VerificationToken {
 
 model WorkingHours {
   id        String  @id @default(cuid())
-  dayOfWeek Int // 0 para Domingo, 1 para Lunes, etc.
+  dayOfWeek Int
   startTime String
   endTime   String
   isWorking Boolean @default(true)

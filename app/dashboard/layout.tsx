@@ -4,7 +4,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div>
       <Header />
-      <main className="max-w-6xl px-4 py-8 mx-auto">
+      <main className="max-w-5xl px-4 py-8 mx-auto">
         {children}
       </main>
     </div>

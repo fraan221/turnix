@@ -88,15 +88,8 @@ export default function BarberCalendar({ bookings, services }: BarberCalendarPro
         slotMaxTime="23:00:00"
         contentHeight="auto"
         nowIndicator={true}
-        
-        
-        // 1. Formatea el título principal (ej: "Julio 2024")
         titleFormat={{ year: 'numeric', month: 'long' }}
-        
-        // 2. Formatea las cabeceras de los días (ej: "Lun 8")
         dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-        
-        // 3. Formatea las etiquetas de las horas y añade "hs"
         slotLabelFormat={{
           hour: '2-digit',
           minute: '2-digit',

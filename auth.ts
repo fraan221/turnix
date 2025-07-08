@@ -52,7 +52,7 @@ export const authConfig = {
     return true;
   },
   async jwt({ token, user }) {
-      if (user) { // Cuando el usuario inicia sesión
+      if (user) { 
         token.barbershopName = (user as any).barbershopName;
       }
       return token;

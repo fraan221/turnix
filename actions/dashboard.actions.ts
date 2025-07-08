@@ -363,3 +363,22 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
   revalidatePath('/dashboard/settings');
   return { success: "¡Perfil actualizado con éxito!" };
 }
+
+export async function completeOnboarding() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: 'No autorizado' };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { onboardingCompleted: true },
+    });
+
+    revalidatePath('/dashboard');
+    return { success: '¡Onboarding completado!' };
+  } catch (error) {
+    return { error: 'No se pudo completar el onboarding.' };
+  }
+}
