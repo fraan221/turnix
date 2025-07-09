@@ -77,6 +77,10 @@ export default function RegisterForm() {
           <Link href="/privacy-policy" className="underline hover:text-primary" target="_blank">
             Política de Privacidad
           </Link>
+          {' '}y nuestros{' '}
+          <Link href="/terms-of-service" className="underline hover:text-primary" target="_blank">
+            Términos de Servicio
+          </Link>
           .
         </div>
         
