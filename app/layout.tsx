@@ -14,6 +14,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: React.PropsWithChildren) {
   return (
     <html lang="es">
+      <head>
+        <meta name="google-site-verification" content="yZ3o7ESLpcWcIsLUE31bPQm9oRe4xk2SSDDGI_l5X1Q" />
+      </head>
       <body className={inter.className}>
         <SessionProvider>
           {children}
