@@ -12,8 +12,6 @@ import { es } from "date-fns/locale";
 import { Button } from "./ui/button";
 import { formatDuration, formatPrice } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { createPublicBooking } from "@/actions/public.actions";
 import BookingConfirmationForm from "./BookingConfirmationForm";
 import { Loader2 } from "lucide-react";
 
@@ -34,6 +32,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
   const [availability, setAvailability] = useState<AvailabilityData | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
@@ -54,6 +53,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
     const fetchAvailability = async () => {
       setIsLoading(true);
       setTimeSlots([]);
+      setAvailabilityMessage(null);
       const availabilityData = await getBarberAvailability(barberId, date);
       setAvailability(availabilityData as any);
       setIsLoading(false);
@@ -62,12 +62,21 @@ export default function BookingComponent({ services, barberId }: BookingComponen
   }, [date, barberId]);
 
   useEffect(() => {
-    if (!availability?.workingHours?.isWorking || selectedServices.length === 0) {
+    if (!availability) return;
+
+    if (selectedServices.length === 0) {
       setTimeSlots([]);
+      setAvailabilityMessage("Selecciona un servicio para ver los horarios.");
       return;
     }
     
-    const effectiveDuration = totalDuration > 0 ? totalDuration : 60;
+    if (!availability.workingHours?.isWorking) {
+      setTimeSlots([]);
+      setAvailabilityMessage("El barbero no trabaja en el día seleccionado.");
+      return;
+    }
+
+    const effectiveDuration = totalDuration > 0 ? totalDuration : 30;
 
     const { workingHours, bookings, timeBlocks } = availability;
     const slots: string[] = [];
@@ -98,6 +107,12 @@ export default function BookingComponent({ services, barberId }: BookingComponen
     }
 
     setTimeSlots(slots);
+    
+    if (slots.length === 0) {
+      setAvailabilityMessage("No hay horarios disponibles para este día.");
+    } else {
+      setAvailabilityMessage(null);
+    }
   }, [availability, totalDuration, date, selectedServices]);
 
   const handleServiceSelection = (serviceId: string) => {
@@ -173,7 +188,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
                         ))
                       ) : (
                         <p className="text-sm text-center text-muted-foreground col-span-full">
-                          {totalDuration === 0 ? "Selecciona un servicio con duración para ver horarios." : "No hay horarios disponibles."}
+                          {availabilityMessage}
                         </p>
                       )}
                 </CardContent>
