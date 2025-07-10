@@ -7,7 +7,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Calendar } from "./ui/calendar";
 import { getBarberAvailability } from "@/actions/public.actions";
-import { addMinutes, format, setHours, setMinutes, startOfDay } from "date-fns";
+import { addMinutes, format, setHours, setMinutes, startOfDay, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "./ui/button";
 import { formatDuration, formatPrice } from "@/lib/utils";
@@ -32,7 +32,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
   const [availability, setAvailability] = useState<AvailabilityData | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>("Selecciona un servicio para ver los horarios.");
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
@@ -77,13 +77,27 @@ export default function BookingComponent({ services, barberId }: BookingComponen
     }
 
     const effectiveDuration = totalDuration > 0 ? totalDuration : 30;
-
     const { workingHours, bookings, timeBlocks } = availability;
     const slots: string[] = [];
+
+    const now = new Date();
+    let initialTime = startOfDay(date!);
+    if (isToday(date!) && now > initialTime) {
+      initialTime = now;
+    }
     const dayStartTime = setMinutes(setHours(date!, parseInt(workingHours.startTime.split(':')[0])), parseInt(workingHours.startTime.split(':')[1]));
     const dayEndTime = setMinutes(setHours(date!, parseInt(workingHours.endTime.split(':')[0])), parseInt(workingHours.endTime.split(':')[1]));
 
     let currentTime = dayStartTime;
+
+    if (isToday(date!) && currentTime < now) {
+      const minutes = now.getMinutes();
+      const roundedMinutes = Math.ceil(minutes / 15) * 15;
+      currentTime = setMinutes(setHours(now, now.getHours()), roundedMinutes);
+      if (roundedMinutes >= 60) {
+        currentTime = addMinutes(startOfDay(currentTime), 60);
+      }
+    }
 
     while (currentTime < dayEndTime) {
       const slotEndTime = addMinutes(currentTime, effectiveDuration);
@@ -103,7 +117,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
         slots.push(format(currentTime, 'HH:mm'));
       }
 
-      currentTime = addMinutes(currentTime, 60);
+      currentTime = addMinutes(currentTime, 15);
     }
 
     setTimeSlots(slots);
