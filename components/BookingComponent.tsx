@@ -117,7 +117,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
         slots.push(format(currentTime, 'HH:mm'));
       }
 
-      currentTime = addMinutes(currentTime, 15);
+      currentTime = addMinutes(currentTime, 60);
     }
 
     setTimeSlots(slots);
