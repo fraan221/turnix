@@ -76,33 +76,30 @@ export default function BookingComponent({ services, barberId }: BookingComponen
       return;
     }
 
-    const effectiveDuration = totalDuration > 0 ? totalDuration : 30;
     const { workingHours, bookings, timeBlocks } = availability;
     const slots: string[] = [];
-
     const now = new Date();
-    let initialTime = startOfDay(date!);
-    if (isToday(date!) && now > initialTime) {
-      initialTime = now;
-    }
-    const dayStartTime = setMinutes(setHours(date!, parseInt(workingHours.startTime.split(':')[0])), parseInt(workingHours.startTime.split(':')[1]));
-    const dayEndTime = setMinutes(setHours(date!, parseInt(workingHours.endTime.split(':')[0])), parseInt(workingHours.endTime.split(':')[1]));
+    
+    const dayStartTime = setMinutes(setHours(date!, parseInt(workingHours.startTime.split(':')[0])), 0);
+    const dayEndTime = setMinutes(setHours(date!, parseInt(workingHours.endTime.split(':')[0])), 0);
+    
+    let effectiveStartTime = dayStartTime;
 
-    let currentTime = dayStartTime;
+    if (isToday(date!)) {
+      const firstPossibleHour = now.getHours() + 1;
+      const firstPossibleSlot = setMinutes(setHours(date!, firstPossibleHour), 0);
 
-    if (isToday(date!) && currentTime < now) {
-      const minutes = now.getMinutes();
-      const roundedMinutes = Math.ceil(minutes / 15) * 15;
-      currentTime = setMinutes(setHours(now, now.getHours()), roundedMinutes);
-      if (roundedMinutes >= 60) {
-        currentTime = addMinutes(startOfDay(currentTime), 60);
+      if (firstPossibleSlot > dayStartTime) {
+        effectiveStartTime = firstPossibleSlot;
       }
     }
 
-    while (currentTime < dayEndTime) {
-      const slotEndTime = addMinutes(currentTime, effectiveDuration);
-      if (slotEndTime > dayEndTime) break;
+    let currentTime = effectiveStartTime;
 
+    while (currentTime < dayEndTime) {
+      const slotEndTime = addMinutes(currentTime, totalDuration > 0 ? totalDuration : 60);
+      if (slotEndTime > dayEndTime) break;
+      
       const overlapsWithBooking = bookings.some(booking => {
         const bookingDuration = booking.service.durationInMinutes || 30;
         const bookingEndTime = addMinutes(booking.startTime, bookingDuration);
