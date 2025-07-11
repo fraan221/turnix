@@ -2,16 +2,35 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Service } from "@prisma/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Calendar } from "./ui/calendar";
 import { getBarberAvailability } from "@/actions/public.actions";
-import { addMinutes, format, setHours, setMinutes, startOfDay, isToday } from "date-fns";
+import {
+  addMinutes,
+  format,
+  setHours,
+  setMinutes,
+  startOfDay,
+  isToday,
+} from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "./ui/button";
 import { formatDuration, formatPrice } from "@/lib/utils";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import BookingConfirmationForm from "./BookingConfirmationForm";
 import { Loader2 } from "lucide-react";
 
@@ -21,31 +40,48 @@ interface BookingComponentProps {
 }
 
 type AvailabilityData = {
-  workingHours: { startTime: string; endTime: string; isWorking: boolean } | null;
-  bookings: { startTime: Date, service: { durationInMinutes: number | null } }[];
+  workingHours: {
+    startTime: string;
+    endTime: string;
+    isWorking: boolean;
+  } | null;
+  bookings: {
+    startTime: Date;
+    service: { durationInMinutes: number | null };
+  }[];
   timeBlocks: { startTime: Date; endTime: Date }[];
-}
+};
 
-export default function BookingComponent({ services, barberId }: BookingComponentProps) {
+export default function BookingComponent({
+  services,
+  barberId,
+}: BookingComponentProps) {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [availability, setAvailability] = useState<AvailabilityData | null>(null);
+  const [availability, setAvailability] = useState<AvailabilityData | null>(
+    null
+  );
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>("Selecciona un servicio para ver los horarios.");
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(
+    "Selecciona un servicio para ver los horarios."
+  );
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const selectedServiceObjects = useMemo(() => {
-    return services.filter(service => selectedServices.includes(service.id));
+    return services.filter((service) => selectedServices.includes(service.id));
   }, [selectedServices, services]);
 
   const { totalDuration, totalPrice } = useMemo(() => {
-    return selectedServiceObjects.reduce((acc, service) => {
-      acc.totalDuration += service.durationInMinutes || 0;
-      acc.totalPrice += service.price;
-      return acc;
-    }, { totalDuration: 0, totalPrice: 0 });
+    return selectedServiceObjects.reduce(
+      (acc, service) => {
+        acc.totalDuration += service.durationInMinutes || 0;
+        acc.totalPrice += service.price;
+        return acc;
+      },
+      { totalDuration: 0, totalPrice: 0 }
+    );
   }, [selectedServiceObjects]);
 
   useEffect(() => {
@@ -69,7 +105,7 @@ export default function BookingComponent({ services, barberId }: BookingComponen
       setAvailabilityMessage("Selecciona un servicio para ver los horarios.");
       return;
     }
-    
+
     if (!availability.workingHours?.isWorking) {
       setTimeSlots([]);
       setAvailabilityMessage("El barbero no trabaja en el día seleccionado.");
@@ -79,15 +115,24 @@ export default function BookingComponent({ services, barberId }: BookingComponen
     const { workingHours, bookings, timeBlocks } = availability;
     const slots: string[] = [];
     const now = new Date();
-    
-    const dayStartTime = setMinutes(setHours(date!, parseInt(workingHours.startTime.split(':')[0])), 0);
-    const dayEndTime = setMinutes(setHours(date!, parseInt(workingHours.endTime.split(':')[0])), 0);
-    
+
+    const dayStartTime = setMinutes(
+      setHours(date!, parseInt(workingHours.startTime.split(":")[0])),
+      0
+    );
+    const dayEndTime = setMinutes(
+      setHours(date!, parseInt(workingHours.endTime.split(":")[0])),
+      0
+    );
+
     let effectiveStartTime = dayStartTime;
 
     if (isToday(date!)) {
       const firstPossibleHour = now.getHours() + 1;
-      const firstPossibleSlot = setMinutes(setHours(date!, firstPossibleHour), 0);
+      const firstPossibleSlot = setMinutes(
+        setHours(date!, firstPossibleHour),
+        0
+      );
 
       if (firstPossibleSlot > dayStartTime) {
         effectiveStartTime = firstPossibleSlot;
@@ -97,28 +142,31 @@ export default function BookingComponent({ services, barberId }: BookingComponen
     let currentTime = effectiveStartTime;
 
     while (currentTime < dayEndTime) {
-      const slotEndTime = addMinutes(currentTime, totalDuration > 0 ? totalDuration : 60);
+      const slotEndTime = addMinutes(
+        currentTime,
+        totalDuration > 0 ? totalDuration : 60
+      );
       if (slotEndTime > dayEndTime) break;
-      
-      const overlapsWithBooking = bookings.some(booking => {
+
+      const overlapsWithBooking = bookings.some((booking) => {
         const bookingDuration = booking.service.durationInMinutes || 30;
         const bookingEndTime = addMinutes(booking.startTime, bookingDuration);
         return currentTime < bookingEndTime && slotEndTime > booking.startTime;
       });
 
-      const overlapsWithTimeBlock = timeBlocks.some(block =>
-        currentTime < block.endTime && slotEndTime > block.startTime
+      const overlapsWithTimeBlock = timeBlocks.some(
+        (block) => currentTime < block.endTime && slotEndTime > block.startTime
       );
 
       if (!overlapsWithBooking && !overlapsWithTimeBlock) {
-        slots.push(format(currentTime, 'HH:mm'));
+        slots.push(format(currentTime, "HH:mm"));
       }
 
       currentTime = addMinutes(currentTime, 60);
     }
 
     setTimeSlots(slots);
-    
+
     if (slots.length === 0) {
       setAvailabilityMessage("No hay horarios disponibles para este día.");
     } else {
@@ -127,8 +175,10 @@ export default function BookingComponent({ services, barberId }: BookingComponen
   }, [availability, totalDuration, date, selectedServices]);
 
   const handleServiceSelection = (serviceId: string) => {
-    setSelectedServices(prev =>
-      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+    setSelectedServices((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId]
     );
   };
 
@@ -142,12 +192,17 @@ export default function BookingComponent({ services, barberId }: BookingComponen
       <Card>
         <CardHeader>
           <CardTitle>Nuestros Servicios</CardTitle>
-          <CardDescription>Selecciona los servicios que deseas reservar.</CardDescription>
+          <CardDescription>
+            Selecciona los servicios que deseas reservar.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {services.map((service) => (
-              <div key={service.id} className="flex items-center space-x-4 p-4 border rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:border-blue-300 transition-colors">
+              <div
+                key={service.id}
+                className="flex items-center space-x-4 p-4 border rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:border-blue-300 transition-colors"
+              >
                 <Checkbox
                   id={service.id}
                   onCheckedChange={() => handleServiceSelection(service.id)}
@@ -157,12 +212,20 @@ export default function BookingComponent({ services, barberId }: BookingComponen
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <h3 className="font-semibold">{service.name}</h3>
-                      {service.description && <p className="text-xs text-muted-foreground">{service.description}</p>}
+                      {service.description && (
+                        <p className="text-xs text-muted-foreground">
+                          {service.description}
+                        </p>
+                      )}
                       {service.durationInMinutes && (
-                        <p className="text-sm font-medium text-muted-foreground">{formatDuration(service.durationInMinutes)}</p>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {formatDuration(service.durationInMinutes)}
+                        </p>
                       )}
                     </div>
-                    <p className="ml-4 text-lg font-bold shrink-0">{formatPrice(service.price)}</p>
+                    <p className="ml-4 text-lg font-bold shrink-0">
+                      {formatPrice(service.price)}
+                    </p>
                   </div>
                 </Label>
               </div>
@@ -176,9 +239,19 @@ export default function BookingComponent({ services, barberId }: BookingComponen
           <div className="grid grid-cols-1 gap-8 mt-8 md:grid-cols-2">
             <div>
               <Card>
-                <CardHeader><CardTitle>Elige una Fecha</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Elige una Fecha</CardTitle>
+                </CardHeader>
                 <CardContent className="flex justify-center">
-                  <Calendar mode="single" selected={date} onSelect={setDate} className="p-0" disabled={(currentDate) => currentDate < startOfDay(new Date())} />
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    className="p-0"
+                    disabled={(currentDate) =>
+                      currentDate < startOfDay(new Date())
+                    }
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -186,22 +259,32 @@ export default function BookingComponent({ services, barberId }: BookingComponen
               <Card>
                 <CardHeader>
                   <CardTitle>Elige un Horario</CardTitle>
-                  <CardDescription>{date ? format(date, 'PPP', { locale: es }) : 'Selecciona un día'}</CardDescription>
+                  <CardDescription>
+                    {date
+                      ? format(date, "PPP", { locale: es })
+                      : "Selecciona un día"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {isLoading ? (
-                        <div className="flex items-center justify-center col-span-full">
-                          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : timeSlots.length > 0 ? (
-                        timeSlots.map(slot => (
-                          <Button key={slot} variant="outline" onClick={() => handleSlotSelect(slot)}>{slot}</Button>
-                        ))
-                      ) : (
-                        <p className="text-sm text-center text-muted-foreground col-span-full">
-                          {availabilityMessage}
-                        </p>
-                      )}
+                    <div className="flex items-center justify-center col-span-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : timeSlots.length > 0 ? (
+                    timeSlots.map((slot) => (
+                      <Button
+                        key={slot}
+                        variant="outline"
+                        onClick={() => handleSlotSelect(slot)}
+                      >
+                        {slot}
+                      </Button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-center text-muted-foreground col-span-full">
+                      {availabilityMessage}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -214,16 +297,21 @@ export default function BookingComponent({ services, barberId }: BookingComponen
             <CardContent className="space-y-4">
               <div className="pb-4 space-y-2 border-b">
                 <h4 className="font-semibold">Servicios Seleccionados:</h4>
-                {selectedServiceObjects.map(service => (
-                  <div key={service.id} className="flex justify-between text-sm text-muted-foreground">
+                {selectedServiceObjects.map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex justify-between text-sm text-muted-foreground"
+                  >
                     <span>{service.name}</span>
-                    <span className="font-medium">{formatPrice(service.price)}</span>
+                    <span className="font-medium">
+                      {formatPrice(service.price)}
+                    </span>
                   </div>
                 ))}
               </div>
               <div className="flex items-center justify-end">
-                  <p className="mr-2 font-semibold">Precio Total:</p>
-                  <p className="text-2xl font-bold">{formatPrice(totalPrice)}</p>
+                <p className="mr-2 font-semibold">Precio Total:</p>
+                <p className="text-2xl font-bold">{formatPrice(totalPrice)}</p>
               </div>
             </CardContent>
           </Card>
@@ -235,13 +323,21 @@ export default function BookingComponent({ services, barberId }: BookingComponen
           <DialogHeader>
             <DialogTitle>Confirma tu Turno</DialogTitle>
             <DialogDescription>
-              Estás a punto de reservar un turno para el {date ? format(date, 'PPP', { locale: es }) : ''} a las {selectedSlot}.
+              Estás a punto de reservar un turno para el{" "}
+              {date ? format(date, "PPP", { locale: es }) : ""} a las{" "}
+              {selectedSlot}.
             </DialogDescription>
           </DialogHeader>
-          <BookingConfirmationForm 
+          <BookingConfirmationForm
             barberId={barberId}
             serviceIds={selectedServices}
-            startTime={date && selectedSlot ? new Date(`${format(date, 'yyyy-MM-dd')}T${selectedSlot}`).toISOString() : ''}
+            startTime={
+              date && selectedSlot
+                ? new Date(
+                    `${format(date, "yyyy-MM-dd")}T${selectedSlot}`
+                  ).toISOString()
+                : ""
+            }
           />
         </DialogContent>
       </Dialog>

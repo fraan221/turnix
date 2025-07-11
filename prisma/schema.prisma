@@ -29,6 +29,7 @@ model User {
   bookings     Booking[]
   workingHours WorkingHours[]
   timeBlocks   TimeBlock[]
+  Notification Notification[]
 }
 
 model Client {
@@ -129,4 +130,16 @@ model TimeBlock {
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

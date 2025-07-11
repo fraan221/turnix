@@ -1,29 +1,15 @@
-import { auth } from "@/auth";
-import { MainNav } from "./MainNav"; 
-import UserButton from "./UserButton"; 
-import Link from "next/link";
-import Image from "next/image";
+import { MainNav } from "./MainNav";
+import UserButton from "./UserButton";
+import NotificationCenter from "./NotificationCenter";
 
 export default async function Header() {
-  const session = await auth();
-  const barbershopName = (session?.user as any)?.barbershopName || null;
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex items-center h-16">
-        <div className="mr-4">
-          <MainNav />
-        </div>
+      <div className="container flex items-center justify-between h-16">
+        <MainNav />
 
-        <div className="flex justify-center flex-1">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            {barbershopName && (
-              <h1 className="text-lg font-bold tracking-tight">{barbershopName}</h1>
-            )}
-          </Link>
-        </div>
-
-        <div className="ml-4">
+        <div className="flex items-center gap-2">
+          <NotificationCenter />
           <UserButton />
         </div>
       </div>

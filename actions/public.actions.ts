@@ -3,7 +3,6 @@
 import prisma from "@/lib/prisma";
 import { startOfDay, endOfDay } from 'date-fns';
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 export async function getBarberAvailability(barberId: string, date: Date) {
   const dayOfWeek = date.getDay();
@@ -66,14 +65,31 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
   try {
     const startTime = new Date(startTimeStr);
 
-    const client = await prisma.client.upsert({
-      where: { phone: clientPhone },
-      update: { name: clientName },
-      create: { name: clientName, phone: clientPhone },
-    });
+    const [client, service] = await Promise.all([
+      prisma.client.upsert({
+        where: { phone: clientPhone },
+        update: { name: clientName },
+        create: { name: clientName, phone: clientPhone },
+      }),
+      prisma.service.findUnique({
+        where: { id: serviceId },
+        select: { name: true }
+      })
+    ]);
+
+    if (!service) {
+      return { error: 'El servicio seleccionado ya no existe.' };
+    }
 
     await prisma.booking.create({
       data: { startTime, barberId, clientId: client.id, serviceId },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: barberId,
+        message: `Turno nuevo: "${service.name}" con ${clientName}.`,
+      }
     });
 
     const barber = await prisma.user.findUnique({ where: { id: barberId }});

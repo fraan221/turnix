@@ -8,13 +8,15 @@ import { updateUserProfile } from "@/actions/dashboard.actions";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { Copy, Check, HelpCircle } from "lucide-react"; 
+import { useSession } from "next-auth/react";
+import { Copy, Check, HelpCircle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -29,12 +31,24 @@ export default function SettingsForm({ user }: { user: User }) {
   const [state, formAction] = useFormState(updateUserProfile, null);
   const [slugValue, setSlugValue] = useState(user.slug || "");
   const [isCopied, setIsCopied] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const { update } = useSession();
 
   useEffect(() => {
     if (state?.success) {
       toast.success("¡Perfil Actualizado!", {
         description: state.success,
       });
+
+      const dataToUpdate: { image?: string | null; slug?: string | null } = {};
+      if (state.newImageUrl) {
+        dataToUpdate.image = state.newImageUrl;
+      }
+      if (state.newSlug) {
+        dataToUpdate.slug = state.newSlug;
+      }
+
+      update(dataToUpdate);
     }
     if (state?.error) {
       toast.error("Error al guardar", {
@@ -51,16 +65,54 @@ export default function SettingsForm({ user }: { user: User }) {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setAvatarPreview(null);
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={100}>
       <form action={formAction} className="space-y-4">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Tu Nombre</Label>
-          <Input id="name" name="name" defaultValue={user.name || ""} required />
+        <div className="flex items-center gap-4">
+          <Avatar className="w-20 h-20">
+            <AvatarImage
+              src={avatarPreview || user.image || ""}
+              alt="Avatar del usuario"
+            />
+            <AvatarFallback>
+              {user.name?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+            <Label htmlFor="picture">Foto de Perfil</Label>
+            <Input
+              id="picture"
+              name="avatar"
+              type="file"
+              accept="image/png, image/jpeg"
+              onChange={handleFileChange}
+              className="file:text-primary file:font-semibold"
+            />
+          </div>
         </div>
+
         <div className="grid gap-2">
-          <Label htmlFor="barbershopName">Nombre de tu Barbería (Opcional)</Label>
-          <Input id="barbershopName" name="barbershopName" defaultValue={user.barbershopName || ""} />
+          <Label htmlFor="barbershopName">
+            Nombre de tu Barbería (Opcional)
+          </Label>
+          <Input
+            id="barbershopName"
+            name="barbershopName"
+            defaultValue={user.barbershopName || ""}
+          />
         </div>
         <div className="grid gap-2">
           <div className="flex items-center gap-1.5">
@@ -72,7 +124,10 @@ export default function SettingsForm({ user }: { user: User }) {
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-center" side="top">
-                <p>Te recomendamos usar minúsculas y separar las palabras con un guion. <br /> Ej: <strong>la-cueva-del-barbero</strong></p>
+                <p>
+                  Te recomendamos usar minúsculas y separar las palabras con un
+                  guion. <br /> Ej: <strong>la-cueva-del-barbero</strong>
+                </p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -87,6 +142,7 @@ export default function SettingsForm({ user }: { user: User }) {
               onChange={(e) => setSlugValue(e.target.value)}
               className="rounded-none focus-visible:ring-ring focus-visible:ring-offset-0"
               required
+              readOnly={!!user.slug}
             />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -98,7 +154,11 @@ export default function SettingsForm({ user }: { user: User }) {
                   className="border-l-0 rounded-l-none"
                   aria-label="Copiar URL"
                 >
-                  {isCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  {isCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">

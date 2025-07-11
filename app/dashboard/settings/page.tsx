@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import SettingsForm from "@/components/SettingsForm";
 
 export default async function SettingsPage() {
@@ -15,12 +21,13 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-3xl font-bold">Ajustes de Perfil y Barbería</h1>
+      <h1 className="mb-4 text-3xl font-bold">Ajustes</h1>
       <Card>
         <CardHeader>
           <CardTitle>Tu Información</CardTitle>
           <CardDescription>
-            Actualiza tu nombre, el de tu barbería y tu URL personalizada.
+            Actualiza la foto de perfil de tu barberia y el nombre de tu
+            barberia.
           </CardDescription>
         </CardHeader>
         <CardContent>

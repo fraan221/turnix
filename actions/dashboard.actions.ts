@@ -1,26 +1,27 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { put } from "@vercel/blob";
 
 // Services - Create, Update & Delete
 export async function createService(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
-  const name = formData.get('name')?.toString();
-  const priceStr = formData.get('price')?.toString();
-  const durationStr = formData.get('duration')?.toString();
-  const description = formData.get('description')?.toString() || null;
+  const name = formData.get("name")?.toString();
+  const priceStr = formData.get("price")?.toString();
+  const durationStr = formData.get("duration")?.toString();
+  const description = formData.get("description")?.toString() || null;
 
   if (!name || !priceStr) {
-    return { error: 'El nombre y el precio son requeridos.' };
+    return { error: "El nombre y el precio son requeridos." };
   }
 
   const price = parseFloat(priceStr);
   if (isNaN(price) || price <= 0) {
-    return { error: 'El precio debe ser un número válido y mayor a cero.' };
+    return { error: "El precio debe ser un número válido y mayor a cero." };
   }
 
   let durationInMinutes: number | null = null;
@@ -29,51 +30,58 @@ export async function createService(prevState: any, formData: FormData) {
     if (!isNaN(duration) && duration > 0) {
       durationInMinutes = duration;
     } else {
-      return { error: 'Si se especifica, la duración debe ser un número entero positivo.' };
+      return {
+        error:
+          "Si se especifica, la duración debe ser un número entero positivo.",
+      };
     }
   }
 
   try {
     await prisma.service.create({
-      data: { 
-        name, 
-        price, 
+      data: {
+        name,
+        price,
         durationInMinutes,
-        description,      
-        barberId: session.user.id 
+        description,
+        barberId: session.user.id,
       },
     });
-    revalidatePath('/dashboard/services');
+    revalidatePath("/dashboard/services");
     return { success: `Servicio "${name}" creado con éxito.` };
   } catch (error) {
-    return { error: 'No se pudo crear el servicio.' };
+    return { error: "No se pudo crear el servicio." };
   }
 }
 
-export async function updateService(serviceId: string, prevState: any, formData: FormData) {
+export async function updateService(
+  serviceId: string,
+  prevState: any,
+  formData: FormData
+) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
   });
 
   if (!serviceToUpdate || serviceToUpdate.barberId !== session.user.id) {
-    return { error: 'Operación no permitida.' };
+    return { error: "Operación no permitida." };
   }
 
-  const name = formData.get('name')?.toString();
-  const priceStr = formData.get('price')?.toString();
-  const durationStr = formData.get('duration')?.toString();
-  const description = formData.get('description')?.toString() || null;
+  const name = formData.get("name")?.toString();
+  const priceStr = formData.get("price")?.toString();
+  const durationStr = formData.get("duration")?.toString();
+  const description = formData.get("description")?.toString() || null;
 
   if (!name || !priceStr) {
-    return { error: 'El nombre y el precio son requeridos.' };
+    return { error: "El nombre y el precio son requeridos." };
   }
 
   const price = parseFloat(priceStr);
   if (isNaN(price) || price <= 0) {
-    return { error: 'El precio debe ser un número válido y mayor a cero.' };
+    return { error: "El precio debe ser un número válido y mayor a cero." };
   }
 
   let durationInMinutes: number | null = null;
@@ -82,7 +90,10 @@ export async function updateService(serviceId: string, prevState: any, formData:
     if (!isNaN(duration) && duration > 0) {
       durationInMinutes = duration;
     } else {
-      return { error: 'Si se especifica, la duración debe ser un número entero positivo.' };
+      return {
+        error:
+          "Si se especifica, la duración debe ser un número entero positivo.",
+      };
     }
   }
 
@@ -92,53 +103,63 @@ export async function updateService(serviceId: string, prevState: any, formData:
       data: { name, price, durationInMinutes, description },
     });
 
-    revalidatePath('/dashboard/services');
+    revalidatePath("/dashboard/services");
     return { success: `Servicio "${name}" actualizado con éxito.` };
   } catch (error) {
-    return { error: 'No se pudo actualizar el servicio.' };
+    return { error: "No se pudo actualizar el servicio." };
   }
 }
 
 export async function deleteService(serviceId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
-    const service = await prisma.service.findUnique({ where: { id: serviceId } });
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+    });
     if (service?.barberId !== session.user.id) {
-      return { error: 'No tienes permiso para borrar este servicio.' };
+      return { error: "No tienes permiso para borrar este servicio." };
     }
     await prisma.service.delete({ where: { id: serviceId } });
-    revalidatePath('/dashboard/services');
-    return { success: 'Servicio eliminado con éxito.' };
+    revalidatePath("/dashboard/services");
+    return { success: "Servicio eliminado con éxito." };
   } catch (error) {
     console.error("Error al eliminar el servicio:", error);
-    return { error: 'No se pudo eliminar el servicio.' };
+    return { error: "No se pudo eliminar el servicio." };
   }
 }
 
 export async function updateWorkingHours(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
-    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
     for (let i = 0; i < days.length; i++) {
       const day = days[i];
-      const isWorking = formData.get(`${day}-isWorking`) === 'on';
-      const startTime = formData.get(`${day}-startTime`)?.toString() || '09:00';
-      const endTime = formData.get(`${day}-endTime`)?.toString() || '18:00';
+      const isWorking = formData.get(`${day}-isWorking`) === "on";
+      const startTime = formData.get(`${day}-startTime`)?.toString() || "09:00";
+      const endTime = formData.get(`${day}-endTime`)?.toString() || "18:00";
 
       await prisma.workingHours.upsert({
-        where: { barberId_dayOfWeek: { barberId: session.user.id, dayOfWeek: i } },
+        where: {
+          barberId_dayOfWeek: { barberId: session.user.id, dayOfWeek: i },
+        },
         update: { isWorking, startTime, endTime },
-        create: { barberId: session.user.id, dayOfWeek: i, isWorking, startTime, endTime },
+        create: {
+          barberId: session.user.id,
+          dayOfWeek: i,
+          isWorking,
+          startTime,
+          endTime,
+        },
       });
     }
-    revalidatePath('/dashboard/schedule');
-    return { success: 'Horario semanal guardado con éxito.' };
+    revalidatePath("/dashboard/schedule");
+    return { success: "Horario semanal guardado con éxito." };
   } catch (error) {
-    return { error: 'No se pudo guardar el horario.' };
+    return { error: "No se pudo guardar el horario." };
   }
 }
 
@@ -152,90 +173,114 @@ type DaySchedule = {
 export async function saveSchedule(schedule: DaySchedule[]) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'No autorizado' };
+    return { error: "No autorizado" };
   }
-  
+
   const barberId = session.user.id;
 
   try {
     await prisma.$transaction(
-      schedule.map(day => 
+      schedule.map((day) =>
         prisma.workingHours.upsert({
-          where: { barberId_dayOfWeek: { barberId: barberId, dayOfWeek: day.dayOfWeek } },
-          update: { isWorking: day.isWorking, startTime: day.startTime, endTime: day.endTime },
-          create: { barberId: barberId, dayOfWeek: day.dayOfWeek, isWorking: day.isWorking, startTime: day.startTime, endTime: day.endTime },
+          where: {
+            barberId_dayOfWeek: {
+              barberId: barberId,
+              dayOfWeek: day.dayOfWeek,
+            },
+          },
+          update: {
+            isWorking: day.isWorking,
+            startTime: day.startTime,
+            endTime: day.endTime,
+          },
+          create: {
+            barberId: barberId,
+            dayOfWeek: day.dayOfWeek,
+            isWorking: day.isWorking,
+            startTime: day.startTime,
+            endTime: day.endTime,
+          },
         })
       )
     );
 
-    revalidatePath('/dashboard/schedule');
-    return { success: '¡Horario guardado con éxito!' };
+    revalidatePath("/dashboard/schedule");
+    return { success: "¡Horario guardado con éxito!" };
   } catch (error) {
     console.error("Error al guardar el horario:", error);
-    return { error: 'No se pudo guardar el horario.' };
+    return { error: "No se pudo guardar el horario." };
   }
 }
 
 // Time Block - Create, Update & Delete
 export async function createTimeBlock(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
-  
-  const startDate = formData.get('startDate')?.toString();
-  const startTime = formData.get('startTime')?.toString();
-  const endDate = formData.get('endDate')?.toString();
-  const endTime = formData.get('endTime')?.toString();
-  const reason = formData.get('reason')?.toString();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  const startDate = formData.get("startDate")?.toString();
+  const startTime = formData.get("startTime")?.toString();
+  const endDate = formData.get("endDate")?.toString();
+  const endTime = formData.get("endTime")?.toString();
+  const reason = formData.get("reason")?.toString();
 
   if (!startDate || !startTime || !endDate || !endTime) {
-    return { error: 'Fechas y horas de inicio y fin son requeridas.' };
+    return { error: "Fechas y horas de inicio y fin son requeridas." };
   }
 
   const startDateTime = new Date(`${startDate}T${startTime}`);
   const endDateTime = new Date(`${endDate}T${endTime}`);
 
   if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-    return { error: 'Formato de fecha u hora inválido.' };
+    return { error: "Formato de fecha u hora inválido." };
   }
 
   try {
     await prisma.timeBlock.create({
-      data: { startTime: startDateTime, endTime: endDateTime, reason: reason, barberId: session.user.id },
+      data: {
+        startTime: startDateTime,
+        endTime: endDateTime,
+        reason: reason,
+        barberId: session.user.id,
+      },
     });
-    revalidatePath('/dashboard/schedule');
-    return { success: 'Bloqueo de tiempo creado con éxito.' };
+    revalidatePath("/dashboard/schedule");
+    return { success: "Bloqueo de tiempo creado con éxito." };
   } catch (error) {
-    return { error: 'No se pudo crear el bloqueo.' };
+    return { error: "No se pudo crear el bloqueo." };
   }
 }
 
-export async function updateTimeBlock(blockId: string, prevState: any, formData: FormData) {
+export async function updateTimeBlock(
+  blockId: string,
+  prevState: any,
+  formData: FormData
+) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   const blockToUpdate = await prisma.timeBlock.findUnique({
     where: { id: blockId },
   });
 
   if (!blockToUpdate || blockToUpdate.barberId !== session.user.id) {
-    return { error: 'Operación no permitida.' };
+    return { error: "Operación no permitida." };
   }
 
-  const startDate = formData.get('startDate')?.toString();
-  const startTime = formData.get('startTime')?.toString();
-  const endDate = formData.get('endDate')?.toString();
-  const endTime = formData.get('endTime')?.toString();
-  const reason = formData.get('reason')?.toString() || null;
+  const startDate = formData.get("startDate")?.toString();
+  const startTime = formData.get("startTime")?.toString();
+  const endDate = formData.get("endDate")?.toString();
+  const endTime = formData.get("endTime")?.toString();
+  const reason = formData.get("reason")?.toString() || null;
 
   if (!startDate || !startTime || !endDate || !endTime) {
-    return { error: 'Fechas y horas de inicio y fin son requeridas.' };
+    return { error: "Fechas y horas de inicio y fin son requeridas." };
   }
 
   const startDateTime = new Date(`${startDate}T${startTime}`);
   const endDateTime = new Date(`${endDate}T${endTime}`);
 
   if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-      return { error: 'Formato de fecha u hora inválido.' };
+    return { error: "Formato de fecha u hora inválido." };
   }
 
   try {
@@ -244,16 +289,16 @@ export async function updateTimeBlock(blockId: string, prevState: any, formData:
       data: { startTime: startDateTime, endTime: endDateTime, reason },
     });
 
-    revalidatePath('/dashboard/schedule');
-    return { success: 'Bloqueo actualizado con éxito.' };
+    revalidatePath("/dashboard/schedule");
+    return { success: "Bloqueo actualizado con éxito." };
   } catch (error) {
-    return { error: 'No se pudo actualizar el bloqueo.' };
+    return { error: "No se pudo actualizar el bloqueo." };
   }
 }
 
 export async function deleteTimeBlock(blockId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'No autorizado' };
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
     const block = await prisma.timeBlock.findUnique({
@@ -261,27 +306,26 @@ export async function deleteTimeBlock(blockId: string) {
     });
 
     if (block?.barberId !== session.user.id) {
-      return { error: 'No tienes permiso para borrar este bloqueo.' };
+      return { error: "No tienes permiso para borrar este bloqueo." };
     }
 
     await prisma.timeBlock.delete({
       where: { id: blockId },
     });
 
-    revalidatePath('/dashboard/schedule');
-    return { success: 'Bloqueo eliminado con éxito.' };
-
+    revalidatePath("/dashboard/schedule");
+    return { success: "Bloqueo eliminado con éxito." };
   } catch (error) {
     console.error("Error al eliminar el bloqueo:", error);
-    return { error: 'No se pudo eliminar el bloqueo.' };
+    return { error: "No se pudo eliminar el bloqueo." };
   }
 }
 
 export async function updateClientNotes(clientId: string, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) throw new Error("No autorizado");
 
-  const notes = formData.get('notes')?.toString();
+  const notes = formData.get("notes")?.toString();
 
   await prisma.client.update({
     where: { id: clientId },
@@ -295,15 +339,15 @@ export async function updateClientNotes(clientId: string, formData: FormData) {
 
 export async function createBooking(formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
+  if (!session?.user?.id) throw new Error("No autorizado");
 
-  const serviceId = formData.get('serviceId')?.toString();
-  const clientName = formData.get('clientName')?.toString();
-  const clientPhone = formData.get('clientPhone')?.toString();
-  const startTimeStr = formData.get('startTime')?.toString();
+  const serviceId = formData.get("serviceId")?.toString();
+  const clientName = formData.get("clientName")?.toString();
+  const clientPhone = formData.get("clientPhone")?.toString();
+  const startTimeStr = formData.get("startTime")?.toString();
 
   if (!serviceId || !clientName || !clientPhone || !startTimeStr) {
-    throw new Error('Todos los campos son requeridos para crear el turno.');
+    throw new Error("Todos los campos son requeridos para crear el turno.");
   }
 
   const startTime = new Date(startTimeStr);
@@ -323,51 +367,82 @@ export async function createBooking(formData: FormData) {
     },
   });
 
-  revalidatePath('/dashboard');
+  revalidatePath("/dashboard");
 }
 
 export async function updateUserProfile(prevState: any, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error('No autorizado');
-
-  const name = formData.get('name')?.toString();
-  const barbershopName = formData.get('barbershopName')?.toString();
-  let slug = formData.get('slug')?.toString();
-
-  if (!name || !slug) {
-    return { error: "El nombre y la URL personalizada son requeridos." };
+  if (!session?.user?.id) {
+    return { error: "No autorizado" };
   }
 
-  slug = slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const barbershopName = formData.get("barbershopName")?.toString();
+  let slug = formData.get("slug")?.toString();
+  const avatarFile = formData.get("avatar") as File;
 
-  const existingSlug = await prisma.user.findFirst({
-    where: {
-      slug: slug,
-      id: { not: session.user.id },
-    },
-  });
+  let avatarUrl = undefined;
 
-  if (existingSlug) {
-    return { error: "Esa URL personalizada ya está en uso. Por favor, elige otra." };
+  if (avatarFile && avatarFile.size > 0) {
+    try {
+      const blob = await put(avatarFile.name, avatarFile, {
+        access: "public",
+      });
+      avatarUrl = blob.url;
+    } catch (error) {
+      console.error("Error al subir el avatar:", error);
+      return { error: "No se pudo subir la imagen. Inténtalo de nuevo." };
+    }
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: {
-      name,
-      barbershopName,
-      slug,
-    },
-  });
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user?.slug) {
+    if (!slug) {
+      return { error: "La URL personalizada es requerida." };
+    }
+    slug = slug
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    const existingSlug = await prisma.user.findFirst({
+      where: { slug: slug, id: { not: session.user.id } },
+    });
+    if (existingSlug) {
+      return {
+        error: "Esa URL personalizada ya está en uso. Por favor, elige otra.",
+      };
+    }
+  } else {
+    slug = user.slug;
+  }
 
-  revalidatePath('/dashboard/settings');
-  return { success: "¡Perfil actualizado con éxito!" };
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        barbershopName,
+        slug,
+        ...(avatarUrl && { image: avatarUrl }),
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard");
+
+    return {
+      success: "¡Perfil actualizado con éxito!",
+      newImageUrl: updatedUser.image,
+      newSlug: updatedUser.slug,
+    };
+  } catch (error) {
+    console.error("Error al actualizar el perfil:", error);
+    return { error: "No se pudo actualizar el perfil." };
+  }
 }
 
 export async function completeOnboarding() {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'No autorizado' };
+    return { error: "No autorizado" };
   }
 
   try {
@@ -376,9 +451,9 @@ export async function completeOnboarding() {
       data: { onboardingCompleted: true },
     });
 
-    revalidatePath('/dashboard');
-    return { success: '¡Onboarding completado!' };
+    revalidatePath("/dashboard");
+    return { success: "¡Onboarding completado!" };
   } catch (error) {
-    return { error: 'No se pudo completar el onboarding.' };
+    return { error: "No se pudo completar el onboarding." };
   }
 }
