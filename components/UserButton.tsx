@@ -11,6 +11,7 @@ import {
 } from "./ui/dropdown-menu"
 import { SignIn } from "./auth-components"
 import { User, LogOut } from "lucide-react"
+import { signOut } from "@/auth"
 
 export default async function UserButton() {
   const session = await auth()
@@ -47,8 +48,7 @@ export default async function UserButton() {
           <form
             action={async () => {
               "use server"
-              const { signOut } = await import("@/auth")
-              await signOut()
+              await signOut({ redirectTo: "/login" })
             }}
           >
             <DropdownMenuItem asChild>

@@ -3,10 +3,47 @@ import { notFound } from "next/navigation";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import BookingComponent from "@/components/BookingComponent";
+import type { Metadata } from 'next';
 
 interface BarberPublicPageProps {
   params: {
     slug: string;
+  };
+}
+
+export async function generateMetadata({ params }: BarberPublicPageProps): Promise<Metadata> {
+  const slug = decodeURIComponent(params.slug);
+
+  const barber = await prisma.user.findUnique({
+    where: { slug },
+    select: { name: true, barbershopName: true, image: true },
+  });
+
+  if (!barber) {
+    return {
+      title: 'Barbero no encontrado',
+      description: 'Esta página de barbero no existe o fue eliminada.',
+    };
+  }
+
+  const pageTitle = barber.barbershopName || barber.name || 'Agenda de Turnos';
+  const description = `Agenda tu turno online con ${pageTitle}. Consulta nuestros servicios y horarios, y reserva tu cita fácilmente a través de Turnix.`;
+
+  return {
+    title: `${pageTitle} - Turnos Online | Turnix`,
+    description: description,
+    openGraph: {
+      title: pageTitle,
+      description: description,
+      images: [
+        {
+          url: barber.image || '/logo.png',
+          width: 800,
+          height: 600,
+          alt: `Logo de ${pageTitle}`,
+        },
+      ],
+    },
   };
 }
 
