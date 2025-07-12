@@ -11,7 +11,7 @@ import { ScrollArea } from "./ui/scroll-area";
 
 function AnimatedMenuIcon({ isOpen }: { isOpen: boolean }) {
   return (
-    <div className="relative flex items-center justify-center w-5 h-5">
+    <div className="relative flex items-center justify-center w-4 h-3">
       <span
         className={cn(
           "bg-foreground absolute block h-0.5 w-full transition-all duration-200",
@@ -44,10 +44,10 @@ export function MainNav() {
       <div className="lg:hidden">
         <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" className="pl-0 pr-2">
+            <button className="flex flex-row items-center gap-2 py-4">
               <AnimatedMenuIcon isOpen={isMenuOpen} />
-              <span className="ml-2 font-semibold">Menú</span>
-            </Button>
+              <span className="text-lg font-semibold">Menú</span>
+            </button>
           </PopoverTrigger>
           <PopoverContent
             className="w-screen h-screen p-0 m-0 bg-background/95 backdrop-blur-sm"
