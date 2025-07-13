@@ -9,7 +9,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Copy, Check, HelpCircle } from "lucide-react";
+import { Clipboard, Check, Save, Loader2Icon } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -21,8 +21,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Guardando..." : "Guardar Cambios"}
+    <Button
+      type="submit"
+      className="flex items-center justify-center w-auto"
+      disabled={pending}
+    >
+      {pending ? (
+        <>
+          <Loader2Icon className="w-4 h-4 animate-spin" />
+          <span>Guardando...</span>
+        </>
+      ) : (
+        <>
+          <Save className="w-4 h-4" />
+          <span>Guardar cambios</span>
+        </>
+      )}
     </Button>
   );
 }
@@ -80,8 +94,11 @@ export default function SettingsForm({ user }: { user: User }) {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <form action={formAction} className="space-y-4">
-        <div className="flex items-center gap-4">
+      <form
+        action={formAction}
+        className="flex flex-col items-center justify-center max-w-lg mx-auto space-y-4"
+      >
+        <div className="flex items-center w-full gap-4">
           <Avatar className="w-20 h-20">
             <AvatarImage
               src={avatarPreview || user.image || ""}
@@ -91,7 +108,7 @@ export default function SettingsForm({ user }: { user: User }) {
               {user.name?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
+          <div className="grid w-full items-center gap-1.5">
             <Label htmlFor="picture">Foto de Perfil</Label>
             <Input
               id="picture"
@@ -103,11 +120,8 @@ export default function SettingsForm({ user }: { user: User }) {
             />
           </div>
         </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="barbershopName">
-            Nombre de tu Barbería (Opcional)
-          </Label>
+        <div className="grid w-full gap-2">
+          <Label htmlFor="barbershopName">Nombre de tu Barbería</Label>
           <Input
             id="barbershopName"
             name="barbershopName"
@@ -115,21 +129,8 @@ export default function SettingsForm({ user }: { user: User }) {
           />
         </div>
         <div className="grid gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center">
             <Label htmlFor="slug">Tu URL Personalizada</Label>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="cursor-help">
-                  <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-center" side="top">
-                <p>
-                  Te recomendamos usar minúsculas y separar las palabras con un
-                  guion. <br /> Ej: <strong>la-cueva-del-barbero</strong>
-                </p>
-              </TooltipContent>
-            </Tooltip>
           </div>
           <div className="flex items-center">
             <span className="inline-flex items-center h-10 px-3 text-sm text-gray-500 border border-r-0 border-input bg-muted rounded-l-md">
@@ -144,27 +145,32 @@ export default function SettingsForm({ user }: { user: User }) {
               required
               readOnly={!!user.slug}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopy}
-                  className="border-l-0 rounded-l-none"
-                  aria-label="Copiar URL"
-                >
-                  {isCopied ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p>Copiar al portapapeles</p>
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleCopy}
+              className="px-12 border-l-0 rounded-l-none"
+              aria-label="Copiar URL"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-4 h-4 text-green-500" /> Copiado!
+                </>
+              ) : (
+                <>
+                  <Clipboard className="w-4 h-4" /> Copiar
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            <p>
+              Te recomendamos usar <strong>minúsculas</strong> y separar las
+              palabras con un
+              <strong> guion medio (-)</strong>. Ej:{" "}
+              <strong>la-cueva-del-barbero</strong>
+            </p>
           </div>
         </div>
         <SubmitButton />

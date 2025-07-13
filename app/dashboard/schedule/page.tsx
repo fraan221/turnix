@@ -11,11 +11,11 @@ export default async function SchedulePage() {
   const [workingHours, timeBlocks] = await Promise.all([
     prisma.workingHours.findMany({
       where: { barberId: session.user.id },
-      orderBy: { dayOfWeek: 'asc' },
+      orderBy: { dayOfWeek: "asc" },
     }),
     prisma.timeBlock.findMany({
       where: { barberId: session.user.id },
-      orderBy: { startTime: 'desc' },
+      orderBy: { startTime: "desc" },
     }),
   ]);
 
@@ -38,7 +38,9 @@ export default async function SchedulePage() {
       <div>
         <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div className="grid gap-1">
-            <h2 className="text-2xl font-bold md:text-3xl">Bloqueos Horarios</h2>
+            <h2 className="text-2xl font-bold md:text-3xl">
+              Bloqueos Horarios
+            </h2>
             <p className="text-muted-foreground">
               Añade fechas y horas en las que no estarás disponible.
             </p>
@@ -47,10 +49,10 @@ export default async function SchedulePage() {
             <AddTimeBlockModal />
           </div>
         </div>
-        
+
         <div className="mt-6">
-            <h3 className="mb-4 text-lg font-semibold">Mis Bloqueos Activos</h3>
-            <TimeBlockList timeBlocks={timeBlocks} />
+          <h3 className="mb-4 text-lg font-semibold">Bloqueos Activos</h3>
+          <TimeBlockList timeBlocks={timeBlocks} />
         </div>
       </div>
     </div>

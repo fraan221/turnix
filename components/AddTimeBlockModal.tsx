@@ -17,13 +17,19 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { PlusCircle } from "lucide-react";
+import { Plus, Loader2Icon } from "lucide-react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Bloqueando..." : "Bloquear Horario"}
+      {pending ? (
+        <>
+          <Loader2Icon className="w-4 h-4 animate-spin" /> Bloqueando...
+        </>
+      ) : (
+        "Bloquear Horario"
+      )}
     </Button>
   );
 }
@@ -48,15 +54,16 @@ export default function AddTimeBlockModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Bloquear Horario
+          <Plus className="w-4 h-4" />
+          Crear bloqueo
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Bloqueo</DialogTitle>
           <DialogDescription>
-            Define un período en el que no estarás disponible. Los clientes no podrán reservar en este rango.
+            Define un período en el que no estarás disponible. Los clientes no
+            podrán reservar en este rango.
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} action={formAction} className="pt-4 space-y-4">
@@ -82,11 +89,17 @@ export default function AddTimeBlockModal() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="reason">Razón (Opcional)</Label>
-            <Input id="reason" name="reason" placeholder="Ej: Vacaciones, Viaje de Trabajo..." />
+            <Input
+              id="reason"
+              name="reason"
+              placeholder="Ej: Vacaciones, Viaje de Trabajo..."
+            />
           </div>
           <DialogFooter className="pt-4">
             <DialogClose asChild>
-              <Button type="button" variant="secondary">Cancelar</Button>
+              <Button type="button" variant="secondary">
+                Cancelar
+              </Button>
             </DialogClose>
             <SubmitButton />
           </DialogFooter>

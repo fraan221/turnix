@@ -9,8 +9,17 @@ import { Button } from "./ui/button";
 import { saveSchedule } from "@/actions/dashboard.actions";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Save, Loader2Icon } from "lucide-react";
 
-const daysOfWeek = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const daysOfWeek = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 
 interface ScheduleFormProps {
   workingHours: WorkingHours[];
@@ -24,9 +33,9 @@ type DaySchedule = {
 };
 
 export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
-  const [schedule, setSchedule] = useState<DaySchedule[]>(() => 
+  const [schedule, setSchedule] = useState<DaySchedule[]>(() =>
     daysOfWeek.map((_, index) => {
-      const dayData = workingHours.find(wh => wh.dayOfWeek === index);
+      const dayData = workingHours.find((wh) => wh.dayOfWeek === index);
       return {
         dayOfWeek: index,
         isWorking: dayData?.isWorking ?? false,
@@ -35,20 +44,24 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
       };
     })
   );
-  
+
   const [isPending, startTransition] = useTransition();
 
   const handleSwitchChange = (dayIndex: number, checked: boolean) => {
-    setSchedule(currentSchedule =>
-      currentSchedule.map(day =>
+    setSchedule((currentSchedule) =>
+      currentSchedule.map((day) =>
         day.dayOfWeek === dayIndex ? { ...day, isWorking: checked } : day
       )
     );
   };
-  
-  const handleTimeChange = (dayIndex: number, field: 'startTime' | 'endTime', value: string) => {
-    setSchedule(currentSchedule =>
-      currentSchedule.map(day =>
+
+  const handleTimeChange = (
+    dayIndex: number,
+    field: "startTime" | "endTime",
+    value: string
+  ) => {
+    setSchedule((currentSchedule) =>
+      currentSchedule.map((day) =>
         day.dayOfWeek === dayIndex ? { ...day, [field]: value } : day
       )
     );
@@ -73,27 +86,41 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
           {schedule.map((dayConfig, index) => {
             const dayName = daysOfWeek[index];
             return (
-              <div key={index} className="flex flex-col items-center justify-between p-4 border rounded-lg lg:flex-row">
+              <div
+                key={index}
+                className="flex flex-col items-center justify-between p-4 border rounded-lg lg:flex-row"
+              >
                 <div className="flex items-center gap-4 mb-4 lg:mb-0">
-                  <Switch 
+                  <Switch
                     id={`switch-${index}`}
                     checked={dayConfig.isWorking}
-                    onCheckedChange={(checked) => handleSwitchChange(index, checked)}
+                    onCheckedChange={(checked) =>
+                      handleSwitchChange(index, checked)
+                    }
                   />
-                  <Label htmlFor={`switch-${index}`} className="text-lg font-medium w-28">{dayName}</Label>
+                  <Label
+                    htmlFor={`switch-${index}`}
+                    className="text-lg font-medium w-28"
+                  >
+                    {dayName}
+                  </Label>
                 </div>
                 <div className="flex flex-row items-center gap-2">
-                  <Input 
-                    type="time" 
+                  <Input
+                    type="time"
                     value={dayConfig.startTime}
-                    onChange={(e) => handleTimeChange(index, 'startTime', e.target.value)}
+                    onChange={(e) =>
+                      handleTimeChange(index, "startTime", e.target.value)
+                    }
                     disabled={!dayConfig.isWorking}
                   />
                   <span>-</span>
-                  <Input 
-                    type="time" 
+                  <Input
+                    type="time"
                     value={dayConfig.endTime}
-                    onChange={(e) => handleTimeChange(index, 'endTime', e.target.value)}
+                    onChange={(e) =>
+                      handleTimeChange(index, "endTime", e.target.value)
+                    }
                     disabled={!dayConfig.isWorking}
                   />
                 </div>
@@ -102,8 +129,20 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
           })}
         </CardContent>
       </Card>
-      <Button onClick={handleSave} className="flex w-full mx-auto mt-6 lg:w-80" disabled={isPending}>
-        {isPending ? "Guardando..." : "Guardar Horarios"}
+      <Button
+        onClick={handleSave}
+        className="flex w-full mx-auto mt-6 lg:w-80"
+        disabled={isPending}
+      >
+        {isPending ? (
+          <>
+            <Loader2Icon className="w-4 h-4 animate-spin" /> Guardando...
+          </>
+        ) : (
+          <>
+            <Save className="w-4 h-4" /> Guardar horarios
+          </>
+        )}
       </Button>
     </div>
   );

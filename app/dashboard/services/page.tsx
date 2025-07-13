@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import ServiceList from "@/components/ServiceList";
 import AddServiceModal from "@/components/AddServiceModal";
 

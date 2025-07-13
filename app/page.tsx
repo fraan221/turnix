@@ -9,17 +9,20 @@ export default function LandingPage() {
     {
       icon: <Calendar className="w-8 h-8 text-primary" />,
       title: "Agenda Visual",
-      description: "Gestiona todos tus turnos en un calendario simple e intuitivo, diseñado para evitar superposiciones y organizar tu día.",
+      description:
+        "Gestiona todos tus turnos en un calendario simple e intuitivo, diseñado para evitar superposiciones y organizar tu día.",
     },
     {
       icon: <Scissors className="w-8 h-8 text-primary" />,
       title: "Gestión de Servicios",
-      description: "Crea y personaliza tu lista de servicios, establece precios y duraciones para que tus clientes sepan exactamente qué ofreces.",
+      description:
+        "Crea y personaliza tu lista de servicios, establece precios y duraciones para que tus clientes sepan exactamente qué ofreces.",
     },
     {
       icon: <Globe className="w-8 h-8 text-primary" />,
       title: "Página Pública para Clientes",
-      description: "Recibe un enlace único para que tus clientes puedan ver tus servicios y agendar un turno online.",
+      description:
+        "Recibe un enlace único para que tus clientes puedan ver tus servicios y agendar un turno online.",
     },
   ];
 
@@ -36,17 +39,19 @@ export default function LandingPage() {
                 height={120}
                 className="mb-4"
               />
-              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
-                La herramienta definitiva para tu barbería
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
+                Turnix
               </h1>
+              <h2 className="text-xl font-bold tracking-tighter sm:text-2xl md:text-3xl lg:text-4xl">
+                La herramienta definitiva para tu barbería
+              </h2>
               <p className="max-w-[700px] text-muted-foreground md:text-xl">
-                Simplifica tu día, maneja tus turnos y permití que tus clientes reserven online.
+                Simplifica tu día, maneja tus turnos y permití que tus clientes
+                reserven online.
               </p>
               <div className="flex flex-col gap-4 lg:flex-row">
                 <Link href="/register">
-                  <Button size="lg">
-                    Empezar Gratis
-                  </Button>
+                  <Button size="lg">Empezar Gratis</Button>
                 </Link>
                 <Link href="/login">
                   <Button size="lg" variant="outline">
@@ -65,9 +70,12 @@ export default function LandingPage() {
                 <div className="inline-block px-3 py-1 text-sm rounded-lg bg-primary/10 text-primary">
                   Características Principales
                 </div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Todo lo que necesitas, en un solo lugar</h2>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                  Todo lo que necesitas, en un solo lugar
+                </h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Turnix está diseñado para ser potente pero simple, centrándose en las herramientas que realmente importan.
+                  Turnix está diseñado para ser potente pero simple, centrándose
+                  en las herramientas que realmente importan.
                 </p>
               </div>
             </div>
@@ -79,7 +87,9 @@ export default function LandingPage() {
                     <CardTitle className="mt-4">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-center text-muted-foreground">{feature.description}</p>
+                    <p className="text-sm text-center text-muted-foreground">
+                      {feature.description}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
@@ -94,13 +104,16 @@ export default function LandingPage() {
                 ¿Listo para simplificar tu barbería?
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Unite a los miles de barberos que gestionan su negocio de forma inteligente.
+                Unite a los miles de barberos que gestionan su negocio de forma
+                inteligente.
               </p>
             </div>
             <div className="w-full max-w-sm mx-auto space-y-2">
-                <Link href="/register">
-                    <Button size="lg" className="w-full">Empezar Ahora</Button>
-                </Link>
+              <Link href="/register">
+                <Button size="lg" className="w-full">
+                  Empezar Ahora
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
@@ -108,18 +121,20 @@ export default function LandingPage() {
 
       <footer className="w-full py-6 text-xs text-center border-t text-muted-foreground">
         <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-            <p>© {new Date().getFullYear()} Turnix. Todos los derechos reservados.</p>
-            <div className="flex gap-4">
-                <Link href="/privacy-policy" className="hover:text-primary">
-                    Política de Privacidad
-                </Link>
-                <Link href="/cookie-policy" className="hover:text-primary">
-                    Política de Cookies
-                </Link>
-                <Link href="/terms-of-service" className="hover:text-primary">
-                    Términos de Servicio
-                </Link>
-            </div>
+          <p>
+            © {new Date().getFullYear()} Turnix. Todos los derechos reservados.
+          </p>
+          <div className="flex gap-4">
+            <Link href="/privacy-policy" className="hover:text-primary">
+              Política de Privacidad
+            </Link>
+            <Link href="/cookie-policy" className="hover:text-primary">
+              Política de Cookies
+            </Link>
+            <Link href="/terms-of-service" className="hover:text-primary">
+              Términos de Servicio
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

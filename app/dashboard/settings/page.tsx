@@ -20,20 +20,22 @@ export default async function SettingsPage() {
   if (!user) return <p>Usuario no encontrado.</p>;
 
   return (
-    <div>
-      <h1 className="mb-4 text-3xl font-bold">Ajustes</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Tu Información</CardTitle>
-          <CardDescription>
-            Actualiza la foto de perfil de tu barberia y el nombre de tu
-            barberia.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SettingsForm user={user} />
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <h1 className="flex justify-start mb-2 text-3xl font-bold">Ajustes</h1>
+      <div className="flex flex-col items-center justify-center ">
+        <Card>
+          <CardHeader>
+            <CardTitle>Información del perfil</CardTitle>
+            <CardDescription>
+              Actualiza la foto de perfil de tu barberia y el nombre de tu
+              barberia.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SettingsForm user={user} />
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }
