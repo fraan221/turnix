@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import Pusher from "pusher-js";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Bell, CheckCheck } from "lucide-react";
@@ -24,18 +27,44 @@ type Notification = {
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session } = useSession();
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchInitialNotifications = async () => {
       const result = await getNotifications();
       if (result.notifications) {
         setNotifications(result.notifications);
       }
     };
-    fetchNotifications();
-  }, []);
+    fetchInitialNotifications();
+
+    if (
+      !process.env.NEXT_PUBLIC_PUSHER_KEY ||
+      !process.env.NEXT_PUBLIC_PUSHER_CLUSTER ||
+      !session?.user?.id
+    ) {
+      return;
+    }
+
+    const pusherClient = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+    });
+
+    const channelName = `notifications_${session.user.id}`;
+    const channel = pusherClient.subscribe(channelName);
+
+    channel.bind("new-notification", (newNotification: Notification) => {
+      toast.info(newNotification.message);
+      setNotifications((prev) => [newNotification, ...prev]);
+    });
+
+    return () => {
+      pusherClient.unsubscribe(channelName);
+      pusherClient.disconnect();
+    };
+  }, [session?.user?.id]);
 
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) return;
@@ -59,12 +88,12 @@ export default function NotificationCenter() {
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-100" align="end">
+      <PopoverContent className="w-80" align="end">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Notificaciones</h3>
           {unreadCount > 0 && (
             <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
-              <CheckCheck className="w-4 h-4 mr-2" />
+              <CheckCheck className="w-4 h-4" />
             </Button>
           )}
         </div>

@@ -1,7 +1,8 @@
-'use server';
+"use server";
 
 import prisma from "@/lib/prisma";
-import { startOfDay, endOfDay } from 'date-fns';
+import { pusherServer } from "@/lib/pusher";
+import { startOfDay, endOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 
 export async function getBarberAvailability(barberId: string, date: Date) {
@@ -21,13 +22,13 @@ export async function getBarberAvailability(barberId: string, date: Date) {
         barberId: barberId,
         startTime: {
           gte: startOfDay(date),
-          lt: endOfDay(date),    
+          lt: endOfDay(date),
         },
       },
       include: {
         service: {
-          select:{
-              durationInMinutes: true,
+          select: {
+            durationInMinutes: true,
           },
         },
       },
@@ -36,7 +37,10 @@ export async function getBarberAvailability(barberId: string, date: Date) {
       where: {
         barberId: barberId,
         OR: [
-          { startTime: { lte: endOfDay(date) }, endTime: { gte: startOfDay(date) } },
+          {
+            startTime: { lte: endOfDay(date) },
+            endTime: { gte: startOfDay(date) },
+          },
         ],
       },
     }),
@@ -50,16 +54,16 @@ export async function getBarberAvailability(barberId: string, date: Date) {
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
-  const barberId = formData.get('barberId')?.toString();
-  const serviceIdsStr = formData.get('serviceIds')?.toString();
-  const clientName = formData.get('clientName')?.toString();
-  const clientPhone = formData.get('clientPhone')?.toString();
-  const startTimeStr = formData.get('startTime')?.toString();
+  const barberId = formData.get("barberId")?.toString();
+  const serviceIdsStr = formData.get("serviceIds")?.toString();
+  const clientName = formData.get("clientName")?.toString();
+  const clientPhone = formData.get("clientPhone")?.toString();
+  const startTimeStr = formData.get("startTime")?.toString();
 
-  const serviceId = serviceIdsStr?.split(',')[0];
+  const serviceId = serviceIdsStr?.split(",")[0];
 
   if (!barberId || !serviceId || !clientName || !clientPhone || !startTimeStr) {
-    return { error: 'Faltan datos para crear la reserva.' };
+    return { error: "Faltan datos para crear la reserva." };
   }
 
   try {
@@ -73,33 +77,38 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
-        select: { name: true }
-      })
+        select: { name: true },
+      }),
     ]);
 
     if (!service) {
-      return { error: 'El servicio seleccionado ya no existe.' };
+      return { error: "El servicio seleccionado ya no existe." };
     }
 
     await prisma.booking.create({
       data: { startTime, barberId, clientId: client.id, serviceId },
     });
 
-    await prisma.notification.create({
+    const newNotification = await prisma.notification.create({
       data: {
         userId: barberId,
-        message: `Turno nuevo: "${service.name}" con ${clientName}.`,
-      }
+        message: `Nuevo turno para "${service.name}" con ${clientName}.`,
+      },
     });
 
-    const barber = await prisma.user.findUnique({ where: { id: barberId }});
+    await pusherServer.trigger(
+      `notifications_${barberId}`,
+      "new-notification",
+      newNotification
+    );
+
+    const barber = await prisma.user.findUnique({ where: { id: barberId } });
     if (barber?.slug) {
       revalidatePath(`/${barber.slug}`);
     }
-    
-    return { success: '¡Turno confirmado con éxito!' };
 
+    return { success: "¡Turno confirmado con éxito!" };
   } catch (error) {
-    return { error: 'No se pudo crear la reserva. Intenta de nuevo.' };
+    return { error: "No se pudo crear la reserva. Intenta de nuevo." };
   }
 }

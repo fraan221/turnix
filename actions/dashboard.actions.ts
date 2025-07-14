@@ -227,14 +227,14 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
     return { error: "Fechas y horas de inicio y fin son requeridas." };
   }
 
-  const startDateTime = new Date(`${startDate}T${startTime}`);
-  const endDateTime = new Date(`${endDate}T${endTime}`);
-
-  if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-    return { error: "Formato de fecha u hora inválido." };
-  }
-
   try {
+    const startDateTime = new Date(`${startDate}T${startTime}:00-03:00`);
+    const endDateTime = new Date(`${endDate}T${endTime}:00-03:00`);
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      return { error: "Formato de fecha u hora inválido." };
+    }
+
     await prisma.timeBlock.create({
       data: {
         startTime: startDateTime,
@@ -276,14 +276,14 @@ export async function updateTimeBlock(
     return { error: "Fechas y horas de inicio y fin son requeridas." };
   }
 
-  const startDateTime = new Date(`${startDate}T${startTime}`);
-  const endDateTime = new Date(`${endDate}T${endTime}`);
-
-  if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-    return { error: "Formato de fecha u hora inválido." };
-  }
-
   try {
+    const startDateTime = new Date(`${startDate}T${startTime}:00-03:00`);
+    const endDateTime = new Date(`${endDate}T${endTime}:00-03:00`);
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      return { error: "Formato de fecha u hora inválido." };
+    }
+
     await prisma.timeBlock.update({
       where: { id: blockId },
       data: { startTime: startDateTime, endTime: endDateTime, reason },
@@ -379,13 +379,14 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
   const barbershopName = formData.get("barbershopName")?.toString();
   let slug = formData.get("slug")?.toString();
   const avatarFile = formData.get("avatar") as File;
-
-  let avatarUrl = undefined;
+  let avatarUrl: string | undefined = undefined;
 
   if (avatarFile && avatarFile.size > 0) {
     try {
       const blob = await put(avatarFile.name, avatarFile, {
         access: "public",
+        addRandomSuffix: true,
+        cacheControlMaxAge: 60 * 60 * 24 * 365,
       });
       avatarUrl = blob.url;
     } catch (error) {
@@ -434,7 +435,6 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
       newSlug: updatedUser.slug,
     };
   } catch (error) {
-    console.error("Error al actualizar el perfil:", error);
     return { error: "No se pudo actualizar el perfil." };
   }
 }
