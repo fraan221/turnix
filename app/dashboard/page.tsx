@@ -27,14 +27,14 @@ export default async function DashboardPage() {
   const hasServices = services.length > 0;
   const hasWorkingHours = workingHours.length > 0;
   const hasSlug = !!user?.slug;
-  
+
   const showOnboarding = !user?.onboardingCompleted;
 
   return (
     <div className="space-y-6">
       {showOnboarding && (
-        <OnboardingCard 
-          userSlug={user?.slug ?? null} 
+        <OnboardingCard
+          userSlug={user?.slug ?? null}
           hasServices={hasServices}
           hasWorkingHours={hasWorkingHours}
           hasSlug={hasSlug}
@@ -42,7 +42,9 @@ export default async function DashboardPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold">Agenda de Turnos</h1>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          Agenda
+        </h1>
         <p className="text-muted-foreground">
           Aquí puedes ver y gestionar todos tus turnos.
         </p>

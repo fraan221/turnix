@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@radix-ui/react-separator";
 
 export default async function ClientsPage() {
   const session = await auth();
@@ -17,13 +16,17 @@ export default async function ClientsPage() {
         },
       },
     },
-    orderBy: { name: 'asc' },
+    orderBy: { name: "asc" },
   });
 
   return (
     <div>
-      <h1 className="text-3xl font-bold">Clientes</h1>
-      <h2 className="mb-4 text-lg text-gray-500">Aquí puedes gestionar los clientes de tu barbería.</h2>
+      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+        Clientes
+      </h1>
+      <h2 className="text-muted-foreground">
+        Aquí puedes gestionar los clientes de tu barbería.
+      </h2>
       <Card>
         <CardHeader>
           <CardTitle>Listado de Clientes</CardTitle>
@@ -33,8 +36,11 @@ export default async function ClientsPage() {
             <p>Aún no tienes clientes registrados.</p>
           ) : (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {clients.map(client => (
-                <div key={client.id} className="flex items-center justify-between p-4 border rounded-md">
+              {clients.map((client) => (
+                <div
+                  key={client.id}
+                  className="flex items-center justify-between p-4 border rounded-md"
+                >
                   <div>
                     <p className="font-semibold">{client.name}</p>
                     <p className="text-sm text-gray-500">{client.phone}</p>

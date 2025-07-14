@@ -22,7 +22,7 @@ export default async function ServicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="grid gap-1">
+        <div className="grid">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             Servicios
           </h1>

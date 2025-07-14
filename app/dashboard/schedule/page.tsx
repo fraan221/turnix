@@ -24,8 +24,10 @@ export default async function SchedulePage() {
   return (
     <div className="space-y-12">
       <div>
-        <h2 className="text-2xl font-bold md:text-3xl">Horario Semanal</h2>
-        <p className="mt-1 text-muted-foreground">
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+          Horarios
+        </h2>
+        <p className="text-muted-foreground">
           Define tus horas de trabajo para cada día.
         </p>
         <div className="mt-6">

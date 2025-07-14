@@ -22,7 +22,7 @@ import { Plus, Loader2Icon } from "lucide-react";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} className="mb-3">
       {pending ? (
         <>
           <Loader2Icon className="w-4 h-4 animate-spin" /> Bloqueando...
