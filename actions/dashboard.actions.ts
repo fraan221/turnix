@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
+import { BookingStatus } from "@prisma/client";
 
 // Services - Create, Update & Delete
 export async function createService(prevState: any, formData: FormData) {
@@ -396,14 +397,19 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+
   if (!user?.slug) {
     if (!slug) {
       return { error: "La URL personalizada es requerida." };
     }
-    slug = slug
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+    const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+    if (!slugRegex.test(slug)) {
+      return {
+        error:
+          "Formato de URL no válido. Usa solo minúsculas, números y guiones para separar palabras (ej: mi-barberia).",
+      };
+    }
+
     const existingSlug = await prisma.user.findFirst({
       where: { slug: slug, id: { not: session.user.id } },
     });
@@ -455,5 +461,78 @@ export async function completeOnboarding() {
     return { success: "¡Onboarding completado!" };
   } catch (error) {
     return { error: "No se pudo completar el onboarding." };
+  }
+}
+
+export async function updateBookingStatus(
+  bookingId: string,
+  newStatus: BookingStatus
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "No autorizado" };
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (booking?.barberId !== session.user.id) {
+      return { error: "No tienes permiso para modificar este turno." };
+    }
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: newStatus },
+    });
+
+    revalidatePath("/dashboard");
+    return {
+      success: `El turno ha sido marcado como: ${newStatus.toLowerCase()}.`,
+    };
+  } catch (error) {
+    return { error: "No se pudo actualizar el estado del turno." };
+  }
+}
+
+export async function deleteClient(clientId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "No autorizado" };
+  }
+
+  try {
+    const client = await prisma.client.findFirst({
+      where: {
+        id: clientId,
+        bookings: {
+          some: {
+            barberId: session.user.id,
+          },
+        },
+      },
+    });
+
+    if (!client) {
+      return { error: "No tienes permiso para eliminar este cliente." };
+    }
+
+    await prisma.booking.deleteMany({
+      where: {
+        clientId: clientId,
+        barberId: session.user.id,
+      },
+    });
+
+    await prisma.client.delete({
+      where: { id: clientId },
+    });
+
+    revalidatePath("/dashboard/clients");
+    revalidatePath("/dashboard");
+    return { success: "Cliente eliminado con éxito." };
+  } catch (error) {
+    return { error: "No se pudo eliminar al cliente." };
   }
 }

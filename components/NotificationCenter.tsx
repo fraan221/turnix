@@ -58,6 +58,7 @@ export default function NotificationCenter() {
     channel.bind("new-notification", (newNotification: Notification) => {
       toast.info(newNotification.message);
       setNotifications((prev) => [newNotification, ...prev]);
+      window.dispatchEvent(new Event("new-booking-event"));
     });
 
     return () => {

@@ -8,20 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react"; 
+import { AlertTriangle, Loader2 } from "lucide-react";
 import GoogleSignInButton from "./GoogleSignInButton";
+import { PasswordInput } from "./PasswordInput";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true); 
+    setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
@@ -38,7 +39,7 @@ export default function LoginForm() {
     } catch (error) {
       setError("Ocurrió un error inesperado. Intenta de nuevo.");
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -66,23 +67,30 @@ export default function LoginForm() {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={isLoading} 
+            disabled={isLoading}
           />
         </div>
 
         <div className="px-1 pt-2 text-xs text-center text-muted-foreground">
-          Al continuar, aceptas nuestra{' '}
-          <Link href="/privacy-policy" className="underline hover:text-primary" target="_blank">
+          Al continuar, aceptas nuestra{" "}
+          <Link
+            href="/privacy-policy"
+            className="underline hover:text-primary"
+            target="_blank"
+          >
             Política de Privacidad
-          </Link>
-          {' '}y nuestros{' '}
-          <Link href="/terms-of-service" className="underline hover:text-primary" target="_blank">
+          </Link>{" "}
+          y nuestros{" "}
+          <Link
+            href="/terms-of-service"
+            className="underline hover:text-primary"
+            target="_blank"
+          >
             Términos de Servicio
           </Link>
           .
@@ -96,13 +104,15 @@ export default function LoginForm() {
           )}
         </Button>
       </form>
-      
+
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="px-2 bg-background text-muted-foreground">O continúa con</span>
+          <span className="px-2 bg-background text-muted-foreground">
+            O continúa con
+          </span>
         </div>
       </div>
 

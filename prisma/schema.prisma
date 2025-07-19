@@ -59,10 +59,11 @@ model Service {
 }
 
 model Booking {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   startTime DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  status    BookingStatus @default(SCHEDULED)
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
@@ -142,4 +143,10 @@ model Notification {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum BookingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
 }

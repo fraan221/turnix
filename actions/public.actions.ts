@@ -92,7 +92,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     const newNotification = await prisma.notification.create({
       data: {
         userId: barberId,
-        message: `Nuevo turno para "${service.name}" con ${clientName}.`,
+        message: `Nuevo turno: "${service.name}" con ${clientName}`,
       },
     });
 

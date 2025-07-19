@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2Icon } from "lucide-react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import Link from "next/link";
+import { PasswordInput } from "./PasswordInput";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -77,7 +78,7 @@ export default function RegisterForm() {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input id="password" name="password" type="password" required />
+          <PasswordInput id="password" name="password" required />
         </div>
 
         <div className="px-1 pt-2 text-xs text-center text-muted-foreground">
