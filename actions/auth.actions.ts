@@ -1,17 +1,39 @@
-'use server';
+"use server";
 
-import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+const RegisterSchema = z.object({
+  name: z
+    .string()
+    .min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
+  barbershopName: z.string().optional(),
+  email: z.string().email({ message: "Por favor, ingresa un email válido." }),
+  password: z
+    .string()
+    .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
+    .regex(/[a-zA-Z]/, {
+      message: "La contraseña debe contener al menos una letra.",
+    })
+    .regex(/\d/, {
+      message: "La contraseña debe contener al menos un número.",
+    }),
+});
 
 export async function registerBarber(prevState: any, formData: FormData) {
-  const name = formData.get('name')?.toString();
-  const barbershopName = formData.get('barbershopName')?.toString() || null;
-  const email = formData.get('email')?.toString();
-  const password = formData.get('password')?.toString();
+  const validatedFields = RegisterSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!name || !email || !password) {
-    return { error: 'Todos los campos obligatorios son requeridos.' };
+  if (!validatedFields.success) {
+    return {
+      error: "Por favor, corrige los errores en el formulario.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
   }
+
+  const { name, barbershopName, email, password } = validatedFields.data;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -19,7 +41,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
     });
 
     if (existingUser) {
-      return { error: 'Ya existe un usuario con este email.' };
+      return { error: "Ya existe un usuario con este email." };
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -33,8 +55,8 @@ export async function registerBarber(prevState: any, formData: FormData) {
       },
     });
 
-    return { success: '¡Cuenta creada con éxito! Serás redirigido al login.' };
+    return { success: "¡Cuenta creada con éxito! Serás redirigido al login." };
   } catch (error) {
-    return { error: 'Ocurrió un error inesperado. Intenta de nuevo.' };
+    return { error: "Ocurrió un error inesperado. Intenta de nuevo." };
   }
 }

@@ -1,10 +1,15 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "./lib/prisma";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
+import { headers } from "next/headers";
+
+const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_PERIOD = 5 * 60 * 1000;
 
 const config: NextAuthConfig = {
   adapter: PrismaAdapter(prisma),
@@ -15,18 +20,59 @@ const config: NextAuthConfig = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
     Credentials({
+      name: "Credentials",
       async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
+        const ip = headers().get("x-forwarded-for") ?? "127.0.0.1";
+        const now = Date.now();
+
+        const attempt = loginAttempts.get(ip);
+        if (attempt && now < attempt.lockUntil) {
+          const timeLeft = Math.ceil((attempt.lockUntil - now) / 1000 / 60);
+          throw new CredentialsSignin(
+            `Demasiados intentos fallidos desde esta IP. Intenta de nuevo en ${timeLeft} minutos.`
+          );
+        }
+
+        if (!credentials?.email || !credentials.password) {
+          throw new CredentialsSignin("Faltan el email o la contraseña.");
+        }
+
+        const email = credentials.email as string;
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         });
-        if (!user || !user.password) return null;
+
+        if (!user || !user.password) {
+          const newCount = (attempt?.count || 0) + 1;
+          loginAttempts.set(ip, { count: newCount, lockUntil: 0 });
+          throw new CredentialsSignin(
+            "No existe una cuenta con ese correo electrónico."
+          );
+        }
+
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
-        if (passwordsMatch) return user;
-        return null;
+
+        if (!passwordsMatch) {
+          const newCount = (attempt?.count || 0) + 1;
+          let lockUntil = 0;
+          let errorMessage = "La contraseña es incorrecta.";
+
+          if (newCount >= MAX_ATTEMPTS) {
+            lockUntil = now + LOCKOUT_PERIOD;
+            errorMessage = `Demasiados intentos fallidos. Tu IP ha sido bloqueada por 5 minutos.`;
+          }
+
+          loginAttempts.set(ip, { count: newCount, lockUntil });
+          throw new CredentialsSignin(errorMessage);
+        }
+
+        loginAttempts.delete(ip);
+
+        return user;
       },
     }),
   ],

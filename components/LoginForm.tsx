@@ -12,6 +12,11 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { PasswordInput } from "./PasswordInput";
 
+const LOGIN_ERROR_MESSAGES: { [key: string]: string } = {
+  CredentialsSignin:
+    "El email o la contraseña son incorrectos. Por favor, verifica tus datos.",
+};
+
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,12 +37,15 @@ export default function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Credenciales inválidas. Por favor, intenta de nuevo.");
+        const errorMessage = LOGIN_ERROR_MESSAGES[result.error];
+        setError(
+          errorMessage || "Ocurrió un error inesperado. Intenta de nuevo."
+        );
       } else if (result?.ok) {
         router.push("/dashboard");
       }
     } catch (error) {
-      setError("Ocurrió un error inesperado. Intenta de nuevo.");
+      setError("No se pudo conectar con el servidor. Revisa tu conexión.");
     } finally {
       setIsLoading(false);
     }
