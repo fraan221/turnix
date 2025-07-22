@@ -92,7 +92,6 @@ export default function BarberCalendar({
     setCreateModalOpen(true);
   };
 
-  // --- FUNCIÓN CORREGIDA PARA MANEJAR EL CLIC ---
   const handleEventClick = (clickInfo: EventClickArg) => {
     const bookingData = clickInfo.event.extendedProps as BookingWithDetails;
     setSelectedBooking(bookingData);
@@ -116,7 +115,7 @@ export default function BarberCalendar({
           editable={true}
           selectable={true}
           select={handleDateSelect}
-          eventClick={handleEventClick} // <-- Se pasa la referencia a la función
+          eventClick={handleEventClick}
           allDaySlot={false}
           locale="es"
           buttonText={{

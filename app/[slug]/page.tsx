@@ -1,11 +1,6 @@
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import BookingComponent from "@/components/BookingComponent";
 import type { Metadata } from "next";
@@ -21,20 +16,20 @@ export async function generateMetadata({
 }: BarberPublicPageProps): Promise<Metadata> {
   const slug = decodeURIComponent(params.slug);
 
-  const barber = await prisma.user.findUnique({
+  const barbershop = await prisma.barbershop.findUnique({
     where: { slug },
-    select: { name: true, barbershopName: true, image: true },
+    include: { owner: { select: { name: true, image: true } } },
   });
 
-  if (!barber) {
+  if (!barbershop) {
     return {
-      title: "Barbero no encontrado",
-      description: "Esta página de barbero no existe o fue eliminada.",
+      title: "Barbería no encontrada",
+      description: "Esta página no existe o fue eliminada.",
     };
   }
 
-  const pageTitle = barber.barbershopName || barber.name || "Agenda de Turnos";
-  const description = `Agenda tu turno online con ${pageTitle}. Consulta nuestros servicios y horarios, y reserva tu cita fácilmente a través de Turnix.`;
+  const pageTitle = barbershop.name;
+  const description = `Agenda tu turno online en ${pageTitle}. Consulta nuestros servicios y horarios, y reserva tu cita fácilmente a través de Turnix.`;
 
   return {
     title: `${pageTitle} - Turnos Online | Turnix`,
@@ -44,7 +39,7 @@ export async function generateMetadata({
       description: description,
       images: [
         {
-          url: barber.image || "/logo.png",
+          url: barbershop.owner.image || "/logo.png",
           width: 800,
           height: 600,
           alt: `Logo de ${pageTitle}`,
@@ -57,22 +52,28 @@ export async function generateMetadata({
 export default async function BarberPublicPage({
   params,
 }: BarberPublicPageProps) {
-  const barber = await prisma.user.findUnique({
+  const barbershop = await prisma.barbershop.findUnique({
     where: {
       slug: decodeURIComponent(params.slug),
     },
     include: {
-      services: {
-        orderBy: {
-          name: "asc",
+      owner: {
+        include: {
+          services: {
+            orderBy: {
+              name: "asc",
+            },
+          },
         },
       },
     },
   });
 
-  if (!barber) {
+  if (!barbershop || !barbershop.owner) {
     notFound();
   }
+
+  const barber = barbershop.owner;
 
   return (
     <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
@@ -89,7 +90,7 @@ export default async function BarberPublicPage({
               </AvatarFallback>
             </Avatar>
             <CardTitle className="text-3xl font-bold">
-              {barber.barbershopName || barber.name}
+              {barbershop.name}
             </CardTitle>
           </CardHeader>
         </Card>

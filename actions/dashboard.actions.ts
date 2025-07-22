@@ -6,10 +6,32 @@ import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { BookingStatus } from "@prisma/client";
 
+async function getCurrentUserAndBarbershop() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { user: null, barbershopId: null, error: "No autorizado" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, barbershopId: true },
+  });
+
+  if (!user || !user.barbershopId) {
+    return {
+      user: null,
+      barbershopId: null,
+      error: "Usuario no encontrado o no asociado a una barbería.",
+    };
+  }
+
+  return { user, barbershopId: user.barbershopId, error: null };
+}
+
 // Services - Create, Update & Delete
 export async function createService(prevState: any, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, barbershopId, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   const name = formData.get("name")?.toString();
   const priceStr = formData.get("price")?.toString();
@@ -45,7 +67,8 @@ export async function createService(prevState: any, formData: FormData) {
         price,
         durationInMinutes,
         description,
-        barberId: session.user.id,
+        barberId: user!.id,
+        barbershopId: barbershopId!,
       },
     });
     revalidatePath("/dashboard/services");
@@ -60,14 +83,14 @@ export async function updateService(
   prevState: any,
   formData: FormData
 ) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
   });
 
-  if (!serviceToUpdate || serviceToUpdate.barberId !== session.user.id) {
+  if (!serviceToUpdate || serviceToUpdate.barberId !== user!.id) {
     return { error: "Operación no permitida." };
   }
 
@@ -112,14 +135,14 @@ export async function updateService(
 }
 
 export async function deleteService(serviceId: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
     });
-    if (service?.barberId !== session.user.id) {
+    if (service?.barberId !== user!.id) {
       return { error: "No tienes permiso para borrar este servicio." };
     }
     await prisma.service.delete({ where: { id: serviceId } });
@@ -132,8 +155,8 @@ export async function deleteService(serviceId: string) {
 }
 
 export async function updateWorkingHours(prevState: any, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -145,11 +168,11 @@ export async function updateWorkingHours(prevState: any, formData: FormData) {
 
       await prisma.workingHours.upsert({
         where: {
-          barberId_dayOfWeek: { barberId: session.user.id, dayOfWeek: i },
+          barberId_dayOfWeek: { barberId: user!.id, dayOfWeek: i },
         },
         update: { isWorking, startTime, endTime },
         create: {
-          barberId: session.user.id,
+          barberId: user!.id,
           dayOfWeek: i,
           isWorking,
           startTime,
@@ -172,12 +195,10 @@ type DaySchedule = {
 };
 
 export async function saveSchedule(schedule: DaySchedule[]) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "No autorizado" };
-  }
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
-  const barberId = session.user.id;
+  const barberId = user!.id;
 
   try {
     await prisma.$transaction(
@@ -215,8 +236,8 @@ export async function saveSchedule(schedule: DaySchedule[]) {
 
 // Time Block - Create, Update & Delete
 export async function createTimeBlock(prevState: any, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   const startDate = formData.get("startDate")?.toString();
   const startTime = formData.get("startTime")?.toString();
@@ -241,7 +262,7 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
         startTime: startDateTime,
         endTime: endDateTime,
         reason: reason,
-        barberId: session.user.id,
+        barberId: user!.id,
       },
     });
     revalidatePath("/dashboard/schedule");
@@ -256,14 +277,14 @@ export async function updateTimeBlock(
   prevState: any,
   formData: FormData
 ) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   const blockToUpdate = await prisma.timeBlock.findUnique({
     where: { id: blockId },
   });
 
-  if (!blockToUpdate || blockToUpdate.barberId !== session.user.id) {
+  if (!blockToUpdate || blockToUpdate.barberId !== user!.id) {
     return { error: "Operación no permitida." };
   }
 
@@ -298,15 +319,15 @@ export async function updateTimeBlock(
 }
 
 export async function deleteTimeBlock(blockId: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     const block = await prisma.timeBlock.findUnique({
       where: { id: blockId },
     });
 
-    if (block?.barberId !== session.user.id) {
+    if (block?.barberId !== user!.id) {
       return { error: "No tienes permiso para borrar este bloqueo." };
     }
 
@@ -324,23 +345,46 @@ export async function deleteTimeBlock(blockId: string) {
 
 export async function updateClientNotes(clientId: string, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No autorizado");
+  if (!session?.user?.id) {
+    console.error("Error: No autorizado para actualizar notas de cliente.");
+    return;
+  }
 
   const notes = formData.get("notes")?.toString();
 
-  await prisma.client.update({
-    where: { id: clientId },
-    data: {
-      notes: notes,
-    },
-  });
+  try {
+    const client = await prisma.client.findFirst({
+      where: {
+        id: clientId,
+        bookings: {
+          some: {
+            barberId: session.user.id,
+          },
+        },
+      },
+    });
 
-  revalidatePath(`/dashboard/clients/${clientId}`);
+    if (!client) {
+      console.error("Error: Cliente no encontrado o no pertenece al usuario.");
+      return;
+    }
+
+    await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        notes: notes,
+      },
+    });
+
+    revalidatePath(`/dashboard/clients/${clientId}`);
+  } catch (error) {
+    console.error("Error al actualizar las notas del cliente:", error);
+  }
 }
 
 export async function createBooking(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("No autorizado");
+  const { user, barbershopId, error } = await getCurrentUserAndBarbershop();
+  if (error) throw new Error(error);
 
   const serviceId = formData.get("serviceId")?.toString();
   const clientName = formData.get("clientName")?.toString();
@@ -356,15 +400,20 @@ export async function createBooking(formData: FormData) {
   const client = await prisma.client.upsert({
     where: { phone: clientPhone },
     update: { name: clientName },
-    create: { name: clientName, phone: clientPhone },
+    create: {
+      name: clientName,
+      phone: clientPhone,
+      barbershopId: barbershopId!,
+    },
   });
 
   await prisma.booking.create({
     data: {
       startTime,
-      barberId: session.user.id,
+      barberId: user!.id,
       clientId: client.id,
       serviceId: serviceId,
+      barbershopId: barbershopId!,
     },
   });
 
@@ -377,6 +426,8 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
     return { error: "No autorizado" };
   }
 
+  const userId = session.user.id;
+  const name = formData.get("name")?.toString();
   const barbershopName = formData.get("barbershopName")?.toString();
   let slug = formData.get("slug")?.toString();
   const avatarFile = formData.get("avatar") as File;
@@ -396,64 +447,82 @@ export async function updateUserProfile(prevState: any, formData: FormData) {
     }
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!name || !barbershopName || !slug) {
+    return {
+      error: "El nombre, el nombre de la barbería y la URL son requeridos.",
+    };
+  }
 
-  if (!user?.slug) {
-    if (!slug) {
-      return { error: "La URL personalizada es requerida." };
-    }
-    const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-    if (!slugRegex.test(slug)) {
-      return {
-        error:
-          "Formato de URL no válido. Usa solo minúsculas, números y guiones para separar palabras (ej: mi-barberia).",
-      };
-    }
+  const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+  if (!slugRegex.test(slug)) {
+    return {
+      error:
+        "Formato de URL no válido. Usa solo minúsculas, números y guiones (ej: mi-barberia).",
+    };
+  }
 
-    const existingSlug = await prisma.user.findFirst({
-      where: { slug: slug, id: { not: session.user.id } },
-    });
-    if (existingSlug) {
-      return {
-        error: "Esa URL personalizada ya está en uso. Por favor, elige otra.",
-      };
-    }
-  } else {
-    slug = user.slug;
+  const existingBarbershopWithSlug = await prisma.barbershop.findFirst({
+    where: {
+      slug: slug,
+      ownerId: { not: userId },
+    },
+  });
+
+  if (existingBarbershopWithSlug) {
+    return {
+      error: "Esa URL personalizada ya está en uso. Por favor, elige otra.",
+    };
   }
 
   try {
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: {
-        barbershopName,
-        slug,
+        name,
         ...(avatarUrl && { image: avatarUrl }),
+      },
+    });
+
+    const barbershop = await prisma.barbershop.upsert({
+      where: { ownerId: userId },
+      update: {
+        name: barbershopName,
+        slug,
+      },
+      create: {
+        name: barbershopName,
+        slug,
+        owner: {
+          connect: { id: userId },
+        },
       },
     });
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard");
+    revalidatePath(`/${barbershop.slug}`);
 
     return {
       success: "¡Perfil actualizado con éxito!",
+      newName: updatedUser.name,
       newImageUrl: updatedUser.image,
-      newSlug: updatedUser.slug,
+      newSlug: barbershop.slug,
     };
   } catch (error) {
-    return { error: "No se pudo actualizar el perfil." };
+    console.error("Error al actualizar el perfil:", error);
+    return {
+      error: "No se pudo actualizar el perfil. Inténtalo de nuevo.",
+    };
   }
 }
 
 export async function completeOnboarding() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "No autorizado" };
-  }
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user!.id },
       data: { onboardingCompleted: true },
     });
 
@@ -468,17 +537,15 @@ export async function updateBookingStatus(
   bookingId: string,
   newStatus: BookingStatus
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "No autorizado" };
-  }
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
     });
 
-    if (booking?.barberId !== session.user.id) {
+    if (booking?.barberId !== user!.id) {
       return { error: "No tienes permiso para modificar este turno." };
     }
 
@@ -497,10 +564,8 @@ export async function updateBookingStatus(
 }
 
 export async function deleteClient(clientId: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { error: "No autorizado" };
-  }
+  const { user, error } = await getCurrentUserAndBarbershop();
+  if (error) return { error };
 
   try {
     const client = await prisma.client.findFirst({
@@ -508,7 +573,7 @@ export async function deleteClient(clientId: string) {
         id: clientId,
         bookings: {
           some: {
-            barberId: session.user.id,
+            barberId: user!.id,
           },
         },
       },
@@ -521,7 +586,7 @@ export async function deleteClient(clientId: string) {
     await prisma.booking.deleteMany({
       where: {
         clientId: clientId,
-        barberId: session.user.id,
+        barberId: user!.id,
       },
     });
 

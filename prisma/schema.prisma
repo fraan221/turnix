@@ -10,26 +10,47 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  name                String
-  barbershopName      String?
-  slug                String?   @unique
-  onboardingCompleted Boolean   @default(false)
-  email               String    @unique
-  emailVerified       DateTime?
-  image               String?
-  password            String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String?   @unique
+  emailVerified        DateTime?
+  image                String?
+  password             String?
+  role                 Role?
+  phone                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  onboardingCompleted  Boolean   @default(false)
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
 
-  accounts Account[]
-  sessions Session[]
-
+  accounts     Account[]
+  sessions     Session[]
   services     Service[]
   bookings     Booking[]
   workingHours WorkingHours[]
   timeBlocks   TimeBlock[]
   Notification Notification[]
+
+  ownedBarbershop Barbershop? @relation("BarbershopOwner")
+
+  barbershop   Barbershop? @relation("BarbershopStaff", fields: [barbershopId], references: [id])
+  barbershopId String?
+}
+
+model Barbershop {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  owner   User   @relation("BarbershopOwner", fields: [ownerId], references: [id])
+  ownerId String @unique
+
+  barbers User[] @relation("BarbershopStaff")
+
+  services Service[]
+  bookings Booking[]
+  clients  Client[]
 }
 
 model Client {
@@ -41,6 +62,9 @@ model Client {
   updatedAt DateTime @updatedAt
 
   bookings Booking[]
+
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  barbershopId String
 }
 
 model Service {
@@ -56,6 +80,9 @@ model Service {
   barberId String
 
   bookings Booking[]
+
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  barbershopId String
 }
 
 model Booking {
@@ -73,6 +100,9 @@ model Booking {
 
   service   Service @relation(fields: [serviceId], references: [id])
   serviceId String
+
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  barbershopId String
 }
 
 model Account {
@@ -149,4 +179,9 @@ enum BookingStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
+}
+
+enum Role {
+  OWNER
+  BARBER
 }

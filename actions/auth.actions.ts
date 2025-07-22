@@ -2,24 +2,61 @@
 
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { auth } from "@/auth";
+import { Role } from "@prisma/client";
 import { z } from "zod";
+import crypto from "crypto";
+import { Resend } from "resend";
+import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
 
-const RegisterSchema = z.object({
-  name: z
-    .string()
-    .min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
-  barbershopName: z.string().optional(),
-  email: z.string().email({ message: "Por favor, ingresa un email válido." }),
-  password: z
-    .string()
-    .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
-    .regex(/[a-zA-Z]/, {
-      message: "La contraseña debe contener al menos una letra.",
-    })
-    .regex(/\d/, {
-      message: "La contraseña debe contener al menos un número.",
-    }),
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const RegisterSchema = z
+  .object({
+    role: z.enum(["OWNER", "BARBER"]),
+    name: z.string().min(3),
+    barbershopName: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email(),
+    password: z
+      .string()
+      .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
+      .regex(/[A-Z]/, {
+        message: "La contraseña debe contener al menos una mayúscula.",
+      })
+      .regex(/[a-z]/, {
+        message: "La contraseña debe contener al menos una minúscula.",
+      })
+      .regex(/[0-9]/, {
+        message: "La contraseña debe contener al menos un número.",
+      })
+      .regex(/[^A-Za-z0-9]/, {
+        message: "La contraseña debe contener al menos un símbolo.",
+      }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "OWNER" && !data.barbershopName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["barbershopName"],
+        message: "Requerido",
+      });
+    }
+  });
+
+const generateSlug = async (name: string): Promise<string> => {
+  const baseSlug = name
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+  let slug = baseSlug;
+  let count = 1;
+  while (await prisma.barbershop.findUnique({ where: { slug } })) {
+    slug = `${baseSlug}-${count}`;
+    count++;
+  }
+  return slug;
+};
 
 export async function registerBarber(prevState: any, formData: FormData) {
   const validatedFields = RegisterSchema.safeParse(
@@ -27,36 +64,221 @@ export async function registerBarber(prevState: any, formData: FormData) {
   );
 
   if (!validatedFields.success) {
-    return {
-      error: "Por favor, corrige los errores en el formulario.",
-      fieldErrors: validatedFields.error.flatten().fieldErrors,
-    };
+    return { error: "Datos inválidos. Por favor, revisa el formulario." };
   }
 
-  const { name, barbershopName, email, password } = validatedFields.data;
+  const { name, email, password, role, barbershopName, phone } =
+    validatedFields.data;
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    return { error: "Ya existe un usuario con este email." };
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email },
-    });
+    if (role === "OWNER" && barbershopName) {
+      const slug = await generateSlug(barbershopName);
 
-    if (existingUser) {
-      return { error: "Ya existe un usuario con este email." };
+      await prisma.barbershop.create({
+        data: {
+          name: barbershopName,
+          slug: slug,
+          owner: {
+            create: {
+              email,
+              name,
+              password: hashedPassword,
+              phone,
+              role: Role.OWNER,
+            },
+          },
+        },
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          email,
+          name,
+          password: hashedPassword,
+          phone,
+          role: Role.BARBER,
+        },
+      });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await prisma.user.create({
-      data: {
-        name,
-        barbershopName,
-        email,
-        password: hashedPassword,
-      },
-    });
 
     return { success: "¡Cuenta creada con éxito! Serás redirigido al login." };
   } catch (error) {
+    console.error(error);
     return { error: "Ocurrió un error inesperado. Intenta de nuevo." };
   }
+}
+
+export async function completeGoogleRegistration(
+  prevState: any,
+  formData: FormData
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "No autorizado" };
+  }
+
+  const userId = session.user.id;
+  const role = formData.get("role")?.toString() as Role;
+  const barbershopName = formData.get("barbershopName")?.toString();
+  const phone = formData.get("phone")?.toString();
+
+  if (!role) {
+    return { error: "El rol es obligatorio." };
+  }
+  if (role === "OWNER" && !barbershopName) {
+    return { error: "El nombre de la barbería es obligatorio." };
+  }
+
+  try {
+    let finalSlug: string | null = null;
+
+    if (role === "OWNER" && barbershopName) {
+      const barbershop = await prisma.barbershop.upsert({
+        where: { ownerId: userId },
+        update: { name: barbershopName },
+        create: {
+          name: barbershopName,
+          slug: await generateSlug(barbershopName),
+          ownerId: userId,
+        },
+      });
+
+      finalSlug = barbershop.slug;
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: Role.OWNER, phone, barbershopId: barbershop.id },
+      });
+    } else {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: Role.BARBER, phone },
+      });
+    }
+
+    return {
+      success: "¡Perfil completado con éxito!",
+      updatedData: { role, slug: finalSlug },
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "No se pudo completar el registro. Intenta de nuevo." };
+  }
+}
+
+export async function requestPasswordReset(prevState: any, formData: FormData) {
+  const email = formData.get("email")?.toString();
+  if (!email) {
+    return { error: "El email es requerido." };
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !user.email) {
+    return {
+      success:
+        "Si tu email está registrado, recibirás un enlace para restablecer tu contraseña.",
+    };
+  }
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  const passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  const passwordResetExpires = new Date(Date.now() + 3600000);
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      passwordResetToken,
+      passwordResetExpires,
+    },
+  });
+
+  const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${resetToken}`;
+
+  try {
+    const data = await resend.emails.send({
+      from: "Turnix <contacto@turnix.app>",
+      to: user.email,
+      subject: "Restablece tu contraseña de Turnix",
+      react: ResetPasswordEmail({ userName: user.name, resetLink }),
+    });
+
+    if (data.error) {
+      console.error("Error desde Resend:", data.error);
+      return {
+        error: "No se pudo enviar el correo. Por favor, intenta más tarde.",
+      };
+    }
+
+    return {
+      success:
+        "Si tu email está registrado, recibirás un enlace para restablecer tu contraseña.",
+    };
+  } catch (error) {
+    console.error("Error al enviar el email:", error);
+    return {
+      error: "No se pudo enviar el correo. Por favor, intenta más tarde.",
+    };
+  }
+}
+
+export async function resetPassword(prevState: any, formData: FormData) {
+  const password = formData.get("password")?.toString();
+  const confirmPassword = formData.get("confirmPassword")?.toString();
+  const token = formData.get("token")?.toString();
+
+  if (!password || !confirmPassword || !token) {
+    return { error: "Todos los campos son requeridos." };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Las contraseñas no coinciden." };
+  }
+
+  const passwordValidation = RegisterSchema.shape.password.safeParse(password);
+  if (!passwordValidation.success) {
+    return { error: passwordValidation.error.issues[0].message };
+  }
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  const user = await prisma.user.findFirst({
+    where: {
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { gte: new Date() },
+    },
+  });
+
+  if (!user) {
+    return {
+      error:
+        "El token es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
+    };
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    },
+  });
+
+  return {
+    success: "¡Contraseña actualizada con éxito! Ya puedes iniciar sesión.",
+  };
 }

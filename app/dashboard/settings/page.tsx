@@ -8,6 +8,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import SettingsForm from "@/components/SettingsForm";
+import { notFound } from "next/navigation";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -15,27 +16,35 @@ export default async function SettingsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
+    include: {
+      ownedBarbershop: {
+        select: {
+          name: true,
+          slug: true,
+        },
+      },
+    },
   });
 
-  if (!user) return <p>Usuario no encontrado.</p>;
+  if (!user) {
+    return notFound();
+  }
 
   return (
-    <>
-      <h1 className="flex justify-start mb-2 text-3xl font-bold">Ajustes</h1>
-      <div className="flex flex-col items-center justify-center ">
-        <Card>
-          <CardHeader>
-            <CardTitle>Información del perfil</CardTitle>
-            <CardDescription>
-              Actualiza la foto de perfil de tu barberia y el nombre de tu
-              barberia.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SettingsForm user={user} />
-          </CardContent>
-        </Card>
-      </div>
-    </>
+    <div>
+      <h1 className="mb-4 text-3xl font-bold">Ajustes de Perfil y Barbería</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tu Información</CardTitle>
+          <CardDescription>
+            Actualiza tu foto de perfil, el nombre de tu barbería y tu URL
+            personalizada.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SettingsForm user={user} />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

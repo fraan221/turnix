@@ -35,7 +35,6 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Loader2 } from "lucide-react";
 
-// Definimos los tipos para las props del componente
 type BookingWithDetails = Booking & {
   service: Service;
   client: Client;
@@ -47,7 +46,6 @@ interface BookingDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Mapeo de estado para mostrar en español
 const statusMap = {
   [BookingStatus.SCHEDULED]: { text: "Agendado", color: "text-blue-600" },
   [BookingStatus.COMPLETED]: { text: "Completado", color: "text-green-600" },
@@ -64,7 +62,6 @@ export default function BookingDetailsDialog({
   const [showAddNote, setShowAddNote] = useState(false);
   const [note, setNote] = useState("");
 
-  // Reiniciar los estados internos cuando el diálogo se cierra
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setShowAddNote(false);
@@ -82,9 +79,8 @@ export default function BookingDetailsDialog({
       if (result?.success) {
         toast.success("¡Éxito!", { description: result.success });
         if (newStatus === "COMPLETED") {
-          setShowAddNote(true); // Muestra el campo de nota al completar
+          setShowAddNote(true);
         } else if (newStatus === "CANCELLED") {
-          // Si solo se cancela el turno, mostramos la opción de eliminar cliente
           setShowDeleteClientConfirm(true);
         }
       }
@@ -97,7 +93,6 @@ export default function BookingDetailsDialog({
   const handleAddNote = () => {
     startTransition(async () => {
       const formData = new FormData();
-      // Concatenamos la nueva nota con las existentes, si las hay.
       const existingNotes = booking.client.notes || "";
       const newNoteContent = existingNotes
         ? `${existingNotes}\n- ${note}`
@@ -189,7 +184,6 @@ export default function BookingDetailsDialog({
           </div>
         )}
 
-        {/* Vista para añadir nota rápida */}
         {showAddNote && (
           <div className="pt-4 space-y-4">
             <Label htmlFor="quickNote" className="font-semibold">
@@ -213,7 +207,6 @@ export default function BookingDetailsDialog({
           </div>
         )}
 
-        {/* Vista de confirmación para eliminar cliente (después de cancelar) */}
         {showDeleteClientConfirm && (
           <div className="pt-4 space-y-4 text-center">
             <p className="font-semibold">El turno ha sido cancelado.</p>

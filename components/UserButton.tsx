@@ -17,8 +17,8 @@ import Link from "next/link";
 export default async function UserButton() {
   const session = await auth();
   if (!session?.user) return <SignIn />;
-
   const userSlug = (session.user as any)?.slug;
+  const userRole = (session.user as any)?.role;
 
   return (
     <div className="flex items-center gap-2">
@@ -33,7 +33,9 @@ export default async function UserButton() {
                 />
               )}
               <AvatarFallback>
-                <User className="w-4 h-4" />
+                {session.user.name?.charAt(0).toUpperCase() || (
+                  <User className="w-4 h-4" />
+                )}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -52,23 +54,25 @@ export default async function UserButton() {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem
-            asChild
-            disabled={!userSlug}
-            className="cursor-pointer"
-          >
-            <Link href={userSlug ? `/${userSlug}` : "#"} target="_blank">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              <span>Ver Perfil Público</span>
-            </Link>
-          </DropdownMenuItem>
+          {userRole === "OWNER" && (
+            <DropdownMenuItem
+              asChild
+              disabled={!userSlug}
+              className="cursor-pointer"
+            >
+              <Link href={userSlug ? `/${userSlug}` : "#"} target="_blank">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                <span>Ver Perfil Público</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
 
-          <Link href="/dashboard/settings">
-            <DropdownMenuItem className="cursor-pointer">
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/dashboard/settings">
               <Settings className="w-4 h-4 mr-2" />
               <span>Ajustes</span>
-            </DropdownMenuItem>
-          </Link>
+            </Link>
+          </DropdownMenuItem>
 
           <DropdownMenuSeparator />
           <form
