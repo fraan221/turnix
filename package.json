@@ -11,6 +11,9 @@
     "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start"
   },
+  "prisma": {
+    "seed": "ts-node --project prisma/tsconfig.json prisma/seed.ts"
+  },
   "author": "Iain Collins <me@iaincollins.com>",
   "contributors": [
     "Balázs Orbán <info@balazsorban.com>",
@@ -71,6 +74,7 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.12.8",
     "@types/react": "^18.2.23",
@@ -79,6 +83,7 @@
     "postcss": "^8.4.29",
     "prisma": "^6.10.1",
     "tailwindcss": "^3.3.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.2"
   },
   "engines": {

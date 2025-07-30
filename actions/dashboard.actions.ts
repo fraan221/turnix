@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { BookingStatus } from "@prisma/client";
+import { z } from "zod";
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -29,36 +30,37 @@ async function getCurrentUserAndBarbershop() {
 }
 
 // Services - Create, Update & Delete
+const ServiceSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido."),
+  price: z.coerce.number().positive("El precio debe ser un número positivo."),
+  durationInMinutes: z.coerce
+    .number()
+    .int()
+    .positive("La duración debe ser un número entero positivo.")
+    .optional()
+    .nullable(),
+  description: z.string().optional().nullable(),
+});
+
 export async function createService(prevState: any, formData: FormData) {
-  const { user, barbershopId, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const {
+    user,
+    barbershopId,
+    error: authError,
+  } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
-  const name = formData.get("name")?.toString();
-  const priceStr = formData.get("price")?.toString();
-  const durationStr = formData.get("duration")?.toString();
-  const description = formData.get("description")?.toString() || null;
+  const validatedFields = ServiceSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!name || !priceStr) {
-    return { error: "El nombre y el precio son requeridos." };
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
-  const price = parseFloat(priceStr);
-  if (isNaN(price) || price <= 0) {
-    return { error: "El precio debe ser un número válido y mayor a cero." };
-  }
-
-  let durationInMinutes: number | null = null;
-  if (durationStr) {
-    const duration = parseInt(durationStr, 10);
-    if (!isNaN(duration) && duration > 0) {
-      durationInMinutes = duration;
-    } else {
-      return {
-        error:
-          "Si se especifica, la duración debe ser un número entero positivo.",
-      };
-    }
-  }
+  const { name, price, durationInMinutes, description } = validatedFields.data;
 
   try {
     await prisma.service.create({
@@ -74,6 +76,7 @@ export async function createService(prevState: any, formData: FormData) {
     revalidatePath("/dashboard/services");
     return { success: `Servicio "${name}" creado con éxito.` };
   } catch (error) {
+    console.error("Error al crear el servicio:", error);
     return { error: "No se pudo crear el servicio." };
   }
 }
@@ -83,8 +86,8 @@ export async function updateService(
   prevState: any,
   formData: FormData
 ) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const { user, error: authError } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
@@ -94,32 +97,17 @@ export async function updateService(
     return { error: "Operación no permitida." };
   }
 
-  const name = formData.get("name")?.toString();
-  const priceStr = formData.get("price")?.toString();
-  const durationStr = formData.get("duration")?.toString();
-  const description = formData.get("description")?.toString() || null;
+  const validatedFields = ServiceSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!name || !priceStr) {
-    return { error: "El nombre y el precio son requeridos." };
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
-  const price = parseFloat(priceStr);
-  if (isNaN(price) || price <= 0) {
-    return { error: "El precio debe ser un número válido y mayor a cero." };
-  }
-
-  let durationInMinutes: number | null = null;
-  if (durationStr) {
-    const duration = parseInt(durationStr, 10);
-    if (!isNaN(duration) && duration > 0) {
-      durationInMinutes = duration;
-    } else {
-      return {
-        error:
-          "Si se especifica, la duración debe ser un número entero positivo.",
-      };
-    }
-  }
+  const { name, price, durationInMinutes, description } = validatedFields.data;
 
   try {
     await prisma.service.update({
@@ -130,6 +118,7 @@ export async function updateService(
     revalidatePath("/dashboard/services");
     return { success: `Servicio "${name}" actualizado con éxito.` };
   } catch (error) {
+    console.error("Error al actualizar el servicio:", error);
     return { error: "No se pudo actualizar el servicio." };
   }
 }
@@ -155,18 +144,18 @@ export async function deleteService(serviceId: string) {
 }
 
 export async function updateWorkingHours(prevState: any, formData: FormData) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const { user, error: authError } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
   try {
     const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-    for (let i = 0; i < days.length; i++) {
-      const day = days[i];
+
+    const upsertOperations = days.map((day, i) => {
       const isWorking = formData.get(`${day}-isWorking`) === "on";
       const startTime = formData.get(`${day}-startTime`)?.toString() || "09:00";
       const endTime = formData.get(`${day}-endTime`)?.toString() || "18:00";
 
-      await prisma.workingHours.upsert({
+      return prisma.workingHours.upsert({
         where: {
           barberId_dayOfWeek: { barberId: user!.id, dayOfWeek: i },
         },
@@ -179,11 +168,17 @@ export async function updateWorkingHours(prevState: any, formData: FormData) {
           endTime,
         },
       });
-    }
+    });
+
+    await prisma.$transaction(upsertOperations);
+
     revalidatePath("/dashboard/schedule");
     return { success: "Horario semanal guardado con éxito." };
   } catch (error) {
-    return { error: "No se pudo guardar el horario." };
+    console.error("Error al guardar el horario semanal:", error);
+    return {
+      error: "No se pudo guardar el horario. La operación fue revertida.",
+    };
   }
 }
 
@@ -235,32 +230,47 @@ export async function saveSchedule(schedule: DaySchedule[]) {
 }
 
 // Time Block - Create, Update & Delete
+const TimeBlockSchema = z
+  .object({
+    startDateTime: z
+      .string()
+      .datetime({ message: "Formato de fecha de inicio inválido." }),
+    endDateTime: z
+      .string()
+      .datetime({ message: "Formato de fecha de fin inválido." }),
+    reason: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      return new Date(data.endDateTime) > new Date(data.startDateTime);
+    },
+    {
+      message: "La fecha y hora de fin debe ser posterior a la de inicio.",
+      path: ["endDateTime"],
+    }
+  );
+
 export async function createTimeBlock(prevState: any, formData: FormData) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const { user, error: authError } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
-  const startDate = formData.get("startDate")?.toString();
-  const startTime = formData.get("startTime")?.toString();
-  const endDate = formData.get("endDate")?.toString();
-  const endTime = formData.get("endTime")?.toString();
-  const reason = formData.get("reason")?.toString();
+  const validatedFields = TimeBlockSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!startDate || !startTime || !endDate || !endTime) {
-    return { error: "Fechas y horas de inicio y fin son requeridas." };
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
+  const { startDateTime, endDateTime, reason } = validatedFields.data;
+
   try {
-    const startDateTime = new Date(`${startDate}T${startTime}:00-03:00`);
-    const endDateTime = new Date(`${endDate}T${endTime}:00-03:00`);
-
-    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-      return { error: "Formato de fecha u hora inválido." };
-    }
-
     await prisma.timeBlock.create({
       data: {
-        startTime: startDateTime,
-        endTime: endDateTime,
+        startTime: new Date(startDateTime),
+        endTime: new Date(endDateTime),
         reason: reason,
         barberId: user!.id,
       },
@@ -268,6 +278,7 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
     revalidatePath("/dashboard/schedule");
     return { success: "Bloqueo de tiempo creado con éxito." };
   } catch (error) {
+    console.error("Error al crear el bloqueo de tiempo:", error);
     return { error: "No se pudo crear el bloqueo." };
   }
 }
@@ -277,8 +288,8 @@ export async function updateTimeBlock(
   prevState: any,
   formData: FormData
 ) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const { user, error: authError } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
   const blockToUpdate = await prisma.timeBlock.findUnique({
     where: { id: blockId },
@@ -288,32 +299,32 @@ export async function updateTimeBlock(
     return { error: "Operación no permitida." };
   }
 
-  const startDate = formData.get("startDate")?.toString();
-  const startTime = formData.get("startTime")?.toString();
-  const endDate = formData.get("endDate")?.toString();
-  const endTime = formData.get("endTime")?.toString();
-  const reason = formData.get("reason")?.toString() || null;
+  const validatedFields = TimeBlockSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!startDate || !startTime || !endDate || !endTime) {
-    return { error: "Fechas y horas de inicio y fin son requeridas." };
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
+  const { startDateTime, endDateTime, reason } = validatedFields.data;
+
   try {
-    const startDateTime = new Date(`${startDate}T${startTime}:00-03:00`);
-    const endDateTime = new Date(`${endDate}T${endTime}:00-03:00`);
-
-    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-      return { error: "Formato de fecha u hora inválido." };
-    }
-
     await prisma.timeBlock.update({
       where: { id: blockId },
-      data: { startTime: startDateTime, endTime: endDateTime, reason },
+      data: {
+        startTime: new Date(startDateTime),
+        endTime: new Date(endDateTime),
+        reason,
+      },
     });
 
     revalidatePath("/dashboard/schedule");
     return { success: "Bloqueo actualizado con éxito." };
   } catch (error) {
+    console.error("Error al actualizar el bloqueo de tiempo:", error);
     return { error: "No se pudo actualizar el bloqueo." };
   }
 }
@@ -346,11 +357,10 @@ export async function deleteTimeBlock(blockId: string) {
 export async function updateClientNotes(clientId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
-    console.error("Error: No autorizado para actualizar notas de cliente.");
-    return;
+    return { error: "No autorizado para actualizar notas de cliente." };
   }
 
-  const notes = formData.get("notes")?.toString();
+  const notes = formData.get("notes")?.toString() || "";
 
   try {
     const client = await prisma.client.findFirst({
@@ -365,8 +375,9 @@ export async function updateClientNotes(clientId: string, formData: FormData) {
     });
 
     if (!client) {
-      console.error("Error: Cliente no encontrado o no pertenece al usuario.");
-      return;
+      return {
+        error: "Cliente no encontrado o no tienes permiso para editarlo.",
+      };
     }
 
     await prisma.client.update({
@@ -377,14 +388,20 @@ export async function updateClientNotes(clientId: string, formData: FormData) {
     });
 
     revalidatePath(`/dashboard/clients/${clientId}`);
+    return { success: "Notas del cliente actualizadas con éxito." };
   } catch (error) {
     console.error("Error al actualizar las notas del cliente:", error);
+    return { error: "No se pudieron actualizar las notas del cliente." };
   }
 }
 
 export async function createBooking(formData: FormData) {
-  const { user, barbershopId, error } = await getCurrentUserAndBarbershop();
-  if (error) throw new Error(error);
+  const {
+    user,
+    barbershopId,
+    error: authError,
+  } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
   const serviceId = formData.get("serviceId")?.toString();
   const clientName = formData.get("clientName")?.toString();
@@ -392,110 +409,130 @@ export async function createBooking(formData: FormData) {
   const startTimeStr = formData.get("startTime")?.toString();
 
   if (!serviceId || !clientName || !clientPhone || !startTimeStr) {
-    throw new Error("Todos los campos son requeridos para crear el turno.");
+    return { error: "Todos los campos son requeridos para crear el turno." };
   }
 
-  const startTime = new Date(startTimeStr);
+  try {
+    const startTime = new Date(startTimeStr);
+    if (isNaN(startTime.getTime())) {
+      return { error: "El formato de la fecha de inicio no es válido." };
+    }
 
-  const client = await prisma.client.upsert({
-    where: { phone: clientPhone },
-    update: { name: clientName },
-    create: {
-      name: clientName,
-      phone: clientPhone,
-      barbershopId: barbershopId!,
-    },
-  });
+    await prisma.$transaction(async (tx) => {
+      const client = await tx.client.upsert({
+        where: { phone: clientPhone },
+        update: { name: clientName },
+        create: {
+          name: clientName,
+          phone: clientPhone,
+          barbershopId: barbershopId!,
+        },
+      });
 
-  await prisma.booking.create({
-    data: {
-      startTime,
-      barberId: user!.id,
-      clientId: client.id,
-      serviceId: serviceId,
-      barbershopId: barbershopId!,
-    },
-  });
+      await tx.booking.create({
+        data: {
+          startTime,
+          barberId: user!.id,
+          clientId: client.id,
+          serviceId: serviceId,
+          barbershopId: barbershopId!,
+        },
+      });
+    });
 
-  revalidatePath("/dashboard");
+    revalidatePath("/dashboard");
+    return { success: "Turno creado con éxito." };
+  } catch (error) {
+    console.error("Error al crear el turno:", error);
+    return { error: "No se pudo crear el turno. La operación fue revertida." };
+  }
 }
+
+const UserProfileSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido."),
+  barbershopName: z.string().min(1, "El nombre de la barbería es requerido."),
+  slug: z
+    .string()
+    .min(1, "La URL personalizada es requerida.")
+    .regex(
+      /^[a-z0-9]+(-[a-z0-9]+)*$/,
+      "Formato de URL no válido. Usa solo minúsculas, números y guiones (ej: mi-barberia)."
+    ),
+});
 
 export async function updateUserProfile(prevState: any, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "No autorizado" };
   }
-
   const userId = session.user.id;
-  const name = formData.get("name")?.toString();
-  const barbershopName = formData.get("barbershopName")?.toString();
-  let slug = formData.get("slug")?.toString();
+
+  const validatedFields = UserProfileSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      error: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { name, barbershopName, slug } = validatedFields.data;
   const avatarFile = formData.get("avatar") as File;
   let avatarUrl: string | undefined = undefined;
 
-  if (avatarFile && avatarFile.size > 0) {
-    try {
-      const blob = await put(avatarFile.name, avatarFile, {
-        access: "public",
-        addRandomSuffix: true,
-        cacheControlMaxAge: 60 * 60 * 24 * 365,
-      });
-      avatarUrl = blob.url;
-    } catch (error) {
-      console.error("Error al subir el avatar:", error);
-      return { error: "No se pudo subir la imagen. Inténtalo de nuevo." };
-    }
-  }
-
-  if (!name || !barbershopName || !slug) {
-    return {
-      error: "El nombre, el nombre de la barbería y la URL son requeridos.",
-    };
-  }
-
-  const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-  if (!slugRegex.test(slug)) {
-    return {
-      error:
-        "Formato de URL no válido. Usa solo minúsculas, números y guiones (ej: mi-barberia).",
-    };
-  }
-
-  const existingBarbershopWithSlug = await prisma.barbershop.findFirst({
-    where: {
-      slug: slug,
-      ownerId: { not: userId },
-    },
-  });
-
-  if (existingBarbershopWithSlug) {
-    return {
-      error: "Esa URL personalizada ya está en uso. Por favor, elige otra.",
-    };
-  }
-
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        ...(avatarUrl && { image: avatarUrl }),
+    const existingBarbershopWithSlug = await prisma.barbershop.findFirst({
+      where: {
+        slug: slug,
+        ownerId: { not: userId },
       },
     });
 
-    const barbershop = await prisma.barbershop.upsert({
-      where: { ownerId: userId },
-      update: {
-        name: barbershopName,
-        slug,
-      },
-      create: {
-        name: barbershopName,
-        slug,
-        owner: {
-          connect: { id: userId },
+    if (existingBarbershopWithSlug) {
+      return {
+        error: { slug: ["Esta URL ya está en uso. Por favor, elige otra."] },
+      };
+    }
+
+    if (avatarFile && avatarFile.size > 0) {
+      try {
+        const blob = await put(avatarFile.name, avatarFile, {
+          access: "public",
+          addRandomSuffix: true,
+          cacheControlMaxAge: 60 * 60 * 24 * 365,
+        });
+        avatarUrl = blob.url;
+      } catch (error) {
+        console.error("Error al subir el avatar:", error);
+        return { error: "No se pudo subir la imagen. Inténtalo de nuevo." };
+      }
+    }
+
+    const [updatedUser, barbershop] = await prisma.$transaction(async (tx) => {
+      const userUpdate = tx.user.update({
+        where: { id: userId },
+        data: {
+          name,
+          ...(avatarUrl && { image: avatarUrl }),
         },
-      },
+      });
+
+      const barbershopUpdate = tx.barbershop.upsert({
+        where: { ownerId: userId },
+        update: {
+          name: barbershopName,
+          slug,
+        },
+        create: {
+          name: barbershopName,
+          slug,
+          owner: {
+            connect: { id: userId },
+          },
+        },
+      });
+      return [await userUpdate, await barbershopUpdate];
     });
 
     revalidatePath("/dashboard/settings");
@@ -564,8 +601,8 @@ export async function updateBookingStatus(
 }
 
 export async function deleteClient(clientId: string) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const { user, error: authError } = await getCurrentUserAndBarbershop();
+  if (authError) return { error: authError };
 
   try {
     const client = await prisma.client.findFirst({
@@ -583,21 +620,26 @@ export async function deleteClient(clientId: string) {
       return { error: "No tienes permiso para eliminar este cliente." };
     }
 
-    await prisma.booking.deleteMany({
-      where: {
-        clientId: clientId,
-        barberId: user!.id,
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.deleteMany({
+        where: {
+          clientId: clientId,
+          barberId: user!.id,
+        },
+      });
 
-    await prisma.client.delete({
-      where: { id: clientId },
+      await tx.client.delete({
+        where: { id: clientId },
+      });
     });
 
     revalidatePath("/dashboard/clients");
     revalidatePath("/dashboard");
-    return { success: "Cliente eliminado con éxito." };
+    return { success: "Cliente y sus turnos han sido eliminados con éxito." };
   } catch (error) {
-    return { error: "No se pudo eliminar al cliente." };
+    console.error("Error al eliminar al cliente:", error);
+    return {
+      error: "No se pudo eliminar al cliente. La operación fue revertida.",
+    };
   }
 }

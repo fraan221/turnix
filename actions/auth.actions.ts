@@ -44,14 +44,33 @@ const RegisterSchema = z
     }
   });
 
-const generateSlug = async (name: string): Promise<string> => {
+const CompleteProfileSchema = z
+  .object({
+    role: z.enum(["OWNER", "BARBER"]),
+    barbershopName: z.string().optional(),
+    phone: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "OWNER" && !data.barbershopName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["barbershopName"],
+        message: "El nombre de la barbería es obligatorio.",
+      });
+    }
+  });
+
+const generateSlug = async (
+  name: string,
+  prismaClient: any = prisma
+): Promise<string> => {
   const baseSlug = name
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
   let slug = baseSlug;
   let count = 1;
-  while (await prisma.barbershop.findUnique({ where: { slug } })) {
+  while (await prismaClient.barbershop.findUnique({ where: { slug } })) {
     slug = `${baseSlug}-${count}`;
     count++;
   }
@@ -64,7 +83,10 @@ export async function registerBarber(prevState: any, formData: FormData) {
   );
 
   if (!validatedFields.success) {
-    return { error: "Datos inválidos. Por favor, revisa el formulario." };
+    return {
+      error: "Datos inválidos. Por favor, revisa el formulario.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
   const { name, email, password, role, barbershopName, phone } =
@@ -79,22 +101,24 @@ export async function registerBarber(prevState: any, formData: FormData) {
 
   try {
     if (role === "OWNER" && barbershopName) {
-      const slug = await generateSlug(barbershopName);
+      await prisma.$transaction(async (tx) => {
+        const slug = await generateSlug(barbershopName, tx);
 
-      await prisma.barbershop.create({
-        data: {
-          name: barbershopName,
-          slug: slug,
-          owner: {
-            create: {
-              email,
-              name,
-              password: hashedPassword,
-              phone,
-              role: Role.OWNER,
+        await tx.barbershop.create({
+          data: {
+            name: barbershopName,
+            slug: slug,
+            owner: {
+              create: {
+                email,
+                name,
+                password: hashedPassword,
+                phone,
+                role: Role.OWNER,
+              },
             },
           },
-        },
+        });
       });
     } else {
       await prisma.user.create({
@@ -124,38 +148,43 @@ export async function completeGoogleRegistration(
     return { error: "No autorizado" };
   }
 
-  const userId = session.user.id;
-  const role = formData.get("role")?.toString() as Role;
-  const barbershopName = formData.get("barbershopName")?.toString();
-  const phone = formData.get("phone")?.toString();
+  const validatedFields = CompleteProfileSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!role) {
-    return { error: "El rol es obligatorio." };
+  if (!validatedFields.success) {
+    return {
+      error: "Datos inválidos. Por favor, revisa el formulario.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
   }
-  if (role === "OWNER" && !barbershopName) {
-    return { error: "El nombre de la barbería es obligatorio." };
-  }
+
+  const { role, barbershopName, phone } = validatedFields.data;
+  const userId = session.user.id;
 
   try {
     let finalSlug: string | null = null;
 
     if (role === "OWNER" && barbershopName) {
-      const barbershop = await prisma.barbershop.upsert({
-        where: { ownerId: userId },
-        update: { name: barbershopName },
-        create: {
-          name: barbershopName,
-          slug: await generateSlug(barbershopName),
-          ownerId: userId,
-        },
-      });
+      const barbershop = await prisma.$transaction(async (tx) => {
+        const b = await tx.barbershop.upsert({
+          where: { ownerId: userId },
+          update: { name: barbershopName },
+          create: {
+            name: barbershopName,
+            slug: await generateSlug(barbershopName, tx),
+            ownerId: userId,
+          },
+        });
 
+        await tx.user.update({
+          where: { id: userId },
+          data: { role: Role.OWNER, phone, barbershopId: b.id },
+        });
+
+        return b;
+      });
       finalSlug = barbershop.slug;
-
-      await prisma.user.update({
-        where: { id: userId },
-        data: { role: Role.OWNER, phone, barbershopId: barbershop.id },
-      });
     } else {
       await prisma.user.update({
         where: { id: userId },

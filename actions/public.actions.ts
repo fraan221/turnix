@@ -69,11 +69,25 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
   try {
     const startTime = new Date(startTimeStr);
 
+    // Obtener el barbershopId del barbero
+    const barber = await prisma.user.findUnique({
+      where: { id: barberId },
+      select: { barbershopId: true },
+    });
+
+    if (!barber?.barbershopId) {
+      return { error: "No se pudo encontrar la barbería asociada al barbero." };
+    }
+
     const [client, service] = await Promise.all([
       prisma.client.upsert({
         where: { phone: clientPhone },
         update: { name: clientName },
-        create: { name: clientName, phone: clientPhone },
+        create: {
+          name: clientName,
+          phone: clientPhone,
+          barbershopId: barber.barbershopId,
+        },
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
@@ -86,7 +100,29 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     }
 
     await prisma.booking.create({
-      data: { startTime, barberId, clientId: client.id, serviceId },
+      data: {
+        startTime,
+        barber: {
+          connect: {
+            id: barberId,
+          },
+        },
+        client: {
+          connect: {
+            id: client.id,
+          },
+        },
+        service: {
+          connect: {
+            id: serviceId,
+          },
+        },
+        barbershop: {
+          connect: {
+            id: barber.barbershopId,
+          },
+        },
+      },
     });
 
     const newNotification = await prisma.notification.create({
@@ -102,13 +138,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       newNotification
     );
 
-    const barber = await prisma.user.findUnique({ where: { id: barberId } });
+    
     if (barber?.slug) {
       revalidatePath(`/${barber.slug}`);
     }
 
     return { success: "¡Turno confirmado con éxito!" };
-  } catch (error) {
-    return { error: "No se pudo crear la reserva. Intenta de nuevo." };
+  } catch (error: any) {
+    console.error("Error creating booking:", error);
+    return { error: `No se pudo crear la reserva: ${error.message || error.toString()}` };
   }
 }

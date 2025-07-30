@@ -47,7 +47,16 @@ export default function AddServiceModal() {
       setOpen(false);
     }
     if (state?.error) {
-      toast.error("Error", { description: state.error });
+      let errorMessage = "Ocurrió un error inesperado.";
+      if (typeof state.error === "string") {
+        errorMessage = state.error;
+      } else {
+        const errorValues = Object.values(state.error).flat();
+        if (errorValues.length > 0) {
+          errorMessage = errorValues[0] as string;
+        }
+      }
+      toast.error("Error de validación", { description: errorMessage });
     }
   }, [state]);
 

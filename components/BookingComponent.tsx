@@ -201,6 +201,7 @@ export default function BookingComponent({
             {services.map((service) => (
               <div
                 key={service.id}
+                data-testid="service-card"
                 className="flex items-center space-x-4 p-4 border rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:border-blue-300 transition-colors"
               >
                 <Checkbox
@@ -274,6 +275,7 @@ export default function BookingComponent({
                     timeSlots.map((slot) => (
                       <Button
                         key={slot}
+                        data-testid="time-slot"
                         variant="outline"
                         onClick={() => handleSlotSelect(slot)}
                       >
@@ -338,6 +340,7 @@ export default function BookingComponent({
                   ).toISOString()
                 : ""
             }
+            onBookingSuccess={() => setIsBookingModalOpen(false)}
           />
         </DialogContent>
       </Dialog>

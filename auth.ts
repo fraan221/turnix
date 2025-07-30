@@ -22,6 +22,13 @@ const config: NextAuthConfig = {
     }),
     Credentials({
       async authorize(credentials) {
+        if (credentials.userId) {
+          const user = await prisma.user.findUnique({
+            where: { id: credentials.userId as string },
+          });
+          return user;
+        }
+
         const ip = headers().get("x-forwarded-for") ?? "127.0.0.1";
         const now = Date.now();
         const attempt = loginAttempts.get(ip);
@@ -69,46 +76,50 @@ const config: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      const userId = token.sub;
-
-      if (!userId) {
-        return token;
-      }
-
-      if (user || !token.id) {
+      if (user) {
         const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          include: { ownedBarbershop: { select: { slug: true } } },
+          where: { id: user.id },
+          include: {
+            ownedBarbershop: { select: { slug: true, name: true } },
+          },
         });
 
-        token.id = userId;
+        token.id = dbUser?.id ?? "";
         token.role = dbUser?.role;
+        token.name = dbUser?.name;
+        token.image = dbUser?.image;
         token.slug = dbUser?.ownedBarbershop?.slug;
-        token.image = dbUser?.image || token.picture;
-        token.name = dbUser?.name || token.name;
+        (token as any).barbershopName = dbUser?.ownedBarbershop?.name;
       }
 
       if (trigger === "update" && session) {
-        token = { ...token, ...session };
+        if (session.name) token.name = session.name;
+        if (session.image) token.image = session.image;
+        if (session.slug) token.slug = session.slug;
+        if (session.role) token.role = session.role;
       }
 
       return token;
     },
 
     session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.name = token.name;
-        session.user.image = token.image as string | null;
-        session.user.role = token.role;
-        session.user.slug = token.slug;
-      }
+      const userSession = {
+        ...session.user,
+        id: token.id as string,
+        name: token.name,
+        image: token.image as string | null,
+        role: token.role,
+        slug: token.slug,
+        barbershopName: (token as any).barbershopName,
+      };
+
+      session.user = userSession;
       return session;
     },
 
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const userRole = auth?.user?.role;
+      const userRole = (auth?.user as any)?.role;
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
       const isOnCompleteProfile =
         nextUrl.pathname.startsWith("/complete-profile");

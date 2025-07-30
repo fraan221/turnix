@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import type { User } from "next-auth";
-import { useSession } from "next-auth/react"; // Importamos useSession para update
+import { useSession } from "next-auth/react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -30,14 +30,13 @@ function SubmitButton() {
 
 export default function CompleteProfileForm({ user }: { user: User }) {
   const router = useRouter();
-  const { update } = useSession(); // Obtenemos la función update
+  const { update } = useSession();
   const [state, formAction] = useFormState(completeGoogleRegistration, null);
   const [role, setRole] = useState("");
 
   const stateRef = useRef(state);
 
   useEffect(() => {
-    // Evita el bucle, solo se ejecuta si el estado de la acción cambia
     if (state !== stateRef.current) {
       stateRef.current = state;
 
@@ -46,10 +45,7 @@ export default function CompleteProfileForm({ user }: { user: User }) {
           description: "Tu cuenta ha sido configurada. Redirigiendo...",
         });
 
-        // --- SOLUCIÓN FINAL AQUÍ ---
-        // 1. Actualiza la sesión del cliente con los nuevos datos del servidor
         update(state.updatedData).then(() => {
-          // 2. Una vez actualizada, redirige y refresca
           router.push("/dashboard");
           router.refresh();
         });

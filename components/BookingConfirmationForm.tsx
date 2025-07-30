@@ -14,6 +14,7 @@ interface BookingConfirmationFormProps {
      barberId: string;
      serviceIds: string[];
      startTime: string;
+     onBookingSuccess: () => void; // Nueva prop
 }
 
 function SubmitButton() {
@@ -29,7 +30,7 @@ function SubmitButton() {
      );
 }
 
-export default function BookingConfirmationForm({ barberId, serviceIds, startTime }: BookingConfirmationFormProps) {
+export default function BookingConfirmationForm({ barberId, serviceIds, startTime, onBookingSuccess }: BookingConfirmationFormProps) {
      const router = useRouter();
      const [state, formAction] = useFormState(createPublicBooking, null);
 
@@ -38,6 +39,7 @@ export default function BookingConfirmationForm({ barberId, serviceIds, startTim
                toast.success("¡Reserva Exitosa!", {
                     description: state.success,
                });
+               onBookingSuccess(); // Llamar a la función para cerrar el modal
                router.push('/booking-confirmed');
           }
 
@@ -46,7 +48,7 @@ export default function BookingConfirmationForm({ barberId, serviceIds, startTim
                     description: state.error,
                });
           }
-     }, [state, router]);
+     }, [state, router, onBookingSuccess]);
 
      return (
           <form action={formAction} className="space-y-4">

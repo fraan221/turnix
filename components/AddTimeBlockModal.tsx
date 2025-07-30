@@ -46,9 +46,37 @@ export default function AddTimeBlockModal() {
       setOpen(false);
     }
     if (state?.error) {
-      toast.error("Error", { description: state.error });
+      let errorMessage = "Ocurrió un error inesperado.";
+      if (typeof state.error === "string") {
+        errorMessage = state.error;
+      } else {
+        const errorValues = Object.values(state.error).flat();
+        if (errorValues.length > 0) {
+          errorMessage = errorValues[0] as string;
+        }
+      }
+      toast.error("Error de validación", { description: errorMessage });
     }
   }, [state]);
+
+  const clientAction = async (formData: FormData) => {
+    const startDate = formData.get("startDate") as string;
+    const startTime = formData.get("startTime") as string;
+    const endDate = formData.get("endDate") as string;
+    const endTime = formData.get("endTime") as string;
+
+    const startDateTimeISO = new Date(
+      `${startDate}T${startTime}`
+    ).toISOString();
+    const endDateTimeISO = new Date(`${endDate}T${endTime}`).toISOString();
+
+    const newFormData = new FormData();
+    newFormData.append("startDateTime", startDateTimeISO);
+    newFormData.append("endDateTime", endDateTimeISO);
+    newFormData.append("reason", formData.get("reason") || "");
+
+    formAction(newFormData);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -66,7 +94,7 @@ export default function AddTimeBlockModal() {
             podrán reservar en este rango.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction} className="pt-4 space-y-4">
+        <form ref={formRef} action={clientAction} className="pt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Fecha de Inicio</Label>

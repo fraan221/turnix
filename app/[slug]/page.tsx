@@ -57,13 +57,10 @@ export default async function BarberPublicPage({
       slug: decodeURIComponent(params.slug),
     },
     include: {
-      owner: {
-        include: {
-          services: {
-            orderBy: {
-              name: "asc",
-            },
-          },
+      owner: true,
+      services: {
+        orderBy: {
+          name: "asc",
         },
       },
     },
@@ -94,7 +91,7 @@ export default async function BarberPublicPage({
             </CardTitle>
           </CardHeader>
         </Card>
-        <BookingComponent services={barber.services} barberId={barber.id} />
+        <BookingComponent services={barbershop.services} barberId={barber.id} />
       </div>
     </main>
   );

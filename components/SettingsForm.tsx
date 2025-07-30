@@ -80,8 +80,17 @@ export default function SettingsForm({ user }: { user: UserWithBarbershop }) {
       }
 
       if (state?.error) {
+        let errorMessage = "Ocurrió un error inesperado.";
+        if (typeof state.error === "string") {
+          errorMessage = state.error;
+        } else {
+          const errorValues = Object.values(state.error).flat();
+          if (errorValues.length > 0) {
+            errorMessage = errorValues[0] as string;
+          }
+        }
         toast.error("Error al guardar", {
-          description: state.error,
+          description: errorMessage,
         });
       }
     }
