@@ -1,15 +1,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { updateClientNotes } from "@/actions/dashboard.actions";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ClientNotesForm } from "./ClientNotesForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -56,7 +48,6 @@ export default async function ClientDetailPage({
     (booking) => new Date(booking.startTime) <= now
   );
 
-  const updateNotesAction = updateClientNotes.bind(null, client.id);
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(
     client.phone
   )}`;
@@ -80,32 +71,11 @@ export default async function ClientDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notas Privadas</CardTitle>
-              <CardDescription>
-                Añade aquí cualquier detalle importante sobre este cliente. Solo
-                tú podrás verlo.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form action={updateNotesAction}>
-                <div className="grid w-full gap-2">
-                  <Label htmlFor="notes">Notas sobre {client.name}</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, alérgico a..."
-                    defaultValue={client.notes || ""}
-                    rows={6}
-                  />
-                  <Button type="submit" className="w-full mt-2">
-                    Guardar Notas
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <ClientNotesForm
+            clientId={client.id}
+            currentNotes={client.notes}
+            clientName={client.name}
+          />
         </div>
 
         <div className="space-y-6 lg:col-span-1">

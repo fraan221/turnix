@@ -97,11 +97,22 @@ export default function BookingDetailsDialog({
       const newNoteContent = existingNotes
         ? `${existingNotes}\n- ${note}`
         : `- ${note}`;
-      formData.append("notes", newNoteContent);
 
-      await updateClientNotes(booking.client.id, formData);
-      toast.success("Nota añadida al cliente.");
-      handleOpenChange(false);
+      formData.append("notes", newNoteContent);
+      formData.append("clientId", booking.client.id);
+
+      const result = await updateClientNotes(
+        { success: null, error: null },
+        formData
+      );
+
+      if (result.success) {
+        toast.success("¡Éxito!", { description: result.success });
+        handleOpenChange(false);
+      }
+      if (result.error) {
+        toast.error("Error", { description: result.error });
+      }
     });
   };
 

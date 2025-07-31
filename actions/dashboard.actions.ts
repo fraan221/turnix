@@ -354,21 +354,35 @@ export async function deleteTimeBlock(blockId: string) {
   }
 }
 
-export async function updateClientNotes(clientId: string, formData: FormData) {
+export type FormState = {
+  success: string | null;
+  error: string | null;
+};
+
+export async function updateClientNotes(
+  prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const clientId = formData.get("clientId")?.toString();
+  const notes = formData.get("notes")?.toString();
+
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "No autorizado para actualizar notas de cliente." };
+    return { success: null, error: "No autorizado." };
   }
-
-  const notes = formData.get("notes")?.toString() || "";
+  if (!clientId) {
+    return { success: null, error: "ID de cliente no encontrado." };
+  }
 
   try {
     const client = await prisma.client.findFirst({
       where: {
         id: clientId,
-        bookings: {
-          some: {
-            barberId: session.user.id,
+        barbershop: {
+          barbers: {
+            some: {
+              id: session.user.id,
+            },
           },
         },
       },
@@ -376,6 +390,7 @@ export async function updateClientNotes(clientId: string, formData: FormData) {
 
     if (!client) {
       return {
+        success: null,
         error: "Cliente no encontrado o no tienes permiso para editarlo.",
       };
     }
@@ -388,10 +403,13 @@ export async function updateClientNotes(clientId: string, formData: FormData) {
     });
 
     revalidatePath(`/dashboard/clients/${clientId}`);
-    return { success: "Notas del cliente actualizadas con éxito." };
+    return { success: "¡Notas guardadas con éxito!", error: null };
   } catch (error) {
     console.error("Error al actualizar las notas del cliente:", error);
-    return { error: "No se pudieron actualizar las notas del cliente." };
+    return {
+      success: null,
+      error: "No se pudieron actualizar las notas del cliente.",
+    };
   }
 }
 
