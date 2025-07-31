@@ -69,10 +69,17 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
   try {
     const startTime = new Date(startTimeStr);
 
-    // Obtener el barbershopId del barbero
     const barber = await prisma.user.findUnique({
       where: { id: barberId },
-      select: { barbershopId: true },
+      select: {
+        id: true,
+        barbershopId: true,
+        barbershop: {
+          select: {
+            slug: true,
+          },
+        },
+      },
     });
 
     if (!barber?.barbershopId) {
@@ -138,14 +145,15 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       newNotification
     );
 
-    
-    if (barber?.slug) {
-      revalidatePath(`/${barber.slug}`);
+    if (barber?.barbershop?.slug) {
+      revalidatePath(`/${barber.barbershop.slug}`);
     }
 
     return { success: "¡Turno confirmado con éxito!" };
   } catch (error: any) {
     console.error("Error creating booking:", error);
-    return { error: `No se pudo crear la reserva: ${error.message || error.toString()}` };
+    return {
+      error: `No se pudo crear la reserva: ${error.message || error.toString()}`,
+    };
   }
 }
