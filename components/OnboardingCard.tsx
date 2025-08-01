@@ -105,7 +105,7 @@ export default function OnboardingCard({
   };
 
   return (
-    <Card className="mb-8 overflow-hidden border-2 shadow-lg border-primary/50">
+    <Card className="mb-8 overflow-hidden border-2 border-primary/50">
       <CardHeader>
         <CardTitle className="text-2xl">¡Bienvenido a Turnix! 👋</CardTitle>
         <CardDescription>

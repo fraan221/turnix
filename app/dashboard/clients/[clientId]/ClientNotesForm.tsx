@@ -12,10 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -27,7 +26,10 @@ function SubmitButton() {
           Guardando...
         </>
       ) : (
-        "Guardar Notas"
+        <>
+          <Save className="w-4 h-4" />
+          Guardar notas
+        </>
       )}
     </Button>
   );
@@ -63,7 +65,7 @@ export function ClientNotesForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Notas Privadas</CardTitle>
+        <CardTitle>Notas</CardTitle>
         <CardDescription>
           Añade aquí cualquier detalle importante sobre este cliente. Solo tú
           podrás verlo.
@@ -73,7 +75,6 @@ export function ClientNotesForm({
         <form action={formAction}>
           <input type="hidden" name="clientId" value={clientId} />
           <div className="grid w-full gap-2">
-            <Label htmlFor="notes">Notas sobre {clientName}</Label>
             <Textarea
               id="notes"
               name="notes"

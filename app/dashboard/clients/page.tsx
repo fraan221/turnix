@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Contact } from "lucide-react";
 
 export default async function ClientsPage() {
   const session = await auth();
@@ -21,12 +22,9 @@ export default async function ClientsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+      <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
         Clientes
       </h1>
-      <h2 className="text-muted-foreground">
-        Aquí puedes gestionar los clientes de tu barbería.
-      </h2>
       <Card>
         <CardHeader>
           <CardTitle>Listado de Clientes</CardTitle>
@@ -46,7 +44,10 @@ export default async function ClientsPage() {
                     <p className="text-sm text-gray-500">{client.phone}</p>
                   </div>
                   <Link href={`/dashboard/clients/${client.id}`}>
-                    <Button variant="outline">Ver Ficha</Button>
+                    <Button variant="outline" size="sm">
+                      <Contact className="w-4 h-4" />
+                      Ficha
+                    </Button>
                   </Link>
                 </div>
               ))}

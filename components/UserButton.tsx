@@ -1,6 +1,9 @@
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { auth } from "@/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,16 +12,29 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
-import { SignIn } from "./auth-components";
-import { User, LogOut, Settings, ExternalLink } from "lucide-react";
-import { signOut } from "@/auth";
-import Link from "next/link";
+import { User, LogOut, Settings2, ExternalLink } from "lucide-react";
 
-export default async function UserButton() {
-  const session = await auth();
-  if (!session?.user) return <SignIn />;
-  const userSlug = (session.user as any)?.slug;
-  const userRole = (session.user as any)?.role;
+function UserButtonSkeleton() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+    </div>
+  );
+}
+
+export default function UserButton() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") {
+    return <UserButtonSkeleton />;
+  }
+
+  if (!session?.user) {
+    return null;
+  }
+
+  const userRole = session.user.role;
+  const barbershopSlug = session.user.barbershop?.slug;
 
   return (
     <div className="flex items-center gap-2">
@@ -51,46 +67,33 @@ export default async function UserButton() {
               </p>
             </div>
           </DropdownMenuLabel>
-
           <DropdownMenuSeparator />
 
-          {userRole === "OWNER" && (
-            <DropdownMenuItem
-              asChild
-              disabled={!userSlug}
-              className="cursor-pointer"
-            >
-              <Link href={userSlug ? `/${userSlug}` : "#"} target="_blank">
+          {userRole === "OWNER" && barbershopSlug && (
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href={`/${barbershopSlug}`} target="_blank">
                 <ExternalLink className="w-4 h-4 mr-2" />
-                <span>Ver Perfil Público</span>
+                <span>Ver perfil público</span>
               </Link>
             </DropdownMenuItem>
           )}
 
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link href="/dashboard/settings">
-              <Settings className="w-4 h-4 mr-2" />
+              <Settings2 className="w-4 h-4 mr-2" />
               <span>Ajustes</span>
             </Link>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
+
+          <DropdownMenuItem
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center w-full text-red-500 cursor-pointer focus:bg-red-50 focus:text-red-600"
           >
-            <DropdownMenuItem asChild>
-              <button
-                type="submit"
-                className="flex items-center w-full text-red-500 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                <span>Cerrar Sesión</span>
-              </button>
-            </DropdownMenuItem>
-          </form>
+            <LogOut className="w-4 h-4 mr-2" />
+            <span>Cerrar sesión</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

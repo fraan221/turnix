@@ -58,19 +58,11 @@ const RegisterSchema = z
 
 type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Crear Cuenta"}
-    </Button>
-  );
-}
-
 export default function RegisterForm() {
   const router = useRouter();
   const [state, formAction] = useFormState(registerBarber, null);
   const [role, setRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
@@ -227,7 +219,13 @@ export default function RegisterForm() {
             .
           </div>
 
-          <SubmitButton />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "Crear cuenta"
+            )}
+          </Button>
         </div>
       </form>
 

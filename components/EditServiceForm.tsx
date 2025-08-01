@@ -11,12 +11,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Guardando..." : "Guardar Cambios"}
+      {pending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Guardando...
+        </>
+      ) : (
+        "Guardar cambios"
+      )}
     </Button>
   );
 }
@@ -28,7 +36,7 @@ export default function EditServiceForm({ service }: { service: Service }) {
 
   useEffect(() => {
     if (state?.success) {
-      toast.success("Servicio actualizado!", { description: state.success });
+      toast.success("¡Servicio actualizado!", { description: state.success });
       router.push("/dashboard/services");
     }
     if (state?.error) {
@@ -41,7 +49,7 @@ export default function EditServiceForm({ service }: { service: Service }) {
           errorMessage = errorValues[0] as string;
         }
       }
-      toast.error("Error de validación", { description: errorMessage });
+      toast.error("Error al actualizar", { description: errorMessage });
     }
   }, [state, router]);
 
@@ -63,10 +71,10 @@ export default function EditServiceForm({ service }: { service: Service }) {
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="duration">Duración (minutos) (Opcional)</Label>
+        <Label htmlFor="durationInMinutes">Duración (minutos) (Opcional)</Label>
         <Input
-          id="duration"
-          name="duration"
+          id="durationInMinutes"
+          name="durationInMinutes"
           type="number"
           defaultValue={service.durationInMinutes || ""}
         />

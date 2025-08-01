@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { MainNav } from "./MainNav";
 import UserButton from "./UserButton";
 import Link from "next/link";
+import NotificationCenter from "./NotificationCenter";
 
 export default async function Header() {
   const session = await auth();
@@ -25,7 +26,8 @@ export default async function Header() {
           </Link>
         </div>
 
-        <div className="ml-4">
+        <div className="flex gap-3">
+          <NotificationCenter />
           <UserButton />
         </div>
       </div>

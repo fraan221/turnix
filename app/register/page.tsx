@@ -20,7 +20,7 @@ export default function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RegisterForm /> 
+          <RegisterForm />
           <div className="mt-4 text-sm text-center">
             ¿Ya tienes una cuenta?{" "}
             <Link href="/login" passHref legacyBehavior>

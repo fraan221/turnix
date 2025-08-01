@@ -292,7 +292,7 @@ export default function BookingComponent({
             </div>
           </div>
 
-          <Card className="mt-8 shadow-lg">
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle>Resumen de tu Turno</CardTitle>
             </CardHeader>

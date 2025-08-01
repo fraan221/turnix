@@ -47,10 +47,9 @@ export default async function DashboardPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold">Agenda de Turnos</h1>
-        <p className="text-muted-foreground">
-          Aquí puedes ver y gestionar todos tus turnos.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
+          Agenda
+        </h1>
       </div>
       <BarberCalendar bookings={bookings} services={services} />
     </div>

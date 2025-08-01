@@ -56,15 +56,14 @@ export default async function ClientDetailPage({
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
         <div className="grid gap-1">
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
             Ficha de Cliente: {client.name}
           </h1>
-          <p className="text-muted-foreground">{client.phone}</p>
         </div>
         <Link href={whatsappUrl} target="_blank">
           <Button>
             <MessageSquare className="w-4 h-4 mr-2" />
-            Contactar por WhatsApp
+            Contactar
           </Button>
         </Link>
       </div>
@@ -83,7 +82,7 @@ export default async function ClientDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarClock className="w-5 h-5" />
-                Próximos Turnos
+                Próximos turnos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -114,7 +113,7 @@ export default async function ClientDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="w-5 h-5" />
-                Historial de Servicios
+                Historial
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -123,10 +122,10 @@ export default async function ClientDetailPage({
                   {historialDeTurnos.map((booking) => (
                     <li key={booking.id} className="text-sm">
                       <p className="font-semibold">{booking.service.name}</p>
-                      <p className="capitalize text-muted-foreground">
+                      <p className="text-muted-foreground">
                         {format(
                           new Date(booking.startTime),
-                          "d 'de' MMMM yyyy, HH:mm 'hs'",
+                          "d/MM/yyyy - HH:mm 'hs'",
                           { locale: es }
                         )}
                       </p>

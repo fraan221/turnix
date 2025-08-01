@@ -1,5 +1,3 @@
-// app/privacy-policy/page.tsx
-
 export default function PrivacyPolicyPage() {
   const cleanHtml = `
     <h1>POLÍTICA DE PRIVACIDAD</h1>
@@ -122,9 +120,9 @@ export default function PrivacyPolicyPage() {
 
   return (
     <main className="max-w-4xl px-6 py-12 mx-auto">
-      <div 
+      <div
         className="prose prose-lg max-w-none prose-a:text-blue-600 hover:prose-a:text-blue-500"
-        dangerouslySetInnerHTML={{ __html: cleanHtml }} 
+        dangerouslySetInnerHTML={{ __html: cleanHtml }}
       />
     </main>
   );

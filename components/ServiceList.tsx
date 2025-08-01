@@ -36,7 +36,7 @@ function ServiceItem({ service }: { service: Service }) {
   };
 
   return (
-    <li className="flex items-center justify-between p-4 border rounded-lg bg-slate-50">
+    <li className="flex items-center justify-between p-4 border rounded-lg">
       <div>
         <p className="font-semibold">{service.name}</p>
 

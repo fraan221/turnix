@@ -102,21 +102,28 @@ export async function registerBarber(prevState: any, formData: FormData) {
   try {
     if (role === "OWNER" && barbershopName) {
       await prisma.$transaction(async (tx) => {
-        const slug = await generateSlug(barbershopName, tx);
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            name,
+            password: hashedPassword,
+            phone,
+            role: Role.OWNER,
+          },
+        });
 
-        await tx.barbershop.create({
+        const newBarbershop = await tx.barbershop.create({
           data: {
             name: barbershopName,
-            slug: slug,
-            owner: {
-              create: {
-                email,
-                name,
-                password: hashedPassword,
-                phone,
-                role: Role.OWNER,
-              },
-            },
+            slug: await generateSlug(barbershopName, tx),
+            ownerId: newUser.id,
+          },
+        });
+
+        await tx.user.update({
+          where: { id: newUser.id },
+          data: {
+            barbershopId: newBarbershop.id,
           },
         });
       });

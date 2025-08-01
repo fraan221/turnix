@@ -12,12 +12,12 @@ import { notFound } from "next/navigation";
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
+  if (!session?.user?.id) return notFound();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      ownedBarbershop: {
+      barbershop: {
         select: {
           name: true,
           slug: true,
@@ -26,19 +26,18 @@ export default async function SettingsPage() {
     },
   });
 
-  if (!user) {
-    return notFound();
-  }
+  if (!user) return notFound();
 
   return (
     <div>
-      <h1 className="mb-4 text-3xl font-bold">Ajustes de Perfil y Barbería</h1>
-      <Card>
+      <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
+        Ajustes
+      </h1>
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Tu Información</CardTitle>
+          <CardTitle>Información del Perfil y Barbería</CardTitle>
           <CardDescription>
-            Actualiza tu foto de perfil, el nombre de tu barbería y tu URL
-            personalizada.
+            Actualiza tu foto, tu nombre y los datos de tu barbería.
           </CardDescription>
         </CardHeader>
         <CardContent>

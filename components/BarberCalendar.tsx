@@ -152,7 +152,7 @@ export default function BarberCalendar({
           </DialogHeader>
           <form
             action={async (formData) => {
-              await createBooking(formData);
+              await createBooking(null, formData);
               setCreateModalOpen(false);
             }}
             className="space-y-4"

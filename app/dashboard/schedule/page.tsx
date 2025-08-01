@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
 import AddTimeBlockModal from "@/components/AddTimeBlockModal";
+import { Separator } from "@/components/ui/separator";
 
 export default async function SchedulePage() {
   const session = await auth();
@@ -24,36 +25,29 @@ export default async function SchedulePage() {
   return (
     <div className="space-y-12">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
           Horarios
-        </h2>
-        <p className="text-muted-foreground">
-          Define tus horas de trabajo para cada día.
-        </p>
-        <div className="mt-6">
+        </h1>
+        <div>
           <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
         </div>
       </div>
 
-      <hr />
+      <Separator />
 
       <div>
         <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div className="grid gap-1">
-            <h2 className="text-2xl font-bold md:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
               Bloqueos Horarios
-            </h2>
-            <p className="text-muted-foreground">
-              Añade fechas y horas en las que no estarás disponible.
-            </p>
+            </h1>
           </div>
           <div className="w-full md:w-auto">
             <AddTimeBlockModal />
           </div>
         </div>
-
-        <div className="mt-6">
-          <h3 className="mb-4 text-lg font-semibold">Bloqueos Activos</h3>
+        <div className="max-w-lg mx-auto mt-6">
+          <h2 className="mb-4 text-lg font-semibold">Bloqueos Activos</h2>
           <TimeBlockList timeBlocks={timeBlocks} />
         </div>
       </div>
