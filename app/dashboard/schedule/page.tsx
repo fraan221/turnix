@@ -25,9 +25,6 @@ export default async function SchedulePage() {
   return (
     <div className="space-y-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
-          Horarios
-        </h1>
         <div>
           <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
         </div>

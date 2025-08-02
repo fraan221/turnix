@@ -1,12 +1,19 @@
-import Header from "@/components/header";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <Header />
-      <main className="max-w-5xl px-4 py-8 mx-auto">
-        {children}
-      </main>
-    </div>
+    <SidebarProvider>
+      <DashboardSidebar />
+      <SidebarInset>
+        <SiteHeader />
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

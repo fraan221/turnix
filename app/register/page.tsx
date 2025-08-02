@@ -1,36 +1,26 @@
-import RegisterForm from "@/components/RegisterForm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import RegisterForm from "@/components/RegisterForm";
 
 export default function RegisterPage() {
   return (
-    <main className="flex flex-col items-center justify-center py-12">
-      <Card className="max-w-sm mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">Regístrate</CardTitle>
-          <CardDescription>
-            Ingresa tus datos para crear tu cuenta en Turnix
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RegisterForm />
-          <div className="mt-4 text-sm text-center">
-            ¿Ya tienes una cuenta?{" "}
-            <Link href="/login" passHref legacyBehavior>
-              <Button asChild variant="link">
-                <a>Inicia Sesión</a>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </main>
+    <div className="flex flex-col items-center justify-center gap-6 p-6 bg-muted min-h-svh md:p-10">
+      <div className="flex flex-col w-full max-w-sm gap-6">
+        <Link
+          href="/"
+          className="flex items-center self-center gap-2 font-semibold"
+        >
+          <Image
+            src="/logo.png"
+            alt="Logo de Turnix"
+            width={32}
+            height={32}
+            className="rounded-md"
+          />
+          Turnix
+        </Link>
+        <RegisterForm />
+      </div>
+    </div>
   );
 }

@@ -1,26 +1,26 @@
+import Image from "next/image";
+import Link from "next/link";
 import LoginForm from "@/components/LoginForm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export default function LoginPage() {
   return (
-    <main className="flex flex-col items-center justify-center py-12">
-      <Card className="max-w-sm mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">Inicia Sesión</CardTitle>
-          <CardDescription>
-            Ingresa tu email para acceder a tu panel de Turnix
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LoginForm />
-        </CardContent>
-      </Card>
-    </main>
+    <div className="flex flex-col items-center justify-center gap-6 p-6 bg-muted min-h-svh md:p-10">
+      <div className="flex flex-col w-full max-w-sm gap-6">
+        <Link
+          href="/"
+          className="flex items-center self-center gap-2 font-semibold"
+        >
+          <Image
+            src="/logo.png"
+            alt="Logo de Turnix"
+            width={32}
+            height={32}
+            className="rounded-md"
+          />
+          Turnix
+        </Link>
+        <LoginForm />
+      </div>
+    </div>
   );
 }

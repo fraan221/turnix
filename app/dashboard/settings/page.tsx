@@ -30,13 +30,10 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
-        Ajustes
-      </h1>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Información del Perfil y Barbería</CardTitle>
-          <CardDescription>
+          <CardDescription className="sr-only">
             Actualiza tu foto, tu nombre y los datos de tu barbería.
           </CardDescription>
         </CardHeader>

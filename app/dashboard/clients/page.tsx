@@ -22,9 +22,6 @@ export default async function ClientsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
-        Clientes
-      </h1>
       <Card>
         <CardHeader>
           <CardTitle>Listado de Clientes</CardTitle>
