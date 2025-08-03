@@ -91,15 +91,20 @@ const config: NextAuthConfig = {
         }
       }
 
-      if (trigger === "update" && session) {
-        if (session.name) {
-          token.name = session.name;
-        }
-        if (session.image) {
-          token.picture = session.image;
-        }
-        if (session.barbershop) {
-          token.barbershop = session.barbershop;
+      if (trigger === "update") {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          include: {
+            ownedBarbershop: { select: { slug: true } },
+          },
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.name = dbUser.name;
+          token.picture = dbUser.image;
+          if (dbUser.ownedBarbershop) {
+            token.barbershop = { slug: dbUser.ownedBarbershop.slug };
+          }
         }
       }
 
@@ -116,10 +121,29 @@ const config: NextAuthConfig = {
     },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      const userRole = auth?.user?.role;
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
-      if (isOnDashboard) {
-        if (isLoggedIn) return true;
-        return false;
+      const isOnCompleteProfile =
+        nextUrl.pathname.startsWith("/complete-profile");
+      const isOnAuthRoute =
+        nextUrl.pathname.startsWith("/login") ||
+        nextUrl.pathname.startsWith("/register");
+
+      if (isLoggedIn) {
+        if (!userRole) {
+          if (isOnCompleteProfile) {
+            return true;
+          }
+          return Response.redirect(new URL("/complete-profile", nextUrl));
+        }
+
+        if (isOnCompleteProfile || isOnAuthRoute) {
+          return Response.redirect(new URL("/dashboard", nextUrl));
+        }
+      } else {
+        if (isOnDashboard || isOnCompleteProfile) {
+          return false;
+        }
       }
       return true;
     },

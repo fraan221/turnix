@@ -1,12 +1,22 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+  if (!session.user.role) {
+    redirect("/complete-profile");
+  }
+
   return (
     <SidebarProvider>
       <DashboardSidebar />

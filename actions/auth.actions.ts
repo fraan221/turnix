@@ -8,6 +8,8 @@ import { z } from "zod";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
+import { redirect } from "next/navigation"; // <-- 1. IMPORTAMOS redirect
+import { revalidatePath } from "next/cache";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -76,6 +78,20 @@ const generateSlug = async (
   }
   return slug;
 };
+
+type CompleteProfileState = {
+  success?: string;
+  error?: string;
+  fieldErrors?: {
+    role?: string[];
+    barbershopName?: string[];
+    phone?: string[];
+  };
+  updatedData?: {
+    role: "OWNER" | "BARBER";
+    slug: string | null;
+  };
+} | null;
 
 export async function registerBarber(prevState: any, formData: FormData) {
   const validatedFields = RegisterSchema.safeParse(
@@ -147,9 +163,9 @@ export async function registerBarber(prevState: any, formData: FormData) {
 }
 
 export async function completeGoogleRegistration(
-  prevState: any,
+  prevState: null,
   formData: FormData
-) {
+): Promise<CompleteProfileState> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "No autorizado" };

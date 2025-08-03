@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { completeGoogleRegistration } from "@/actions/auth.actions";
@@ -19,48 +18,44 @@ import {
 import type { User } from "next-auth";
 import { useSession } from "next-auth/react";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Finalizando..." : "Finalizar Registro"}
-    </Button>
-  );
-}
+type CompleteProfileState = {
+  success?: string;
+  error?: string;
+  fieldErrors?: any;
+  updatedData?: { role: "OWNER" | "BARBER"; slug: string | null };
+} | null;
 
 export default function CompleteProfileForm({ user }: { user: User }) {
   const router = useRouter();
   const { update } = useSession();
-  const [state, formAction] = useFormState(completeGoogleRegistration, null);
   const [role, setRole] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-  const stateRef = useRef(state);
+  const handleSubmit = (formData: FormData) => {
+    startTransition(async () => {
+      const result: CompleteProfileState = await completeGoogleRegistration(
+        null,
+        formData
+      );
 
-  useEffect(() => {
-    if (state !== stateRef.current) {
-      stateRef.current = state;
-
-      if (state?.success) {
+      if (result?.success) {
         toast.success("¡Perfil completado!", {
           description: "Tu cuenta ha sido configurada. Redirigiendo...",
         });
 
-        update(state.updatedData).then(() => {
-          router.push("/dashboard");
-          router.refresh();
-        });
-      }
-
-      if (state?.error) {
+        await update(result.updatedData);
+        router.push("/dashboard");
+        router.refresh();
+      } else if (result?.error) {
         toast.error("Error al completar el perfil", {
-          description: state.error,
+          description: result.error,
         });
       }
-    }
-  }, [state, router, update]);
+    });
+  };
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={handleSubmit} className="grid gap-4">
       <div className="grid gap-2">
         <Label htmlFor="name">Nombre</Label>
         <Input id="name" defaultValue={user.name || ""} disabled />
@@ -116,7 +111,15 @@ export default function CompleteProfileForm({ user }: { user: User }) {
             />
           </div>
 
-          <SubmitButton />
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finalizando...
+              </>
+            ) : (
+              "Completar registro"
+            )}
+          </Button>
         </>
       )}
     </form>
