@@ -78,7 +78,7 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
           include: {
-            ownedBarbershop: { select: { slug: true } },
+            ownedBarbershop: { select: { name: true, slug: true } },
           },
         });
         if (dbUser) {
@@ -86,7 +86,10 @@ const config: NextAuthConfig = {
           token.role = dbUser.role;
           token.picture = dbUser.image;
           if (dbUser.ownedBarbershop) {
-            token.barbershop = { slug: dbUser.ownedBarbershop.slug };
+            token.barbershop = {
+              name: dbUser.ownedBarbershop.name,
+              slug: dbUser.ownedBarbershop.slug,
+            };
           }
         }
       }
@@ -95,7 +98,7 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
           include: {
-            ownedBarbershop: { select: { slug: true } },
+            ownedBarbershop: { select: { name: true, slug: true } },
           },
         });
         if (dbUser) {
@@ -103,7 +106,10 @@ const config: NextAuthConfig = {
           token.name = dbUser.name;
           token.picture = dbUser.image;
           if (dbUser.ownedBarbershop) {
-            token.barbershop = { slug: dbUser.ownedBarbershop.slug };
+            token.barbershop = {
+              name: dbUser.ownedBarbershop.name,
+              slug: dbUser.ownedBarbershop.slug,
+            };
           }
         }
       }

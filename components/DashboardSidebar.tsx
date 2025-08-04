@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { cn } from "@/lib/utils";
 
 import {
   Sidebar,
@@ -37,16 +39,18 @@ const mainNavLinks = [
   { href: "/dashboard/services", label: "Servicios", icon: Scissors },
   { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  { href: "/dashboard/#", label: "Equipo (Próximamente)", icon: User },
+  { href: "#", label: "Equipo (Próximamente)", icon: User, disabled: true },
   {
-    href: "/dashboard/#",
+    href: "#",
     label: "Estadísticas (Próximamente)",
     icon: BarChart2,
+    disabled: true,
   },
 ];
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const isLinkActive = (href: string) => {
     if (href === "/dashboard") {
@@ -60,8 +64,11 @@ export function DashboardSidebar() {
       <SidebarHeader className="p-3">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image src="/logo.png" alt="Logo de Turnix" width={30} height={30} />
-          {/* TODO: IMPLEMENT NAME OF BARBERSHOP */}
-          {/* <span className="text-lg font-semibold"></span> */}
+          {session?.user?.barbershop?.name && (
+            <span className="text-lg font-semibold truncate">
+              {session.user.barbershop.name}
+            </span>
+          )}
         </Link>
       </SidebarHeader>
 
@@ -69,14 +76,20 @@ export function DashboardSidebar() {
         <TooltipProvider delayDuration={0}>
           <SidebarMenu>
             {mainNavLinks.map((link) => (
-              <SidebarMenuItem key={link.href}>
+              <SidebarMenuItem key={link.label}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SidebarMenuButton
                       asChild
                       isActive={isLinkActive(link.href)}
                     >
-                      <Link href={link.href}>
+                      <Link
+                        href={link.href}
+                        className={cn(
+                          (link as any).disabled &&
+                            "pointer-events-none opacity-50"
+                        )}
+                      >
                         <link.icon className="size-5" />
                         <span>{link.label}</span>
                       </Link>

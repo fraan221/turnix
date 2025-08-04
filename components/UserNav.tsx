@@ -80,11 +80,9 @@ export function UserNav() {
               </DropdownMenuItem>
             )}
 
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href={`/${barbershopSlug}`} target="_blank">
-                <Crown className="w-4 h-4 mr-2" />
-                <span>Suscripción(Próximamente)</span>
-              </Link>
+            <DropdownMenuItem disabled className="cursor-not-allowed">
+              <Crown className="w-4 h-4 mr-2 stroke-primary" />
+              <span className="text-primary">Suscripción(Próximamente)</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem asChild className="cursor-pointer">

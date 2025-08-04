@@ -11,6 +11,7 @@ declare module "next-auth" {
       id: string;
       role?: Role | null;
       barbershop?: {
+        name: string;
         slug: string;
       } | null;
     } & DefaultSession["user"];
@@ -22,6 +23,7 @@ declare module "next-auth/jwt" {
     id: string;
     role?: Role | null;
     barbershop?: {
+      name: string;
       slug: string;
     } | null;
   }
