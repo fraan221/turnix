@@ -34,6 +34,7 @@ export default function GoogleSignInButton() {
       variant="outline"
       className="w-full"
       onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+      type="button"
     >
       <GoogleIcon />
       <span className="ml-2">Continuar con Google</span>
