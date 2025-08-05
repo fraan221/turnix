@@ -40,11 +40,28 @@ export default function AddServiceModal() {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useFormState(createService, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [displayPrice, setDisplayPrice] = useState("");
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = e.target.value.replace(/\D/g, "");
+
+    if (numericValue === "") {
+      setDisplayPrice("");
+      return;
+    }
+
+    const formattedValue = new Intl.NumberFormat("es-AR").format(
+      Number(numericValue)
+    );
+
+    setDisplayPrice(formattedValue);
+  };
 
   useEffect(() => {
     if (state?.success) {
       toast.success("¡Éxito!", { description: state.success });
       setOpen(false);
+      setDisplayPrice("");
     }
     if (state?.error) {
       let errorMessage = "Ocurrió un error inesperado.";
@@ -86,14 +103,21 @@ export default function AddServiceModal() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="price">Precio ($)</Label>
+            <Label htmlFor="price-display">Precio ($)</Label>
             <Input
-              id="price"
-              name="price"
-              type="number"
-              step="0.01"
-              placeholder="Ej: 10.50"
+              id="price-display"
+              name="price-display"
+              type="text"
+              inputMode="decimal"
+              placeholder="Ej: 10.000"
               required
+              value={displayPrice}
+              onChange={handlePriceChange}
+            />
+            <input
+              type="hidden"
+              name="price"
+              value={displayPrice.replace(/\./g, "")}
             />
           </div>
           <div className="grid gap-2">
