@@ -298,6 +298,16 @@ export async function updateUserProfile(
 
     let avatarUrl: string | undefined = undefined;
     if (avatarFile && avatarFile.size > 0) {
+      if (!["image/jpeg", "image/png"].includes(avatarFile.type)) {
+        return { success: null, error: "Formato de imagen no válido." };
+      }
+      if (avatarFile.size > 4 * 1024 * 1024) {
+        return {
+          success: null,
+          error: "La imagen es demasiado grande. El límite es 4MB.",
+        };
+      }
+
       const blob = await put(avatarFile.name, avatarFile, {
         access: "public",
         addRandomSuffix: true,
