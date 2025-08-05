@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 
 const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
 const MAX_ATTEMPTS = 5;
@@ -133,6 +134,10 @@ const config: NextAuthConfig = {
       return session;
     },
     authorized({ auth, request: { nextUrl } }) {
+      if (nextUrl.pathname.endsWith(".php")) {
+        return NextResponse.json({ message: "Not Found" }, { status: 404 });
+      }
+
       const isLoggedIn = !!auth?.user;
       const userRole = auth?.user?.role;
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
