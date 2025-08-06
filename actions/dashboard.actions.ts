@@ -38,15 +38,26 @@ export type FormState = {
 };
 
 const ServiceSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido."),
-  price: z.coerce.number().positive("El precio debe ser un número positivo."),
+  name: z
+    .string()
+    .min(1, "El nombre es requerido.")
+    .max(50, "El nombre no puede tener más de 50 caracteres."),
+  price: z.coerce
+    .number()
+    .positive("El precio debe ser un número positivo.")
+    .max(1000000, "El precio parece demasiado alto."),
   durationInMinutes: z.coerce
     .number()
     .int()
     .positive("La duración debe ser un número entero positivo.")
+    .max(1440, "La duración no puede ser de más de un día (1440 min).")
     .optional()
     .nullable(),
-  description: z.string().optional().nullable(),
+  description: z
+    .string()
+    .max(200, "La descripción no puede tener más de 200 caracteres.")
+    .optional()
+    .nullable(),
 });
 
 const TimeBlockSchema = z
@@ -67,6 +78,15 @@ const TimeBlockSchema = z
       message: "La fecha y hora de fin debe ser posterior a la de inicio.",
       path: ["endDateTime"],
     }
+  )
+  .refine(
+    (data) => {
+      return new Date(data.startDateTime) > new Date();
+    },
+    {
+      message: "No puedes crear un bloqueo en una fecha u hora pasada.",
+      path: ["startDateTime"],
+    }
   );
 
 const UserProfileSchema = z.object({
@@ -81,6 +101,26 @@ const UserProfileSchema = z.object({
     )
     .optional(),
 });
+
+const DayScheduleSchema = z
+  .object({
+    dayOfWeek: z.number().min(0).max(6),
+    isWorking: z.boolean(),
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  })
+  .refine(
+    (data) => {
+      if (!data.isWorking) return true;
+      return data.endTime > data.startTime;
+    },
+    {
+      message: "La hora de fin debe ser posterior a la hora de inicio.",
+      path: ["endTime"],
+    }
+  );
+
+const ScheduleSchema = z.array(DayScheduleSchema);
 
 export async function createService(
   prevState: any,
@@ -202,11 +242,25 @@ export async function saveSchedule(schedule: DaySchedule[]) {
   const { user, error } = await getCurrentUserAndBarbershop();
   if (error) return { error };
 
+  const validatedSchedule = ScheduleSchema.safeParse(schedule);
+
+  if (!validatedSchedule.success) {
+    const firstError = validatedSchedule.error.issues[0];
+    if (firstError.code === "custom" && firstError.path.length > 0) {
+      const dayIndex = firstError.path[0] as number;
+      const dayName = daysOfWeek[dayIndex];
+      return {
+        error: `${firstError.message} (en ${dayName})`,
+      };
+    }
+    return { error: "Hubo un error al validar los horarios." };
+  }
+
   const barberId = user!.id;
 
   try {
     await prisma.$transaction(
-      schedule.map((day) =>
+      validatedSchedule.data.map((day) =>
         prisma.workingHours.upsert({
           where: {
             barberId_dayOfWeek: {
@@ -237,6 +291,16 @@ export async function saveSchedule(schedule: DaySchedule[]) {
     return { error: "No se pudo guardar el horario." };
   }
 }
+
+const daysOfWeek = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 
 export async function updateUserProfile(
   prevState: any,
@@ -654,6 +718,24 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
   const { startDateTime, endDateTime, reason } = validatedFields.data;
 
   try {
+    const existingBlock = await prisma.timeBlock.findFirst({
+      where: {
+        barberId: user!.id,
+        startTime: {
+          lt: new Date(endDateTime),
+        },
+        endTime: {
+          gt: new Date(startDateTime),
+        },
+      },
+    });
+
+    if (existingBlock) {
+      return {
+        error: "Ya existe un bloqueo que se superpone con este horario.",
+      };
+    }
+
     await prisma.timeBlock.create({
       data: {
         startTime: new Date(startDateTime),

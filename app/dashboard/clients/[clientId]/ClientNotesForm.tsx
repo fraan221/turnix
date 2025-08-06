@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { type FormState, updateClientNotes } from "@/actions/dashboard.actions";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -16,10 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
 
-function SubmitButton() {
+function SubmitButton({ hasChanges }: { hasChanges: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full mt-2" disabled={pending}>
+    <Button
+      type="submit"
+      className="w-full mt-2"
+      disabled={pending || !hasChanges}
+    >
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -53,6 +57,9 @@ export function ClientNotesForm({
     initialState
   );
 
+  const [notesContent, setNotesContent] = useState(currentNotes || "");
+  const hasChanges = notesContent !== (currentNotes || "");
+
   useEffect(() => {
     if (state?.success) {
       toast.success("¡Éxito!", { description: state.success });
@@ -79,10 +86,11 @@ export function ClientNotesForm({
               id="notes"
               name="notes"
               placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, alérgico a..."
-              defaultValue={currentNotes || ""}
+              value={notesContent}
+              onChange={(e) => setNotesContent(e.target.value)}
               rows={6}
             />
-            <SubmitButton />
+            <SubmitButton hasChanges={hasChanges} />
           </div>
           <div className="h-5 mt-2 text-sm">
             {state?.error && <p className="text-red-500">{state.error}</p>}

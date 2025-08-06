@@ -48,7 +48,7 @@ export default function EditTimeBlockForm({
           errorMessage = errorValues[0] as string;
         }
       }
-      toast.error("Error de validación", { description: errorMessage });
+      toast.error("Error", { description: errorMessage });
     }
   }, [state, router]);
 
