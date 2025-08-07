@@ -15,14 +15,16 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { data: session } = useSession();
 
+  const fetchUnreadCount = async () => {
+    const result = await getNotifications();
+    if (result.notifications) {
+      setUnreadCount(result.notifications.filter((n) => !n.read).length);
+    }
+  };
+
   useEffect(() => {
-    const fetchInitialCount = async () => {
-      const result = await getNotifications();
-      if (result.notifications) {
-        setUnreadCount(result.notifications.filter((n) => !n.read).length);
-      }
-    };
-    fetchInitialCount();
+    fetchUnreadCount();
+    window.addEventListener("notificationsUpdated", fetchUnreadCount);
 
     if (
       !process.env.NEXT_PUBLIC_PUSHER_KEY ||
@@ -48,6 +50,7 @@ export function NotificationBell() {
     return () => {
       pusherClient.unsubscribe(channelName);
       pusherClient.disconnect();
+      window.removeEventListener("notificationsUpdated", fetchUnreadCount);
     };
   }, [session?.user?.id]);
 

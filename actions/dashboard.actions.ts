@@ -38,15 +38,26 @@ export type FormState = {
 };
 
 const ServiceSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido."),
-  price: z.coerce.number().positive("El precio debe ser un número positivo."),
+  name: z
+    .string()
+    .min(1, "El nombre es requerido.")
+    .max(50, "El nombre no puede tener más de 50 caracteres."),
+  price: z.coerce
+    .number()
+    .positive("El precio debe ser un número positivo.")
+    .max(1000000, "El precio parece demasiado alto."),
   durationInMinutes: z.coerce
     .number()
     .int()
     .positive("La duración debe ser un número entero positivo.")
+    .max(1440, "La duración no puede ser de más de un día (1440 min).")
     .optional()
     .nullable(),
-  description: z.string().optional().nullable(),
+  description: z
+    .string()
+    .max(200, "La descripción no puede tener más de 200 caracteres.")
+    .optional()
+    .nullable(),
 });
 
 const TimeBlockSchema = z
@@ -67,6 +78,15 @@ const TimeBlockSchema = z
       message: "La fecha y hora de fin debe ser posterior a la de inicio.",
       path: ["endDateTime"],
     }
+  )
+  .refine(
+    (data) => {
+      return new Date(data.startDateTime) > new Date();
+    },
+    {
+      message: "No puedes crear un bloqueo en una fecha u hora pasada.",
+      path: ["startDateTime"],
+    }
   );
 
 const UserProfileSchema = z.object({
@@ -81,6 +101,26 @@ const UserProfileSchema = z.object({
     )
     .optional(),
 });
+
+const DayScheduleSchema = z
+  .object({
+    dayOfWeek: z.number().min(0).max(6),
+    isWorking: z.boolean(),
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  })
+  .refine(
+    (data) => {
+      if (!data.isWorking) return true;
+      return data.endTime > data.startTime;
+    },
+    {
+      message: "La hora de fin debe ser posterior a la hora de inicio.",
+      path: ["endTime"],
+    }
+  );
+
+const ScheduleSchema = z.array(DayScheduleSchema);
 
 export async function createService(
   prevState: any,
@@ -202,11 +242,25 @@ export async function saveSchedule(schedule: DaySchedule[]) {
   const { user, error } = await getCurrentUserAndBarbershop();
   if (error) return { error };
 
+  const validatedSchedule = ScheduleSchema.safeParse(schedule);
+
+  if (!validatedSchedule.success) {
+    const firstError = validatedSchedule.error.issues[0];
+    if (firstError.code === "custom" && firstError.path.length > 0) {
+      const dayIndex = firstError.path[0] as number;
+      const dayName = daysOfWeek[dayIndex];
+      return {
+        error: `${firstError.message} (en ${dayName})`,
+      };
+    }
+    return { error: "Hubo un error al validar los horarios." };
+  }
+
   const barberId = user!.id;
 
   try {
     await prisma.$transaction(
-      schedule.map((day) =>
+      validatedSchedule.data.map((day) =>
         prisma.workingHours.upsert({
           where: {
             barberId_dayOfWeek: {
@@ -237,6 +291,16 @@ export async function saveSchedule(schedule: DaySchedule[]) {
     return { error: "No se pudo guardar el horario." };
   }
 }
+
+const daysOfWeek = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 
 export async function updateUserProfile(
   prevState: any,
@@ -389,11 +453,18 @@ export async function deleteClient(clientId: string) {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.booking.deleteMany({
+      await tx.notification.deleteMany({
         where: {
-          clientId: clientId,
-          barberId: user!.id,
+          OR: [
+            { clientId: clientId },
+            { message: { contains: `con ${client.name}` } },
+          ],
+          userId: user!.id,
         },
+      });
+
+      await tx.booking.deleteMany({
+        where: { clientId: clientId },
       });
 
       await tx.client.delete({
@@ -434,8 +505,16 @@ export async function updateBookingStatus(
     });
 
     revalidatePath("/dashboard");
+
+    const statusTextMap = {
+      [BookingStatus.SCHEDULED]: "agendado",
+      [BookingStatus.COMPLETED]: "completado",
+      [BookingStatus.CANCELLED]: "cancelado",
+    };
+    const friendlyStatus = statusTextMap[newStatus];
+
     return {
-      success: `El turno ha sido marcado como: ${newStatus.toLowerCase()}.`,
+      success: `El turno ha sido marcado como ${friendlyStatus}.`,
     };
   } catch (error) {
     return { error: "No se pudo actualizar el estado del turno." };
@@ -459,27 +538,88 @@ export async function completeOnboarding() {
   }
 }
 
-export async function createBooking(prevState: any, formData: FormData) {
+export async function createBooking(
+  prevState: any,
+  formData: FormData
+): Promise<FormState> {
   const {
     user,
     barbershopId,
     error: authError,
   } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  if (authError) return { success: null, error: authError };
 
-  const serviceId = formData.get("serviceId")?.toString();
-  const clientName = formData.get("clientName")?.toString();
-  const clientPhone = formData.get("clientPhone")?.toString();
-  const startTimeStr = formData.get("startTime")?.toString();
+  const DashboardBookingSchema = z.object({
+    serviceId: z.string().cuid(),
+    clientName: z.string().min(1, "El nombre del cliente es requerido."),
+    clientPhone: z
+      .string()
+      .min(1, "El teléfono del cliente es requerido.")
+      .transform((val) => val.replace(/[\s-()]/g, ""))
+      .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
+      .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
+      .pipe(
+        z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números.")
+      ),
+    startTime: z
+      .string()
+      .datetime({ message: "La fecha y hora de inicio no son válidas." }),
+  });
 
-  if (!serviceId || !clientName || !clientPhone || !startTimeStr) {
-    return { error: "Todos los campos son requeridos para crear el turno." };
+  const validatedFields = DashboardBookingSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      success: null,
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
+  const {
+    serviceId,
+    clientName,
+    clientPhone,
+    startTime: startTimeStr,
+  } = validatedFields.data;
+  const startTime = new Date(startTimeStr);
+
   try {
-    const startTime = new Date(startTimeStr);
-    if (isNaN(startTime.getTime())) {
-      return { error: "El formato de la fecha de inicio no es válido." };
+    const dayOfWeek = startTime.getDay();
+
+    const workingHours = await prisma.workingHours.findUnique({
+      where: {
+        barberId_dayOfWeek: {
+          barberId: user!.id,
+          dayOfWeek: dayOfWeek,
+        },
+      },
+    });
+
+    if (!workingHours || !workingHours.isWorking) {
+      const dayName = new Intl.DateTimeFormat("es-AR", {
+        weekday: "long",
+      }).format(startTime);
+      return {
+        success: null,
+        error: `No es posible agendar un turno porque no trabajas los ${dayName}.`,
+      };
+    }
+
+    const bookingTime =
+      startTime.getHours().toString().padStart(2, "0") +
+      ":" +
+      startTime.getMinutes().toString().padStart(2, "0");
+
+    if (
+      bookingTime < workingHours.startTime ||
+      bookingTime >= workingHours.endTime
+    ) {
+      return {
+        success: null,
+        error: `El turno está fuera del horario laboral (${workingHours.startTime} - ${workingHours.endTime}).`,
+      };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -505,10 +645,13 @@ export async function createBooking(prevState: any, formData: FormData) {
     });
 
     revalidatePath("/dashboard");
-    return { success: "Turno creado con éxito." };
+    return { success: "Turno creado con éxito.", error: null };
   } catch (error) {
     console.error("Error al crear el turno:", error);
-    return { error: "No se pudo crear el turno. La operación fue revertida." };
+    return {
+      success: null,
+      error: "No se pudo crear el turno. La operación fue revertida.",
+    };
   }
 }
 
@@ -654,6 +797,24 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
   const { startDateTime, endDateTime, reason } = validatedFields.data;
 
   try {
+    const existingBlock = await prisma.timeBlock.findFirst({
+      where: {
+        barberId: user!.id,
+        startTime: {
+          lt: new Date(endDateTime),
+        },
+        endTime: {
+          gt: new Date(startDateTime),
+        },
+      },
+    });
+
+    if (existingBlock) {
+      return {
+        error: "Ya existe un bloqueo que se superpone con este horario.",
+      };
+    }
+
     await prisma.timeBlock.create({
       data: {
         startTime: new Date(startDateTime),

@@ -89,7 +89,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         } else {
           Object.values(state.error).forEach((errArray) => {
             (errArray as string[]).forEach((err: string) => {
-              toast.error("Error de validación", { description: err });
+              toast.error("Error", { description: err });
             });
           });
         }
@@ -237,7 +237,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   variant="outline"
                   size="icon"
                   onClick={() => {
-                    /* handleCopy logic */
+                    handleCopy();
                   }}
                   className="border-l-0 rounded-l-none"
                   aria-label="Copiar URL"

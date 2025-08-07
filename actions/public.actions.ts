@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { startOfDay, endOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function getBarberAvailability(barberId: string, date: Date) {
   const dayOfWeek = date.getDay();
@@ -54,21 +55,56 @@ export async function getBarberAvailability(barberId: string, date: Date) {
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
-  const barberId = formData.get("barberId")?.toString();
-  const serviceIdsStr = formData.get("serviceIds")?.toString();
-  const clientName = formData.get("clientName")?.toString();
-  const clientPhone = formData.get("clientPhone")?.toString();
-  const startTimeStr = formData.get("startTime")?.toString();
+  const BookingFormSchema = z.object({
+    barberId: z.string().cuid(),
+    serviceIds: z.string().min(1),
+    clientName: z
+      .string()
+      .min(1, "El nombre es requerido.")
+      .max(50, "El nombre no puede exceder los 50 caracteres."),
+    clientPhone: z
+      .string()
+      .transform((val) => val.replace(/[\s-()]/g, ""))
+      .pipe(
+        z
+          .string()
+          .min(8, "El número de WhatsApp debe tener al menos 8 dígitos.")
+      )
+      .pipe(
+        z
+          .string()
+          .max(15, "El número de WhatsApp no puede tener más de 15 dígitos.")
+      )
+      .pipe(
+        z
+          .string()
+          .regex(
+            /^[0-9]+$/,
+            "El número de WhatsApp solo puede contener dígitos."
+          )
+      ),
+    startTime: z.string().datetime(),
+  });
 
-  const serviceId = serviceIdsStr?.split(",")[0];
+  const validatedFields = BookingFormSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
 
-  if (!barberId || !serviceId || !clientName || !clientPhone || !startTimeStr) {
-    return { error: "Faltan datos para crear la reserva." };
+  if (!validatedFields.success) {
+    return { error: validatedFields.error.issues[0].message };
   }
 
-  try {
-    const startTime = new Date(startTimeStr);
+  const {
+    barberId,
+    clientName,
+    clientPhone,
+    startTime: startTimeISO,
+    serviceIds,
+  } = validatedFields.data;
+  const serviceId = serviceIds.split(",")[0];
+  const startTime = new Date(startTimeISO);
 
+  try {
     const barber = await prisma.user.findUnique({
       where: { id: barberId },
       select: {
@@ -136,6 +172,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       data: {
         userId: barberId,
         message: `Nuevo turno: "${service.name}" con ${clientName}`,
+        clientId: client.id,
       },
     });
 
