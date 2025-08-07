@@ -49,7 +49,7 @@ export default function BookingConfirmationForm({
     }
 
     if (state?.error) {
-      toast.error("Error en la reserva", {
+      toast.error("Error", {
         description: state.error,
       });
     }

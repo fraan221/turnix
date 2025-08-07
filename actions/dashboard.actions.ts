@@ -453,11 +453,18 @@ export async function deleteClient(clientId: string) {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.booking.deleteMany({
+      await tx.notification.deleteMany({
         where: {
-          clientId: clientId,
-          barberId: user!.id,
+          OR: [
+            { clientId: clientId },
+            { message: { contains: `con ${client.name}` } },
+          ],
+          userId: user!.id,
         },
+      });
+
+      await tx.booking.deleteMany({
+        where: { clientId: clientId },
       });
 
       await tx.client.delete({
@@ -498,8 +505,16 @@ export async function updateBookingStatus(
     });
 
     revalidatePath("/dashboard");
+
+    const statusTextMap = {
+      [BookingStatus.SCHEDULED]: "agendado",
+      [BookingStatus.COMPLETED]: "completado",
+      [BookingStatus.CANCELLED]: "cancelado",
+    };
+    const friendlyStatus = statusTextMap[newStatus];
+
     return {
-      success: `El turno ha sido marcado como: ${newStatus.toLowerCase()}.`,
+      success: `El turno ha sido marcado como ${friendlyStatus}.`,
     };
   } catch (error) {
     return { error: "No se pudo actualizar el estado del turno." };
@@ -523,27 +538,88 @@ export async function completeOnboarding() {
   }
 }
 
-export async function createBooking(prevState: any, formData: FormData) {
+export async function createBooking(
+  prevState: any,
+  formData: FormData
+): Promise<FormState> {
   const {
     user,
     barbershopId,
     error: authError,
   } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  if (authError) return { success: null, error: authError };
 
-  const serviceId = formData.get("serviceId")?.toString();
-  const clientName = formData.get("clientName")?.toString();
-  const clientPhone = formData.get("clientPhone")?.toString();
-  const startTimeStr = formData.get("startTime")?.toString();
+  const DashboardBookingSchema = z.object({
+    serviceId: z.string().cuid(),
+    clientName: z.string().min(1, "El nombre del cliente es requerido."),
+    clientPhone: z
+      .string()
+      .min(1, "El teléfono del cliente es requerido.")
+      .transform((val) => val.replace(/[\s-()]/g, ""))
+      .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
+      .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
+      .pipe(
+        z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números.")
+      ),
+    startTime: z
+      .string()
+      .datetime({ message: "La fecha y hora de inicio no son válidas." }),
+  });
 
-  if (!serviceId || !clientName || !clientPhone || !startTimeStr) {
-    return { error: "Todos los campos son requeridos para crear el turno." };
+  const validatedFields = DashboardBookingSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      success: null,
+      error: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
+  const {
+    serviceId,
+    clientName,
+    clientPhone,
+    startTime: startTimeStr,
+  } = validatedFields.data;
+  const startTime = new Date(startTimeStr);
+
   try {
-    const startTime = new Date(startTimeStr);
-    if (isNaN(startTime.getTime())) {
-      return { error: "El formato de la fecha de inicio no es válido." };
+    const dayOfWeek = startTime.getDay();
+
+    const workingHours = await prisma.workingHours.findUnique({
+      where: {
+        barberId_dayOfWeek: {
+          barberId: user!.id,
+          dayOfWeek: dayOfWeek,
+        },
+      },
+    });
+
+    if (!workingHours || !workingHours.isWorking) {
+      const dayName = new Intl.DateTimeFormat("es-AR", {
+        weekday: "long",
+      }).format(startTime);
+      return {
+        success: null,
+        error: `No es posible agendar un turno porque no trabajas los ${dayName}.`,
+      };
+    }
+
+    const bookingTime =
+      startTime.getHours().toString().padStart(2, "0") +
+      ":" +
+      startTime.getMinutes().toString().padStart(2, "0");
+
+    if (
+      bookingTime < workingHours.startTime ||
+      bookingTime >= workingHours.endTime
+    ) {
+      return {
+        success: null,
+        error: `El turno está fuera del horario laboral (${workingHours.startTime} - ${workingHours.endTime}).`,
+      };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -569,10 +645,13 @@ export async function createBooking(prevState: any, formData: FormData) {
     });
 
     revalidatePath("/dashboard");
-    return { success: "Turno creado con éxito." };
+    return { success: "Turno creado con éxito.", error: null };
   } catch (error) {
     console.error("Error al crear el turno:", error);
-    return { error: "No se pudo crear el turno. La operación fue revertida." };
+    return {
+      success: null,
+      error: "No se pudo crear el turno. La operación fue revertida.",
+    };
   }
 }
 

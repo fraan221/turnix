@@ -237,7 +237,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   variant="outline"
                   size="icon"
                   onClick={() => {
-                    /* handleCopy logic */
+                    handleCopy();
                   }}
                   className="border-l-0 rounded-l-none"
                   aria-label="Copiar URL"

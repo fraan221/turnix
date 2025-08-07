@@ -63,8 +63,9 @@ model Client {
 
   bookings Booking[]
 
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  barbershop   Barbershop     @relation(fields: [barbershopId], references: [id])
   barbershopId String
+  Notification Notification[]
 }
 
 model Service {
@@ -171,6 +172,9 @@ model Notification {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String?
 
   @@index([userId])
 }

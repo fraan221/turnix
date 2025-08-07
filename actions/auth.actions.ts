@@ -8,18 +8,48 @@ import { z } from "zod";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
-import { redirect } from "next/navigation"; // <-- 1. IMPORTAMOS redirect
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const phoneSchema = z
+  .string()
+  .transform((val) => val.replace(/[\s-()]/g, ""))
+  .pipe(
+    z.string().min(8, "El número de teléfono debe tener al menos 8 dígitos.")
+  )
+  .pipe(
+    z
+      .string()
+      .max(15, "El número de teléfono no puede tener más de 15 dígitos.")
+  )
+  .pipe(
+    z
+      .string()
+      .regex(/^[0-9]+$/, "El número de teléfono solo puede contener dígitos.")
+  );
+
 const RegisterSchema = z
   .object({
     role: z.enum(["OWNER", "BARBER"]),
-    name: z.string().min(3),
-    barbershopName: z.string().optional(),
-    phone: z.string().optional(),
-    email: z.string().email(),
+    name: z
+      .string()
+      .min(3, { message: "El nombre debe tener al menos 3 caracteres." })
+      .max(50, { message: "El nombre no puede exceder los 50 caracteres." }),
+    barbershopName: z
+      .string()
+      .min(3, {
+        message: "El nombre de la barbería debe tener al menos 3 caracteres.",
+      })
+      .max(50, {
+        message: "El nombre de la barbería no puede exceder los 50 caracteres.",
+      })
+      .optional(),
+    phone: phoneSchema.optional(),
+    email: z
+      .string()
+      .email({ message: "Por favor, ingresa una dirección de email válida." }),
     password: z
       .string()
       .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
@@ -37,11 +67,14 @@ const RegisterSchema = z
       }),
   })
   .superRefine((data, ctx) => {
-    if (data.role === "OWNER" && !data.barbershopName) {
+    if (
+      data.role === "OWNER" &&
+      (!data.barbershopName || data.barbershopName.trim() === "")
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["barbershopName"],
-        message: "Requerido",
+        message: "El nombre de la barbería es requerido.",
       });
     }
   });
@@ -50,7 +83,7 @@ const CompleteProfileSchema = z
   .object({
     role: z.enum(["OWNER", "BARBER"]),
     barbershopName: z.string().optional(),
-    phone: z.string().optional(),
+    phone: phoneSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role === "OWNER" && !data.barbershopName) {

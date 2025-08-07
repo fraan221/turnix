@@ -34,6 +34,7 @@ export function NotificationList({
     }
     if (result?.success) {
       toast.success("Éxito", { description: result.success });
+      window.dispatchEvent(new CustomEvent("notificationsUpdated"));
     }
   };
 

@@ -42,8 +42,14 @@ const RegisterSchema = z
       }),
     name: z
       .string()
-      .min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
-    barbershopName: z.string().optional(),
+      .min(3, { message: "El nombre debe tener al menos 3 caracteres." })
+      .max(50, { message: "El nombre no puede exceder los 50 caracteres." }),
+    barbershopName: z
+      .string()
+      .max(50, {
+        message: "El nombre de la barbería no puede exceder los 50 caracteres.",
+      })
+      .optional(),
     phone: z.string().optional(),
     email: z.string().email({ message: "Por favor, ingresa un email válido." }),
     password: z
@@ -55,13 +61,30 @@ const RegisterSchema = z
   .superRefine((data, ctx) => {
     if (
       data.role === "OWNER" &&
-      (!data.barbershopName || data.barbershopName.length < 1)
+      (!data.barbershopName || data.barbershopName.trim().length < 3)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["barbershopName"],
-        message: "El nombre de la barbería es requerido.",
+        message: "El nombre de la barbería debe tener al menos 3 caracteres.",
       });
+    }
+
+    if (data.phone && data.phone.trim().length > 0) {
+      const cleanedPhone = data.phone.replace(/[\s-()]/g, "");
+      if (!/^[0-9]+$/.test(cleanedPhone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone"],
+          message: "El teléfono solo puede contener números.",
+        });
+      } else if (cleanedPhone.length < 8 || cleanedPhone.length > 15) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone"],
+          message: "El teléfono debe tener entre 8 y 15 dígitos.",
+        });
+      }
     }
   });
 
@@ -153,7 +176,7 @@ export default function RegisterForm() {
             <div
               className={`grid gap-4 transition-all duration-300 ease-in-out ${role ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
             >
-              <div className="px-1 overflow-hidden">
+              <div className="px-1 py-1 overflow-hidden">
                 <div className="grid gap-4">
                   {role === "OWNER" && (
                     <div className="grid gap-2">
@@ -172,6 +195,7 @@ export default function RegisterForm() {
                       )}
                     </div>
                   )}
+
                   <div className="grid gap-2">
                     <Label htmlFor="name">Tu Nombre</Label>
                     <Input
@@ -185,6 +209,22 @@ export default function RegisterForm() {
                       </p>
                     )}
                   </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="phone">Tu Celular (Opcional)</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      {...register("phone")}
+                      placeholder="Ej: 11 2233 4455"
+                    />
+                    {errors.phone && (
+                      <p className="text-xs text-red-500">
+                        {errors.phone.message}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -199,6 +239,7 @@ export default function RegisterForm() {
                       </p>
                     )}
                   </div>
+
                   <div className="grid gap-2">
                     <Label htmlFor="password">Contraseña</Label>
                     <PasswordInput

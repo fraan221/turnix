@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useFormState, useFormStatus } from "react-dom";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -11,7 +13,7 @@ import { Booking, Service, Client, BookingStatus } from "@prisma/client";
 import { useWindowSize } from "@/lib/hooks";
 import BookingDetailsDialog from "./BookingDetailsDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { createBooking } from "@/actions/dashboard.actions";
+import { createBooking, type FormState } from "@/actions/dashboard.actions";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
@@ -22,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Loader2 } from "lucide-react";
+
+const initialState: FormState = {
+  error: null,
+  success: null,
+};
 
 type BookingWithDetails = Booking & {
   service: Service;
@@ -31,6 +39,22 @@ type BookingWithDetails = Booking & {
 interface BarberCalendarProps {
   bookings: BookingWithDetails[];
   services: Service[];
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Agendando...
+        </>
+      ) : (
+        "Agendar turno"
+      )}
+    </Button>
+  );
 }
 
 export default function BarberCalendar({
@@ -49,6 +73,9 @@ export default function BarberCalendar({
   const [selectedBooking, setSelectedBooking] =
     useState<BookingWithDetails | null>(null);
 
+  const [state, formAction] = useFormState(createBooking, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+
   useEffect(() => {
     const handleNewBooking = () => {
       router.refresh();
@@ -59,33 +86,55 @@ export default function BarberCalendar({
     };
   }, [router]);
 
-  const events = bookings.map((booking) => {
-    const endTime = new Date(
-      booking.startTime.getTime() +
-        (booking.service.durationInMinutes || 0) * 60000
-    );
+  useEffect(() => {
+    if (state?.error) {
+      let errorMessage = "Ocurrió un error inesperado.";
 
-    let eventColor = "#3b82f6";
-    let eventClassName = "cursor-pointer";
+      if (typeof state.error === "string") {
+        errorMessage = state.error;
+      } else if (typeof state.error === "object" && state.error !== null) {
+        const firstError = Object.values(state.error).flat()[0];
+        if (typeof firstError === "string") {
+          errorMessage = firstError;
+        }
+      }
 
-    if (booking.status === "COMPLETED") {
-      eventColor = "#22c55e";
-    } else if (booking.status === "CANCELLED") {
-      eventColor = "#ef4444";
-      eventClassName += " opacity-60 line-through";
+      toast.error("Error al agendar", { description: errorMessage });
     }
 
-    return {
-      id: booking.id,
-      title: `${booking.service.name} - ${booking.client.name}`,
-      start: booking.startTime,
-      end: endTime,
-      backgroundColor: eventColor,
-      borderColor: eventColor,
-      className: eventClassName,
-      extendedProps: booking,
-    };
-  });
+    if (state?.success) {
+      toast.success("¡Éxito!", { description: state.success });
+      setCreateModalOpen(false);
+      formRef.current?.reset();
+    }
+  }, [state]);
+
+  const events = bookings
+    .filter((booking) => booking.status !== "CANCELLED")
+    .map((booking) => {
+      const endTime = new Date(
+        booking.startTime.getTime() +
+          (booking.service.durationInMinutes || 0) * 60000
+      );
+
+      let eventColor = "#3b82f6";
+      let eventClassName = "cursor-pointer";
+
+      if (booking.status === "COMPLETED") {
+        eventColor = "#22c55e";
+      }
+
+      return {
+        id: booking.id,
+        title: `${booking.service.name} - ${booking.client.name}`,
+        start: booking.startTime,
+        end: endTime,
+        backgroundColor: eventColor,
+        borderColor: eventColor,
+        className: eventClassName,
+        extendedProps: booking,
+      };
+    });
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     setSelectedDateInfo(selectInfo);
@@ -150,13 +199,7 @@ export default function BarberCalendar({
           <DialogHeader>
             <DialogTitle>Crear Nuevo Turno</DialogTitle>
           </DialogHeader>
-          <form
-            action={async (formData) => {
-              await createBooking(null, formData);
-              setCreateModalOpen(false);
-            }}
-            className="space-y-4"
-          >
+          <form ref={formRef} action={formAction} className="space-y-4">
             <input
               type="hidden"
               name="startTime"
@@ -185,9 +228,7 @@ export default function BarberCalendar({
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="w-full">
-              Agendar Turno
-            </Button>
+            <SubmitButton />
           </form>
         </DialogContent>
       </Dialog>
