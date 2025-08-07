@@ -56,7 +56,11 @@ const RegisterSchema = z
       .string()
       .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
       .regex(/[a-zA-Z]/, { message: "Debe contener al menos una letra." })
-      .regex(/\d/, { message: "Debe contener al menos un número." }),
+      .regex(/\d/, { message: "Debe contener al menos un número." })
+      .regex(/[^A-Za-z0-9]/, {
+        message:
+          "La contraseña debe contener al menos un símbolo (ej: !@#$%*).",
+      }),
   })
   .superRefine((data, ctx) => {
     if (

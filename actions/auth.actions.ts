@@ -63,7 +63,8 @@ const RegisterSchema = z
         message: "La contraseña debe contener al menos un número.",
       })
       .regex(/[^A-Za-z0-9]/, {
-        message: "La contraseña debe contener al menos un símbolo.",
+        message:
+          "La contraseña debe contener al menos un símbolo (ej: !@#$%*).",
       }),
   })
   .superRefine((data, ctx) => {
