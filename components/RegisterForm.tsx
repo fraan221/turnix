@@ -185,7 +185,8 @@ export default function RegisterForm() {
                   {role === "OWNER" && (
                     <div className="grid gap-2">
                       <Label htmlFor="barbershopName">
-                        Nombre de tu Barbería
+                        Nombre de tu Barbería{" "}
+                        <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="barbershopName"
@@ -201,7 +202,9 @@ export default function RegisterForm() {
                   )}
 
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Tu Nombre</Label>
+                    <Label htmlFor="name">
+                      Tu Nombre <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="name"
                       {...register("name")}
@@ -215,7 +218,9 @@ export default function RegisterForm() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="phone">Tu Celular (Opcional)</Label>
+                    <Label htmlFor="phone">
+                      Tu Celular <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
@@ -230,7 +235,9 @@ export default function RegisterForm() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="email"
                       type="email"
@@ -245,7 +252,9 @@ export default function RegisterForm() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="password">Contraseña</Label>
+                    <Label htmlFor="password">
+                      Contraseña <span className="text-red-500">*</span>
+                    </Label>
                     <PasswordInput
                       id="password"
                       {...register("password")}
