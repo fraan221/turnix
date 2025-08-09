@@ -46,7 +46,7 @@ const RegisterSchema = z
         message: "El nombre de la barbería no puede exceder los 50 caracteres.",
       })
       .optional(),
-    phone: phoneSchema.optional(),
+    phone: phoneSchema,
     email: z
       .string()
       .email({ message: "Por favor, ingresa una dirección de email válida." }),
@@ -144,7 +144,10 @@ export async function registerBarber(prevState: any, formData: FormData) {
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
-    return { error: "Ya existe un usuario con este email." };
+    return {
+      error: "El email ya está en uso.",
+      fieldErrors: { email: ["Ya existe una cuenta con este email."] },
+    };
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);

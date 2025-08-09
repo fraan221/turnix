@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import { cn } from "@/lib/utils";
 import { inter, montserrat } from "./fonts";
+import { LoaderProvider } from "@/context/LoaderContext";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://turnix.app"),
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
         )}
       >
         <SessionProvider>
-          {children}
-          <Toaster richColors />
+          <LoaderProvider>
+            {children}
+            <Toaster richColors />
+          </LoaderProvider>
         </SessionProvider>
 
         <SpeedInsights />
