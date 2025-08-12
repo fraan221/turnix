@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import TrialStatusBanner from "@/components/TrialStatusBanner";
 
 export default async function DashboardLayout({
   children,
@@ -17,10 +18,16 @@ export default async function DashboardLayout({
     redirect("/complete-profile");
   }
 
+  const hasPaidSubscription = !!session.user.subscription;
+  const showTrialBanner = !hasPaidSubscription && session.user.trialEndsAt;
+
   return (
     <SidebarProvider>
       <DashboardSidebar />
       <SidebarInset>
+        {showTrialBanner && (
+          <TrialStatusBanner trialEndsAt={session.user.trialEndsAt} />
+        )}
         <SiteHeader />
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </SidebarInset>

@@ -10,18 +10,20 @@ datasource db {
 }
 
 model User {
-  id                   String    @id @default(cuid())
+  id                   String        @id @default(cuid())
   name                 String
-  email                String?   @unique
+  email                String?       @unique
   emailVerified        DateTime?
   image                String?
   password             String?
   role                 Role?
   phone                String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  onboardingCompleted  Boolean   @default(false)
-  passwordResetToken   String?   @unique
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  onboardingCompleted  Boolean       @default(false)
+  trialEndsAt          DateTime?
+  subscription         Subscription?
+  passwordResetToken   String?       @unique
   passwordResetExpires DateTime?
 
   accounts     Account[]
@@ -188,4 +190,17 @@ enum BookingStatus {
 enum Role {
   OWNER
   BARBER
+}
+
+model Subscription {
+  id                        String   @id @default(cuid())
+  mercadopagoSubscriptionId String   @unique
+  status                    String
+  currentPeriodEnd          DateTime
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

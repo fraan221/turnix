@@ -80,6 +80,17 @@ const config: NextAuthConfig = {
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      if (user.id && user.email) {
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { trialEndsAt },
+        });
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {
@@ -87,12 +98,21 @@ const config: NextAuthConfig = {
           where: { id: user.id },
           include: {
             ownedBarbershop: { select: { name: true, slug: true } },
+            subscription: true,
           },
         });
         if (dbUser) {
           token.id = dbUser.id;
           token.role = dbUser.role;
           token.picture = dbUser.image;
+          token.trialEndsAt = dbUser.trialEndsAt;
+          token.subscription = dbUser.subscription
+            ? {
+                status: dbUser.subscription.status,
+                currentPeriodEnd: dbUser.subscription.currentPeriodEnd,
+              }
+            : null;
+
           if (dbUser.ownedBarbershop) {
             token.barbershop = {
               name: dbUser.ownedBarbershop.name,
@@ -107,12 +127,21 @@ const config: NextAuthConfig = {
           where: { id: token.id },
           include: {
             ownedBarbershop: { select: { name: true, slug: true } },
+            subscription: true,
           },
         });
         if (dbUser) {
           token.role = dbUser.role;
           token.name = dbUser.name;
           token.picture = dbUser.image;
+          token.trialEndsAt = dbUser.trialEndsAt;
+          token.subscription = dbUser.subscription
+            ? {
+                status: dbUser.subscription.status,
+                currentPeriodEnd: dbUser.subscription.currentPeriodEnd,
+              }
+            : null;
+
           if (dbUser.ownedBarbershop) {
             token.barbershop = {
               name: dbUser.ownedBarbershop.name,
@@ -130,40 +159,10 @@ const config: NextAuthConfig = {
         session.user.role = token.role;
         session.user.barbershop = token.barbershop;
         session.user.image = token.picture as string | null;
+        session.user.trialEndsAt = token.trialEndsAt;
+        session.user.subscription = token.subscription;
       }
       return session;
-    },
-    authorized({ auth, request: { nextUrl } }) {
-      if (nextUrl.pathname.endsWith(".php")) {
-        return NextResponse.json({ message: "Not Found" }, { status: 404 });
-      }
-
-      const isLoggedIn = !!auth?.user;
-      const userRole = auth?.user?.role;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
-      const isOnCompleteProfile =
-        nextUrl.pathname.startsWith("/complete-profile");
-      const isOnAuthRoute =
-        nextUrl.pathname.startsWith("/login") ||
-        nextUrl.pathname.startsWith("/register");
-
-      if (isLoggedIn) {
-        if (!userRole) {
-          if (isOnCompleteProfile) {
-            return true;
-          }
-          return Response.redirect(new URL("/complete-profile", nextUrl));
-        }
-
-        if (isOnCompleteProfile || isOnAuthRoute) {
-          return Response.redirect(new URL("/dashboard", nextUrl));
-        }
-      } else {
-        if (isOnDashboard || isOnCompleteProfile) {
-          return false;
-        }
-      }
-      return true;
     },
   },
   pages: {

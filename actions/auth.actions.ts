@@ -152,6 +152,8 @@ export async function registerBarber(prevState: any, formData: FormData) {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
   try {
     if (role === "OWNER" && barbershopName) {
       await prisma.$transaction(async (tx) => {
@@ -162,6 +164,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
             password: hashedPassword,
             phone,
             role: Role.OWNER,
+            trialEndsAt: trialEndsAt,
           },
         });
 

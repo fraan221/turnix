@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import BarberCalendar from "@/components/BarberCalendar";
+import { Suspense } from "react";
+import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -18,5 +20,12 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  return <BarberCalendar bookings={bookings} services={services} />;
+  return (
+    <>
+      <Suspense>
+        <SubscriptionStatusHandler />
+      </Suspense>
+      <BarberCalendar bookings={bookings} services={services} />
+    </>
+  );
 }
