@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShoppingBag } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 function SubmitButton() {
@@ -25,7 +25,10 @@ function SubmitButton() {
           Redirigiendo a Mercado Pago...
         </>
       ) : (
-        "Suscribirme al Plan PRO ($9.900 ARS/mes)"
+        <>
+          <ShoppingBag />
+          Suscribirme al Plan PRO
+        </>
       )}
     </Button>
   );
@@ -49,13 +52,13 @@ export default function SubscribePage() {
   }, [state]);
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-muted/20">
-      <Card className="w-full max-w-md shadow-lg">
+    <main className="flex flex-col items-center justify-center min-h-screen p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             {isProactiveSubscription
-              ? "¡Asegura tu acceso al plan PRO!"
-              : "Tu período de prueba ha terminado"}
+              ? "¡Asegura tu acceso al Plan PRO!"
+              : "Tu período de prueba ha terminado..."}
           </CardTitle>
           <CardDescription>
             {isProactiveSubscription

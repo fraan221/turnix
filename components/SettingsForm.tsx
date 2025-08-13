@@ -113,7 +113,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     const file = event.target.files?.[0];
     const resetInput = () => {
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setAvatarPreview(user.image); // Volvemos a la imagen original si cancela
+      setAvatarPreview(user.image);
     };
 
     if (!file) {
@@ -154,8 +154,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     }
     formAction(formData);
   };
-
-  const isSlugSaved = !!user.barbershop?.slug;
 
   return (
     <TooltipProvider delayDuration={100}>

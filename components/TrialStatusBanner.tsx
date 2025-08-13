@@ -1,40 +1,62 @@
 "use client";
 
-import { differenceInDays, format } from "date-fns";
-import { es } from "date-fns/locale";
+import { useState, useEffect } from "react";
+import { intervalToDuration } from "date-fns";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 
 interface TrialStatusBannerProps {
   trialEndsAt: Date | null | undefined;
+  isSubscribed: boolean;
 }
 
 export default function TrialStatusBanner({
   trialEndsAt,
+  isSubscribed,
 }: TrialStatusBannerProps) {
-  if (!trialEndsAt) return null;
+  const [timeLeft, setTimeLeft] = useState("");
 
-  const now = new Date();
-  if (trialEndsAt <= now) return null;
+  useEffect(() => {
+    if (!trialEndsAt) return;
 
-  const daysRemaining = differenceInDays(trialEndsAt, now);
+    const intervalId = setInterval(() => {
+      const duration = intervalToDuration({
+        start: new Date(),
+        end: new Date(trialEndsAt),
+      });
 
-  const getMessage = () => {
-    if (daysRemaining > 1) {
-      return `Te quedan ${daysRemaining} días de prueba.`;
-    }
-    if (daysRemaining === 1) {
-      return "¡Mañana termina tu período de prueba!";
-    }
-    return "¡Hoy es el último día de tu prueba!";
-  };
+      if (new Date() > new Date(trialEndsAt)) {
+        setTimeLeft("Tu prueba ha finalizado.");
+        clearInterval(intervalId);
+        return;
+      }
+
+      const days = duration.days || 0;
+      const hours = duration.hours || 0;
+      const minutes = duration.minutes || 0;
+      const seconds = duration.seconds || 0;
+
+      setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [trialEndsAt]);
+
+  if (!timeLeft || !trialEndsAt) return null;
+  if (isSubscribed) return null;
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">
-      <p>
-        <strong>{getMessage()}</strong>
-      </p>
+      <div className="flex items-center gap-2 font-semibold">
+        <Clock className="w-5 h-5" />
+        <p>
+          Tu período de prueba termina en:{" "}
+          <span className="px-2 py-1 ml-1 font-mono text-base bg-white rounded-md text-primary">
+            {timeLeft}
+          </span>
+        </p>
+      </div>
       <Button
         asChild
         variant="secondary"
@@ -42,7 +64,7 @@ export default function TrialStatusBanner({
         className="bg-white text-primary hover:bg-white/90"
       >
         <Link href="/subscribe?reason=trial">
-          Suscribirse <ArrowRight className="w-4 h-4" />
+          Suscribirse <ArrowRight className="w-4 h-4 ml-2" />
         </Link>
       </Button>
     </div>

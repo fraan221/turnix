@@ -18,15 +18,22 @@ export default async function DashboardLayout({
     redirect("/complete-profile");
   }
 
-  const hasPaidSubscription = !!session.user.subscription;
-  const showTrialBanner = !hasPaidSubscription && session.user.trialEndsAt;
+  const hasActiveSubscription =
+    session.user.subscription?.status === "authorized";
+  const showTrialBanner =
+    !hasActiveSubscription &&
+    session.user.trialEndsAt &&
+    new Date(session.user.trialEndsAt) > new Date();
 
   return (
     <SidebarProvider>
       <DashboardSidebar />
       <SidebarInset>
         {showTrialBanner && (
-          <TrialStatusBanner trialEndsAt={session.user.trialEndsAt} />
+          <TrialStatusBanner
+            trialEndsAt={session.user.trialEndsAt}
+            isSubscribed={hasActiveSubscription}
+          />
         )}
         <SiteHeader />
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>

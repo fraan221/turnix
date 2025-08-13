@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
+import { revalidatePath } from "next/cache";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -57,6 +58,47 @@ export async function createSubscription(
     }
   } catch (error) {
     console.error("Error al crear suscripción en Mercado Pago:", error);
+    return { error: "Ocurrió un error al comunicarnos con Mercado Pago." };
+  }
+}
+
+export async function cancelSubscription(
+  mercadopagoSubscriptionId: string
+): Promise<{ error?: string; success?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "No autorizado." };
+  }
+
+  const subscriptionInDb = await prisma.subscription.findUnique({
+    where: { mercadopagoSubscriptionId },
+  });
+
+  if (subscriptionInDb?.userId !== session.user.id) {
+    return { error: "No tienes permiso para cancelar esta suscripción." };
+  }
+
+  try {
+    const preapproval = new PreApproval(client);
+    const result = await preapproval.update({
+      id: mercadopagoSubscriptionId,
+      body: {
+        status: "cancelled",
+      },
+    });
+
+    if (result.status === "cancelled") {
+      await prisma.subscription.update({
+        where: { mercadopagoSubscriptionId },
+        data: { status: "cancelled" },
+      });
+      revalidatePath("/dashboard/billing");
+      return { success: "Tu suscripción ha sido cancelada con éxito." };
+    } else {
+      return { error: "Mercado Pago no pudo procesar la cancelación." };
+    }
+  } catch (error) {
+    console.error("Error al cancelar la suscripción en Mercado Pago:", error);
     return { error: "Ocurrió un error al comunicarnos con Mercado Pago." };
   }
 }
