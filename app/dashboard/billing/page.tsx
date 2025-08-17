@@ -2,7 +2,9 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ActiveSubscriptionCard from "@/components/billing/ActiveSubscriptionCard";
-import TrialOrInactiveCard from "@/components/billing/TrialOrInactiveCard";
+import SubscriptionStatus from "@/components/billing/SubscriptionStatus";
+import SubscriptionButton from "@/components/billing/SubscriptionButton";
+import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
 
 export default async function BillingPage() {
   const session = await auth();
@@ -25,15 +27,21 @@ export default async function BillingPage() {
   const isInTrial =
     !hasActiveSubscription && user.trialEndsAt && user.trialEndsAt > new Date();
   const isCancelled = user.subscription?.status === "cancelled";
+  const shouldShowSubscribeCta = isInTrial || isCancelled || !user.subscription;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
       {hasActiveSubscription && user.subscription && (
         <ActiveSubscriptionCard subscription={user.subscription} />
       )}
 
-      {(isInTrial || isCancelled || !user.subscription) &&
-        !hasActiveSubscription && <TrialOrInactiveCard user={user} />}
+      {shouldShowSubscribeCta && !hasActiveSubscription && (
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <SubscriptionStatus trialEndsAt={user.trialEndsAt} />
+          <SubscriptionFeatures />
+          <SubscriptionButton isTrial={!!isInTrial} />
+        </div>
+      )}
     </div>
   );
 }

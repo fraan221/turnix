@@ -64,7 +64,7 @@ export default function TrialStatusBanner({
         className="bg-white text-primary hover:bg-white/90"
       >
         <Link href="/subscribe?reason=trial">
-          Suscribirse <ArrowRight className="w-4 h-4 ml-2" />
+          Suscribirme <ArrowRight className="w-4 h-4 ml-2" />
         </Link>
       </Button>
     </div>

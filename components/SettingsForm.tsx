@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { type FormState, updateUserProfile } from "@/actions/dashboard.actions";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { Clipboard, Check, Save, Loader2Icon } from "lucide-react";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { AvatarCropper } from "./AvatarCropper";
+import { useRouter } from "next/navigation";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -25,12 +26,12 @@ function SubmitButton() {
     <Button type="submit" className="w-full mt-4" disabled={pending}>
       {pending ? (
         <>
-          <Loader2Icon className="w-4 h-4 animate-spin" />
+          <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
           <span>Guardando...</span>
         </>
       ) : (
         <>
-          <Save className="w-4 h-4" />
+          <Save className="w-4 h-4 mr-2" />
           <span>Guardar cambios</span>
         </>
       )}
@@ -56,46 +57,52 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [isCopied, setIsCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-  const [croppedImage, setCroppedImage] = useState<File | null>(null);
+  const croppedImageRef = useRef<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
   const formStateRef = useRef<FormState>(initialState);
+  const router = useRouter();
 
   useEffect(() => {
-    if (state !== formStateRef.current) {
-      formStateRef.current = state;
+    const handleStateChange = async () => {
+      if (state !== formStateRef.current) {
+        formStateRef.current = state;
 
-      if (state.success) {
-        toast.success("¡Perfil Actualizado!", {
-          description: state.success,
-        });
-
-        const dataToUpdate: any = {};
-        if (state.newImageUrl) dataToUpdate.image = state.newImageUrl;
-        if (state.newName) dataToUpdate.name = state.newName;
-        if (state.newSlug)
-          dataToUpdate.barbershop = {
-            ...session?.user.barbershop,
-            slug: state.newSlug,
-          };
-
-        if (Object.keys(dataToUpdate).length > 0) {
-          update(dataToUpdate);
-        }
-      }
-
-      if (state.error) {
-        if (typeof state.error === "string") {
-          toast.error("Error al guardar", { description: state.error });
-        } else {
-          Object.values(state.error).forEach((errArray) => {
-            (errArray as string[]).forEach((err: string) => {
-              toast.error("Error", { description: err });
-            });
+        if (state.success) {
+          toast.success("¡Perfil Actualizado!", {
+            description: state.success,
           });
+
+          const dataToUpdate: any = {};
+          if (state.newImageUrl) dataToUpdate.image = state.newImageUrl;
+          if (state.newName) dataToUpdate.name = state.newName;
+          if (state.newSlug)
+            dataToUpdate.barbershop = {
+              ...session?.user.barbershop,
+              slug: state.newSlug,
+            };
+
+          if (Object.keys(dataToUpdate).length > 0) {
+            await update(dataToUpdate);
+            router.refresh();
+          }
+        }
+
+        if (state.error) {
+          if (typeof state.error === "string") {
+            toast.error("Error al guardar", { description: state.error });
+          } else {
+            Object.values(state.error).forEach((errArray) => {
+              (errArray as string[]).forEach((err: string) => {
+                toast.error("Error de validación", { description: err });
+              });
+            });
+          }
         }
       }
-    }
-  }, [state, session, update]);
+    };
+
+    handleStateChange();
+  }, [state, session, update, router]);
 
   const handleCopy = () => {
     if (!slugValue) {
@@ -111,12 +118,14 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    const resetInput = () => {
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setAvatarPreview(user.image);
-    };
+    if (!file) return;
 
-    if (!file) {
+    const MAX_FILE_SIZE_MB = 4;
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast.error("Imagen demasiado grande", {
+        description: `El archivo no puede superar los ${MAX_FILE_SIZE_MB}MB.`,
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -124,7 +133,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
       toast.error("Formato no válido", {
         description: "Por favor, sube una imagen JPG o PNG.",
       });
-      resetInput();
       return;
     }
     const reader = new FileReader();
@@ -139,7 +147,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
       const croppedFile = new File([imageBlob], "avatar.png", {
         type: "image/png",
       });
-      setCroppedImage(croppedFile);
+      croppedImageRef.current = croppedFile;
       setAvatarPreview(URL.createObjectURL(croppedFile));
     }
     setImageToCrop(null);
@@ -147,13 +155,13 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   };
 
   const handleFormAction = (formData: FormData) => {
-    if (croppedImage) {
-      formData.set("avatar", croppedImage);
+    if (croppedImageRef.current) {
+      formData.set("avatar", croppedImageRef.current);
     } else {
       formData.delete("avatar");
     }
     formAction(formData);
-  };
+};
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -165,7 +173,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           if (fileInputRef.current) fileInputRef.current.value = "";
         }}
       />
-
       <form
         action={handleFormAction}
         className="flex flex-col items-center justify-center max-w-lg mx-auto space-y-4"
@@ -234,9 +241,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => {
-                    handleCopy();
-                  }}
+                  onClick={handleCopy}
                   className="border-l-0 rounded-l-none"
                   aria-label="Copiar URL"
                   disabled={!user.barbershop?.slug}
@@ -256,7 +261,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           <div className="text-xs text-muted-foreground">
             <p>
               {user.barbershop?.slug
-                ? "Tu URL pública ya no se puede cambiar. Esta accion se completa una unica vez."
+                ? "Tu URL pública ya no se puede cambiar. Esta acción se completa una única vez."
                 : "Usa minúsculas y guiones medios (-). ¡Esta acción es permanente!"}
             </p>
           </div>

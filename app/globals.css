@@ -163,3 +163,8 @@
 .fc .fc-button {
   @apply h-10 px-4 py-2 text-sm font-medium;
 }
+
+/* Estilos para las cabeceras de día en formato vertical (Inicial / Número) */
+.fc .fc-day-header-vertical .fc-col-header-cell-cushion {
+  @apply flex flex-col items-center py-1;
+}

@@ -3,9 +3,9 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { put } from "@vercel/blob";
 import { BookingStatus, Barbershop } from "@prisma/client";
 import { z } from "zod";
+import { put } from '@vercel/blob'
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -313,7 +313,17 @@ export async function updateUserProfile(
   const userId = session.user.id;
 
   try {
-    const avatarFile = formData.get("avatar") as File;
+    const avatarFile = formData.get("avatar") as File | null;
+    let avatarUrl: string | undefined = undefined;
+
+    if (avatarFile && avatarFile.size > 0) {
+      const blob = await put(avatarFile.name, avatarFile, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      avatarUrl = blob.url;
+    }
+
     const fieldsToValidate = {
       name: formData.get("name"),
       barbershopName: formData.get("barbershopName"),
@@ -360,26 +370,6 @@ export async function updateUserProfile(
       }
     }
 
-    let avatarUrl: string | undefined = undefined;
-    if (avatarFile && avatarFile.size > 0) {
-      if (!["image/jpeg", "image/png"].includes(avatarFile.type)) {
-        return { success: null, error: "Formato de imagen no válido." };
-      }
-      if (avatarFile.size > 4 * 1024 * 1024) {
-        return {
-          success: null,
-          error: "La imagen es demasiado grande. El límite es 4MB.",
-        };
-      }
-
-      const blob = await put(avatarFile.name, avatarFile, {
-        access: "public",
-        addRandomSuffix: true,
-        cacheControlMaxAge: 60 * 60 * 24 * 365,
-      });
-      avatarUrl = blob.url;
-    }
-
     const [updatedUser, finalBarbershop] = await prisma.$transaction(
       async (tx) => {
         let barbershop: Barbershop;
@@ -411,10 +401,6 @@ export async function updateUserProfile(
         return [user, barbershop];
       }
     );
-
-    revalidatePath("/dashboard/settings");
-    revalidatePath("/dashboard");
-    revalidatePath(`/${finalBarbershop.slug}`);
 
     return {
       success: "¡Perfil actualizado con éxito!",

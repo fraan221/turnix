@@ -8,8 +8,6 @@ import { z } from "zod";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

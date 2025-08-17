@@ -9,6 +9,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import { CalendarViewSwitcher } from "./CalendarViewSwitcher";
 import { Booking, Service, Client, BookingStatus } from "@prisma/client";
 import { useWindowSize } from "@/lib/hooks";
 import BookingDetailsDialog from "./BookingDetailsDialog";
@@ -24,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const initialState: FormState = {
   error: null,
@@ -35,6 +36,8 @@ type BookingWithDetails = Booking & {
   service: Service;
   client: Client;
 };
+
+type CalendarView = "timeGridDay" | "timeGridWeek" | "dayGridMonth";
 
 interface BarberCalendarProps {
   bookings: BookingWithDetails[];
@@ -76,6 +79,38 @@ export default function BarberCalendar({
   const [state, formAction] = useFormState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const calendarRef = useRef<FullCalendar>(null);
+  const [view, setView] = useState<CalendarView>(isMobile ? 'timeGridDay' : 'timeGridWeek');
+  
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  
+  const [calendarTitle, setCalendarTitle] = useState("");
+
+  useEffect(() => {
+    calendarRef.current?.getApi().changeView(view);
+  }, [view]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile || touchStartX === null) return;
+    const currentX = e.targetTouches[0].clientX;
+    const deltaX = currentX - touchStartX;
+    const calendarApi = calendarRef.current?.getApi();
+
+    if (Math.abs(deltaX) > 80) {
+      if (deltaX > 0) {
+        calendarApi?.prev();
+      } else {
+        calendarApi?.next();
+      }
+      setTouchStartX(null);
+    }
+  };
+
   useEffect(() => {
     const handleNewBooking = () => {
       router.refresh();
@@ -108,6 +143,14 @@ export default function BarberCalendar({
       formRef.current?.reset();
     }
   }, [state]);
+
+  const handlePrev = () => calendarRef.current?.getApi().prev();
+  const handleNext = () => calendarRef.current?.getApi().next();
+  const handleToday = () => calendarRef.current?.getApi().today();
+
+  const handleDatesSet = (dateInfo: any) => {
+      setCalendarTitle(dateInfo.view.title);
+  };
 
   const events = bookings
     .filter((booking) => booking.status !== "CANCELLED")
@@ -147,19 +190,88 @@ export default function BarberCalendar({
     setDetailsModalOpen(true);
   };
 
-  const initialView = isMobile ? "timeGridDay" : "timeGridWeek";
+  const calendarOptions = {
+    headerToolbar: false,
+    views: {
+      dayGridMonth: {
+        titleFormat: { month: 'long' },
+        dayCellContent: (arg: any) => (
+          <div className="flex flex-col items-center justify-center h-full">
+            <span className="text-xs text-muted-foreground">{arg.date.toLocaleDateString('es-AR', { weekday: 'narrow' })}</span>
+            <span>{arg.dayNumberText.replace(' de', '')}</span>
+          </div>
+        ),
+      },
+      timeGridWeek: {
+        titleFormat: { month: 'short', day: 'numeric' },
+        dayHeaderFormat: { weekday: 'narrow', day: 'numeric', omitCommas: true },
+        dayHeaderContent: (arg: any) => (
+          // Vista SEMANA: Mantiene la estructura compleja de DIV + FLEX
+          <div className="flex flex-col items-center">
+            <span className="text-xs">{arg.date.toLocaleDateString('es-AR', { weekday: 'narrow' })}</span>
+            <span className="text-lg">{arg.date.getDate()}</span>
+          </div>
+        )
+      },
+      timeGridDay: {
+        titleFormat: { month: 'long' },
+        dayHeaderFormat: { weekday: 'long' },
+        dayHeaderContent: (arg: any) => {
+          return (
+            <span className="text-base font-normal">
+              {arg.date.toLocaleDateString('es-AR', { weekday: 'long' })}
+            </span>
+          )
+        }
+      },
+    },
+    buttonText: {
+      today: "Hoy",
+      month: "Mes",
+      week: "Semana",
+      day: "Día",
+    },
+    slotLabelContent: (arg: any) => `${arg.text} hs`,
+  } as const;
 
   return (
     <>
-      <div className="p-2 bg-white border rounded-lg border-black/15 md:p-4">
+      <div 
+        className="bg-white "
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {!isMobile && (
+              <>
+                <Button variant="secondary" size="icon" onClick={handlePrev}>
+                  <ChevronLeft />
+                </Button>
+                <Button variant="secondary" size="icon" onClick={handleNext}>
+                  <ChevronRight />
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={handleToday}>
+              Hoy
+            </Button>
+          </div>
+
+          <h1 className="text-xl font-bold text-center capitalize font-heading">
+            {calendarTitle}
+          </h1>
+
+          <div className="flex justify-end">
+            <CalendarViewSwitcher currentView={view} onViewChange={setView} />
+          </div>
+        </div>
+        
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={initialView}
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay",
-          }}
+          {...calendarOptions}
+          datesSet={handleDatesSet}
           events={events}
           editable={true}
           selectable={true}
@@ -167,24 +279,11 @@ export default function BarberCalendar({
           eventClick={handleEventClick}
           allDaySlot={false}
           locale="es"
-          buttonText={{
-            today: "Hoy",
-            month: "Mes",
-            week: "Semana",
-            day: "Día",
-          }}
           height="auto"
           slotMinTime="08:00:00"
           slotMaxTime="23:00:00"
           nowIndicator={true}
-          titleFormat={{ year: "numeric", month: "long" }}
-          dayHeaderFormat={{ weekday: "short", day: "numeric" }}
-          slotLabelFormat={{
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }}
-          slotLabelContent={(arg) => `${arg.text} hs`}
+          navLinks={true}
         />
       </div>
 
