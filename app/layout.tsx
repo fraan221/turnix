@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "Turnix - Agenda Online y Sistema de Turnos para Barberías",
   description:
     "Simplifica la gestión de tu barbería con Turnix. Ofrece a tus clientes una agenda online para reservar turnos 24/7. Ideal para barberos y estilistas.",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
