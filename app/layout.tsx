@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -14,10 +14,13 @@ export const metadata: Metadata = {
   description:
     "Simplifica la gestión de tu barbería con Turnix. Ofrece a tus clientes una agenda online para reservar turnos 24/7. Ideal para barberos y estilistas.",
   manifest: "/manifest.json",
-  themeColor: "#000000",
   icons: {
     apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
