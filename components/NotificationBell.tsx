@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Bell } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { getNotifications } from "@/actions/notification.actions";
+import {
+  getNotifications,
+  markNotificationsAsRead,
+} from "@/actions/notification.actions";
 import type { Notification } from "@prisma/client";
 
 export function NotificationBell() {
@@ -54,12 +57,20 @@ export function NotificationBell() {
     };
   }, [session?.user?.id]);
 
+  const handleBellClick = () => {
+    if (unreadCount > 0) {
+      markNotificationsAsRead();
+      setUnreadCount(0);
+    }
+  };
+
   return (
     <Button
       variant="ghost"
       size="icon"
       aria-label="Abrir notificaciones"
       asChild
+      onClick={handleBellClick}
     >
       <Link href="/dashboard/notifications">
         <div className="relative">

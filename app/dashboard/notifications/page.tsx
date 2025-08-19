@@ -1,12 +1,5 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { NotificationList } from "./components/NotificationList";
 
 export default async function NotificationsPage() {

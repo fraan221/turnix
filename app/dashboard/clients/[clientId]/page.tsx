@@ -7,10 +7,56 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarClock, History, MessageSquare } from "lucide-react";
-import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
+import { formatPhoneNumberForWhatsApp, cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Booking, BookingStatus, Service } from "@prisma/client";
 
 interface ClientDetailPageProps {
   params: { clientId: string };
+}
+
+type BookingWithService = Booking & {
+  service: Service;
+};
+
+function BookingListItem({
+  booking,
+  formatString,
+}: {
+  booking: BookingWithService;
+  formatString: string;
+}) {
+  const statusMap = {
+    [BookingStatus.COMPLETED]: {
+      text: "Completado",
+      className: "bg-green-100 text-green-800",
+    },
+    [BookingStatus.CANCELLED]: {
+      text: "Cancelado",
+      className: "bg-red-100 text-red-800",
+    },
+    [BookingStatus.SCHEDULED]: {
+      text: "Próximo",
+      className: "bg-blue-100 text-blue-800",
+    },
+  };
+
+  const status = statusMap[booking.status];
+
+  return (
+    <li
+      key={booking.id}
+      className={cn("text-sm", booking.status === "CANCELLED")}
+    >
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">{booking.service.name}</p>
+        {status && <Badge className={status.className}>{status.text}</Badge>}
+      </div>
+      <p className="capitalize text-muted-foreground">
+        {format(new Date(booking.startTime), formatString, { locale: es })}
+      </p>
+    </li>
+  );
 }
 
 export default async function ClientDetailPage({
@@ -41,11 +87,17 @@ export default async function ClientDetailPage({
   }
 
   const now = new Date();
+
   const turnosFuturos = client.bookings
-    .filter((booking) => new Date(booking.startTime) > now)
+    .filter(
+      (booking) =>
+        new Date(booking.startTime) > now && booking.status === "SCHEDULED"
+    )
     .reverse();
+
   const historialDeTurnos = client.bookings.filter(
-    (booking) => new Date(booking.startTime) <= now
+    (booking) =>
+      new Date(booking.startTime) <= now || booking.status !== "SCHEDULED"
   );
 
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(
@@ -89,16 +141,11 @@ export default async function ClientDetailPage({
               {turnosFuturos.length > 0 ? (
                 <ul className="space-y-3">
                   {turnosFuturos.map((booking) => (
-                    <li key={booking.id} className="text-sm">
-                      <p className="font-semibold">{booking.service.name}</p>
-                      <p className="capitalize text-muted-foreground">
-                        {format(
-                          new Date(booking.startTime),
-                          "EEEE d 'de' MMMM, HH:mm 'hs'",
-                          { locale: es }
-                        )}
-                      </p>
-                    </li>
+                    <BookingListItem
+                      key={booking.id}
+                      booking={booking}
+                      formatString="EEEE d 'de' MMMM, HH:mm 'hs'"
+                    />
                   ))}
                 </ul>
               ) : (
@@ -120,16 +167,11 @@ export default async function ClientDetailPage({
               {historialDeTurnos.length > 0 ? (
                 <ul className="space-y-3">
                   {historialDeTurnos.map((booking) => (
-                    <li key={booking.id} className="text-sm">
-                      <p className="font-semibold">{booking.service.name}</p>
-                      <p className="text-muted-foreground">
-                        {format(
-                          new Date(booking.startTime),
-                          "d/MM/yyyy - HH:mm 'hs'",
-                          { locale: es }
-                        )}
-                      </p>
-                    </li>
+                    <BookingListItem
+                      key={booking.id}
+                      booking={booking}
+                      formatString="d/MM/yyyy - HH:mm 'hs'"
+                    />
                   ))}
                 </ul>
               ) : (
