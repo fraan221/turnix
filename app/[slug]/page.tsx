@@ -2,8 +2,10 @@ import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import BookingComponent from "@/components/BookingComponent";
+import { BookingWizard } from "@/components/booking/BookingWizard";
 import type { Metadata } from "next";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 
 interface BarberPublicPageProps {
   params: {
@@ -72,6 +74,10 @@ export default async function BarberPublicPage({
 
   const barber = barbershop.owner;
 
+  const whatsappUrl = barber.phone
+    ? `https://wa.me/${formatPhoneNumberForWhatsApp(barber.phone)}`
+    : null;
+
   return (
     <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
       <div className="w-full max-w-3xl space-y-8">
@@ -89,9 +95,20 @@ export default async function BarberPublicPage({
             <CardTitle className="text-3xl font-bold">
               {barbershop.name}
             </CardTitle>
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 transition-colors rounded-full hover:bg-muted"
+                aria-label="Contactar por WhatsApp"
+              >
+                <WhatsAppIcon className="w-6 h-6 text-green-500" />
+              </a>
+            )}
           </CardHeader>
         </Card>
-        <BookingComponent services={barbershop.services} barberId={barber.id} />
+        <BookingWizard services={barbershop.services} barberId={barber.id} />
       </div>
     </main>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -5,9 +6,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 
-export default function BookingConfirmedPage() {
+interface BookingConfirmedPageProps {
+  searchParams: {
+    client?: string;
+    phone?: string;
+  };
+}
+
+export default function BookingConfirmedPage({
+  searchParams,
+}: BookingConfirmedPageProps) {
+  const { client, phone } = searchParams;
+
+  const message = `Hola! Soy ${client || "un cliente"}, acabo de agendar un turno y quería confirmar mi asistencia. ¡Gracias!`;
+  const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(phone || "")}?text=${encodeURIComponent(message)}`;
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-muted/40 md:p-12">
       <Card className="w-full max-w-lg text-center">
@@ -19,14 +37,18 @@ export default function BookingConfirmedPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="py-4 space-y-2 text-left border-t border-b">
-            <p className="text-sm">
-              Recibirás un recordatorio por WhatsApp antes de tu turno.
+          <div className="py-6 space-y-4 text-center border-t border-b">
+            <h3 className="font-semibold">Confirma tu asistencia</h3>
+            <p className="text-sm text-muted-foreground">
+              Para asegurar tu turno, por favor envía un mensaje de confirmación
+              al barbero.
             </p>
-            <p className="text-sm">
-              Si necesitas cancelar o reprogramar, por favor contacta
-              directamente a la barbería.
-            </p>
+            <Button asChild size="lg">
+              <Link href={whatsappUrl} target="_blank">
+                <WhatsAppIcon className="w-5 h-5 mr-2" />
+                Confirmar por WhatsApp
+              </Link>
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground">
             ¡Muchas gracias por confiar en nosotros!

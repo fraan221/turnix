@@ -25,6 +25,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
           gte: startOfDay(date),
           lt: endOfDay(date),
         },
+        status: { not: "CANCELLED" },
       },
       include: {
         service: {
@@ -109,6 +110,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       where: { id: barberId },
       select: {
         id: true,
+        phone: true,
         barbershopId: true,
         barbershop: {
           select: {
@@ -186,7 +188,13 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       revalidatePath(`/${barber.barbershop.slug}`);
     }
 
-    return { success: "¡Turno confirmado con éxito!" };
+    return {
+      success: "¡Turno confirmado con éxito!",
+      bookingDetails: {
+        clientName: client.name,
+        barberPhone: barber.phone || "",
+      },
+    };
   } catch (error: any) {
     console.error("Error creating booking:", error);
     return {
