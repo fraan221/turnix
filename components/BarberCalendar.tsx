@@ -80,15 +80,13 @@ export default function BarberCalendar({
   const formRef = useRef<HTMLFormElement>(null);
 
   const calendarRef = useRef<FullCalendar>(null);
-  const [view, setView] = useState<CalendarView>(isMobile ? 'timeGridDay' : 'timeGridWeek');
-  
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  
-  const [calendarTitle, setCalendarTitle] = useState("");
+  const [view, setView] = useState<CalendarView>(
+    isMobile ? "timeGridDay" : "timeGridWeek"
+  );
 
-  useEffect(() => {
-    calendarRef.current?.getApi().changeView(view);
-  }, [view]);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const [calendarTitle, setCalendarTitle] = useState("");
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
@@ -149,7 +147,11 @@ export default function BarberCalendar({
   const handleToday = () => calendarRef.current?.getApi().today();
 
   const handleDatesSet = (dateInfo: any) => {
-      setCalendarTitle(dateInfo.view.title);
+    const newView = dateInfo.view.type as CalendarView;
+    if (view !== newView) {
+      setView(newView);
+    }
+    setCalendarTitle(dateInfo.view.title);
   };
 
   const events = bookings
@@ -194,35 +196,42 @@ export default function BarberCalendar({
     headerToolbar: false,
     views: {
       dayGridMonth: {
-        titleFormat: { month: 'long' },
+        titleFormat: { month: "long" },
         dayCellContent: (arg: any) => (
           <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-xs text-muted-foreground">{arg.date.toLocaleDateString('es-AR', { weekday: 'narrow' })}</span>
-            <span>{arg.dayNumberText.replace(' de', '')}</span>
+            <span className="text-xs text-muted-foreground">
+              {arg.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
+            </span>
+            <span>{arg.dayNumberText.replace(" de", "")}</span>
           </div>
         ),
       },
       timeGridWeek: {
-        titleFormat: { month: 'short', day: 'numeric' },
-        dayHeaderFormat: { weekday: 'narrow', day: 'numeric', omitCommas: true },
+        titleFormat: { month: "short", day: "numeric" },
+        dayHeaderFormat: {
+          weekday: "narrow",
+          day: "numeric",
+          omitCommas: true,
+        },
         dayHeaderContent: (arg: any) => (
-          // Vista SEMANA: Mantiene la estructura compleja de DIV + FLEX
           <div className="flex flex-col items-center">
-            <span className="text-xs">{arg.date.toLocaleDateString('es-AR', { weekday: 'narrow' })}</span>
+            <span className="text-xs">
+              {arg.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
+            </span>
             <span className="text-lg">{arg.date.getDate()}</span>
           </div>
-        )
+        ),
       },
       timeGridDay: {
-        titleFormat: { month: 'long' },
-        dayHeaderFormat: { weekday: 'long' },
+        titleFormat: { month: "long" },
+        dayHeaderFormat: { weekday: "long" },
         dayHeaderContent: (arg: any) => {
           return (
             <span className="text-base font-normal">
-              {arg.date.toLocaleDateString('es-AR', { weekday: 'long' })}
+              {arg.date.toLocaleDateString("es-AR", { weekday: "long" })}
             </span>
-          )
-        }
+          );
+        },
       },
     },
     buttonText: {
@@ -236,7 +245,7 @@ export default function BarberCalendar({
 
   return (
     <>
-      <div 
+      <div
         className="bg-white "
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -263,10 +272,15 @@ export default function BarberCalendar({
           </h1>
 
           <div className="flex justify-end">
-            <CalendarViewSwitcher currentView={view} onViewChange={setView} />
+            <CalendarViewSwitcher
+              currentView={view}
+              onViewChange={(newView) => {
+                calendarRef.current?.getApi().changeView(newView);
+              }}
+            />
           </div>
         </div>
-        
+
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -277,6 +291,13 @@ export default function BarberCalendar({
           selectable={true}
           select={handleDateSelect}
           eventClick={handleEventClick}
+          navLinkDayClick={(date) => {
+            const calendarApi = calendarRef.current?.getApi();
+            if (calendarApi) {
+              calendarApi.changeView("timeGridDay", date);
+              setView("timeGridDay");
+            }
+          }}
           allDaySlot={false}
           locale="es"
           height="auto"

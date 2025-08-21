@@ -161,7 +161,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
       formData.delete("avatar");
     }
     formAction(formData);
-};
+  };
 
   return (
     <TooltipProvider delayDuration={100}>

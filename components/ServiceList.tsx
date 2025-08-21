@@ -1,39 +1,40 @@
 "use client";
-
+// NOTA: TODO - AGREGAR LA ELIMINACION DE UN SERVICIO PERO PARA MAS ADELANTE
 import { Service } from "@prisma/client";
 import { Button } from "./ui/button";
-import { deleteService } from "@/actions/dashboard.actions";
-import { useTransition } from "react";
-import { toast } from "sonner";
-import { Trash2, Pencil } from "lucide-react";
+// import { deleteService } from "@/actions/service.actions";
+// import { useTransition } from "react";
+// import { toast } from "sonner";
+import { Pencil } from "lucide-react";
+// import { Trash2 } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import Link from "next/link";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+// import {
+//   AlertDialog,
+//   AlertDialogAction,
+//   AlertDialogCancel,
+//   AlertDialogContent,
+//   AlertDialogDescription,
+//   AlertDialogFooter,
+//   AlertDialogHeader,
+//   AlertDialogTitle,
+//   AlertDialogTrigger,
+// } from "@/components/ui/alert-dialog";
 
 function ServiceItem({ service }: { service: Service }) {
-  const [isPending, startTransition] = useTransition();
+  // const [isPending, startTransition] = useTransition();
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      const result = await deleteService(service.id);
-      if (result?.success) {
-        toast.success("¡Éxito!", { description: result.success });
-      }
-      if (result?.error) {
-        toast.error("Error", { description: result.error });
-      }
-    });
-  };
+  // const handleDelete = () => {
+  //   startTransition(async () => {
+  //     const result = await deleteService(service.id);
+  //     if (result?.success) {
+  //       toast.success("¡Éxito!", { description: result.success });
+  //     }
+  //     if (result?.error) {
+  //       toast.error("Error", { description: result.error });
+  //     }
+  //   });
+  // };
 
   return (
     <li className="flex items-center justify-between p-4 border rounded-lg">
@@ -61,6 +62,7 @@ function ServiceItem({ service }: { service: Service }) {
           </Button>
         </Link>
 
+        {/* 
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" size="icon">
@@ -88,6 +90,7 @@ function ServiceItem({ service }: { service: Service }) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        */}
       </div>
     </li>
   );

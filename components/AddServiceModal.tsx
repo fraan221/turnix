@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { toast } from "sonner";
-import { createService } from "@/actions/dashboard.actions";
+import { ServiceInputSchema, ServiceSchema } from "@/lib/schemas";
+import { createService } from "@/actions/service.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,64 +21,84 @@ import {
   DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Loader2Icon } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import React from "react";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="mb-3">
-      {pending ? (
-        <>
-          <Loader2Icon className="w-4 h-4 animate-spin" />
-          Creando...
-        </>
-      ) : (
-        "Crear servicio"
-      )}
-    </Button>
-  );
-}
+type ServiceFormValues = z.infer<typeof ServiceSchema>;
+type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
+
+const formatPrice = (value: string): string => {
+  const cleanValue = value.replace(/[^\d]/g, '');
+  
+  if (!cleanValue) return '';
+  
+  if (cleanValue.length > 6) {
+    return formatPrice(cleanValue.slice(0, 6));
+  }
+  
+  const formattedValue = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  return formattedValue;
+};
+
+const cleanPriceValue = (formattedValue: string): string => {
+  return formattedValue.replace(/\./g, '');
+};
 
 export default function AddServiceModal() {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(createService, null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const [displayPrice, setDisplayPrice] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [priceDisplay, setPriceDisplay] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid },
+    reset,
+    setValue,
+    trigger,
+  } = useForm<ServiceFormInput>({
+    resolver: zodResolver(ServiceInputSchema),
+    mode: "onChange",
+  });
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numericValue = e.target.value.replace(/\D/g, "");
-
-    if (numericValue === "") {
-      setDisplayPrice("");
-      return;
-    }
-
-    const formattedValue = new Intl.NumberFormat("es-AR").format(
-      Number(numericValue)
-    );
-
-    setDisplayPrice(formattedValue);
+    const inputValue = e.target.value;
+    const formattedValue = formatPrice(inputValue);
+    
+    setPriceDisplay(formattedValue);
+    
+    const cleanValue = cleanPriceValue(formattedValue);
+    setValue('price', cleanValue);
+    
+    trigger('price');
   };
 
-  useEffect(() => {
-    if (state?.success) {
-      toast.success("¡Éxito!", { description: state.success });
-      setOpen(false);
-      setDisplayPrice("");
-    }
-    if (state?.error) {
-      let errorMessage = "Ocurrió un error inesperado.";
-      if (typeof state.error === "string") {
-        errorMessage = state.error;
-      } else {
-        const errorValues = Object.values(state.error).flat();
-        if (errorValues.length > 0) {
-          errorMessage = errorValues[0] as string;
-        }
+  const onSubmit = (data: ServiceFormInput) => {
+    startTransition(async () => {
+      const serviceData = {
+        name: data.name,
+        price: typeof data.price === "string" ? parseFloat(data.price) : data.price,
+        durationInMinutes: data.durationInMinutes 
+          ? (typeof data.durationInMinutes === "string" 
+              ? parseInt(data.durationInMinutes, 10) 
+              : data.durationInMinutes)
+          : null,
+        description: data.description,
+      };
+
+      const result = await createService(serviceData);
+      if (result?.success) {
+        toast.success("¡Éxito!", { description: result.success });
+        reset();
+        setPriceDisplay('');
+        setOpen(false);
       }
-      toast.error("Error", { description: errorMessage });
-    }
-  }, [state]);
+      if (result?.error) {
+        toast.error("Error", { description: result.error });
+      }
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -92,50 +115,76 @@ export default function AddServiceModal() {
             Completa los datos para añadir un nuevo servicio a tu lista.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction} className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre del Servicio</Label>
             <Input
               id="name"
-              name="name"
               placeholder="Ej: Corte Fade"
-              required
+              {...register("name")}
+              className={errors.name ? "border-red-500 focus:border-red-500" : ""}
             />
+            {errors.name && (
+              <p className="flex items-center gap-1 text-xs text-red-500">
+                <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                {errors.name.message}
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="price-display">Precio ($)</Label>
+            <Label htmlFor="price">Precio ($)</Label>
             <Input
-              id="price-display"
-              name="price-display"
+              id="price"
               type="text"
-              inputMode="decimal"
               placeholder="Ej: 10.000"
-              required
-              value={displayPrice}
+              value={priceDisplay}
               onChange={handlePriceChange}
+              onBlur={() => {
+                const cleanValue = cleanPriceValue(priceDisplay);
+                setValue('price', cleanValue);
+                trigger('price');
+              }}
+              className={errors.price ? "border-red-500 focus:border-red-500" : ""}
             />
-            <input
-              type="hidden"
-              name="price"
-              value={displayPrice.replace(/\./g, "")}
-            />
+            {errors.price && (
+              <p className="flex items-center gap-1 text-xs text-red-500">
+                <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                {errors.price.message}
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="duration">Duración (minutos) (Opcional)</Label>
+            <Label htmlFor="durationInMinutes">
+              Duración (minutos) (Opcional)
+            </Label>
             <Input
-              id="duration"
-              name="duration"
+              id="durationInMinutes"
               type="number"
               placeholder="Ej: 30"
+              {...register("durationInMinutes")}
+              className={errors.durationInMinutes ? "border-red-500 focus:border-red-500" : ""}
             />
+            {errors.durationInMinutes && (
+              <p className="flex items-center gap-1 text-xs text-red-500">
+                <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                {errors.durationInMinutes.message}
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">Descripción (Opcional)</Label>
             <Textarea
               id="description"
-              name="description"
               placeholder="Describe brevemente el servicio..."
+              {...register("description")}
+              className={errors.description ? "border-red-500 focus:border-red-500" : ""}
             />
+            {errors.description && (
+              <p className="flex items-center gap-1 text-xs text-red-500">
+                <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                {errors.description.message}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -143,7 +192,20 @@ export default function AddServiceModal() {
                 Cancelar
               </Button>
             </DialogClose>
-            <SubmitButton />
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || isPending || !isValid}
+              className="min-w-[120px]"
+            >
+              {isSubmitting || isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creando...
+                </>
+              ) : (
+                "Crear servicio"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { BookingStatus, Barbershop } from "@prisma/client";
 import { z } from "zod";
-import { put } from '@vercel/blob'
+import { put } from "@vercel/blob";
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -36,29 +36,6 @@ export type FormState = {
   newImageUrl?: string | null;
   newSlug?: string | null;
 };
-
-const ServiceSchema = z.object({
-  name: z
-    .string()
-    .min(1, "El nombre es requerido.")
-    .max(50, "El nombre no puede tener más de 50 caracteres."),
-  price: z.coerce
-    .number()
-    .positive("El precio debe ser un número positivo.")
-    .max(1000000, "El precio parece demasiado alto."),
-  durationInMinutes: z.coerce
-    .number()
-    .int()
-    .positive("La duración debe ser un número entero positivo.")
-    .max(1440, "La duración no puede ser de más de un día (1440 min).")
-    .optional()
-    .nullable(),
-  description: z
-    .string()
-    .max(200, "La descripción no puede tener más de 200 caracteres.")
-    .optional()
-    .nullable(),
-});
 
 const TimeBlockSchema = z
   .object({
@@ -121,115 +98,6 @@ const DayScheduleSchema = z
   );
 
 const ScheduleSchema = z.array(DayScheduleSchema);
-
-export async function createService(
-  prevState: any,
-  formData: FormData
-): Promise<FormState> {
-  const {
-    user,
-    barbershopId,
-    error: authError,
-  } = await getCurrentUserAndBarbershop();
-  if (authError) return { success: null, error: authError };
-
-  const validatedFields = ServiceSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
-
-  if (!validatedFields.success) {
-    return {
-      success: null,
-      error: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-
-  const { name, price, durationInMinutes, description } = validatedFields.data;
-
-  try {
-    await prisma.service.create({
-      data: {
-        name,
-        price,
-        durationInMinutes,
-        description,
-        barberId: user!.id,
-        barbershopId: barbershopId!,
-      },
-    });
-    revalidatePath("/dashboard/services");
-    return { success: `Servicio "${name}" creado con éxito.`, error: null };
-  } catch (error) {
-    console.error("Error al crear el servicio:", error);
-    return { success: null, error: "No se pudo crear el servicio." };
-  }
-}
-
-export async function updateService(
-  serviceId: string,
-  prevState: any,
-  formData: FormData
-): Promise<FormState> {
-  const { user, error: authError } = await getCurrentUserAndBarbershop();
-  if (authError) return { success: null, error: authError };
-
-  const serviceToUpdate = await prisma.service.findUnique({
-    where: { id: serviceId },
-  });
-
-  if (!serviceToUpdate || serviceToUpdate.barberId !== user!.id) {
-    return { success: null, error: "Operación no permitida." };
-  }
-
-  const validatedFields = ServiceSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
-
-  if (!validatedFields.success) {
-    return {
-      success: null,
-      error: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-
-  const { name, price, durationInMinutes, description } = validatedFields.data;
-
-  try {
-    await prisma.service.update({
-      where: { id: serviceId },
-      data: { name, price, durationInMinutes, description },
-    });
-
-    revalidatePath("/dashboard/services");
-    return {
-      success: `Servicio "${name}" actualizado con éxito.`,
-      error: null,
-    };
-  } catch (error) {
-    console.error("Error al actualizar el servicio:", error);
-    return { success: null, error: "No se pudo actualizar el servicio." };
-  }
-}
-
-export async function deleteService(serviceId: string) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
-
-  try {
-    const service = await prisma.service.findUnique({
-      where: { id: serviceId },
-    });
-    if (service?.barberId !== user!.id) {
-      return { error: "No tienes permiso para borrar este servicio." };
-    }
-    await prisma.service.delete({ where: { id: serviceId } });
-    revalidatePath("/dashboard/services");
-    return { success: "Servicio eliminado con éxito." };
-  } catch (error) {
-    console.error("Error al eliminar el servicio:", error);
-    return { error: "No se pudo eliminar el servicio." };
-  }
-}
 
 type DaySchedule = {
   dayOfWeek: number;
