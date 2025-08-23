@@ -129,6 +129,7 @@ export default function BookingDetailsDialog({
     });
   };
 
+  const isFutureBooking = new Date(booking.startTime) > new Date();
   const currentStatus = statusMap[booking.status];
 
   return (
@@ -142,7 +143,12 @@ export default function BookingDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Vista principal del diálogo */}
+        {isFutureBooking && (
+          <div className="p-3 text-xs text-center border rounded-md text-primary">
+            Este es un turno futuro y aún no puede ser marcado como completado.
+          </div>
+        )}
+
         {!showAddNote && !showDeleteClientConfirm && (
           <div className="space-y-4">
             <div className="space-y-1 text-sm">
@@ -180,17 +186,48 @@ export default function BookingDetailsDialog({
               <Button
                 variant="destructive"
                 onClick={() => handleStatusChange(BookingStatus.CANCELLED)}
-                disabled={isPending || booking.status === "CANCELLED"}
+                disabled={
+                  isPending ||
+                  booking.status === "CANCELLED" ||
+                  booking.status === "COMPLETED"
+                }
               >
                 Cancelar Turno
               </Button>
-              <Button
-                variant="default"
-                onClick={() => handleStatusChange(BookingStatus.COMPLETED)}
-                disabled={isPending || booking.status === "COMPLETED"}
-              >
-                Marcar como Completado
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    disabled={
+                      isPending ||
+                      booking.status === "COMPLETED" ||
+                      isFutureBooking
+                    }
+                  >
+                    Marcar como Completado
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Confirmar turno?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Estás a punto de marcar este turno como completado. Esta
+                      acción registrará el servicio como finalizado.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Atrás</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        handleStatusChange(BookingStatus.COMPLETED)
+                      }
+                      disabled={isPending}
+                    >
+                      Sí, confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </DialogFooter>
           </div>
         )}

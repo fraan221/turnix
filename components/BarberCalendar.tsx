@@ -194,6 +194,11 @@ export default function BarberCalendar({
 
   const calendarOptions = {
     headerToolbar: false,
+    slotLabelFormat: {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    },
     views: {
       dayGridMonth: {
         titleFormat: { month: "long" },
@@ -323,7 +328,7 @@ export default function BarberCalendar({
             <input
               type="hidden"
               name="startTime"
-              value={selectedDateInfo?.startStr || ""}
+              value={selectedDateInfo?.start.toISOString() || ""}
             />
             <div>
               <Label htmlFor="clientName">Nombre del Cliente</Label>

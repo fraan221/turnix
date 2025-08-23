@@ -85,7 +85,6 @@ export function Step3_Confirmation({
 
   useEffect(() => {
     if (state?.success) {
-      setIsDialogOpen(false);
       toast.success("¡Reserva Exitosa!", { description: state.success });
 
       const queryParams = new URLSearchParams({

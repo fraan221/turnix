@@ -32,7 +32,7 @@ export default function BookingConfirmedPage({
         <CardHeader className="items-center">
           <CheckCircle2 className="w-16 h-16 mb-4 text-green-500" />
           <CardTitle className="text-3xl">¡Turno Confirmado!</CardTitle>
-          <CardDescription className="pt-2 text-lg text-muted-foreground">
+          <CardDescription className="pt-2 text-lg sr-only text-muted-foreground">
             Tu reserva ha sido agendada con éxito.
           </CardDescription>
         </CardHeader>
@@ -40,8 +40,8 @@ export default function BookingConfirmedPage({
           <div className="py-6 space-y-4 text-center border-t border-b">
             <h3 className="font-semibold">Confirma tu asistencia</h3>
             <p className="text-sm text-muted-foreground">
-              Para asegurar tu turno, por favor envía un mensaje de confirmación
-              al barbero.
+              Para asegurar tu turno, envía un mensaje de confirmación al
+              barbero.
             </p>
             <Button asChild size="lg">
               <Link href={whatsappUrl} target="_blank">

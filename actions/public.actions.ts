@@ -184,10 +184,6 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       newNotification
     );
 
-    if (barber?.barbershop?.slug) {
-      revalidatePath(`/${barber.barbershop.slug}`);
-    }
-
     return {
       success: "¡Turno confirmado con éxito!",
       bookingDetails: {
