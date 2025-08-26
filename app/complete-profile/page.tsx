@@ -26,7 +26,7 @@ export default async function CompleteProfilePage() {
           className="flex items-center self-center gap-2 font-semibold"
         >
           <Image
-            src="/logo.png"
+            src="/public/logo.png"
             alt="Logo de Turnix"
             width={32}
             height={32}
