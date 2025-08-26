@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarClock, History, MessageSquare } from "lucide-react";
+import { CalendarClock, History } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { formatPhoneNumberForWhatsApp, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Booking, BookingStatus, Service } from "@prisma/client";
@@ -114,7 +115,7 @@ export default async function ClientDetailPage({
         </div>
         <Link href={whatsappUrl} target="_blank">
           <Button>
-            <MessageSquare className="w-4 h-4 mr-2" />
+            <WhatsAppIcon />
             Contactar
           </Button>
         </Link>
