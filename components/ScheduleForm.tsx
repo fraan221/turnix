@@ -23,6 +23,7 @@ const daysOfWeek = [
 
 interface ScheduleFormProps {
   workingHours: WorkingHours[];
+  isReadOnly?: boolean;
 }
 
 type DaySchedule = {
@@ -32,7 +33,10 @@ type DaySchedule = {
   endTime: string;
 };
 
-export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
+export default function ScheduleForm({
+  workingHours,
+  isReadOnly,
+}: ScheduleFormProps) {
   const [schedule, setSchedule] = useState<DaySchedule[]>(() =>
     daysOfWeek.map((_, index) => {
       const dayData = workingHours.find((wh) => wh.dayOfWeek === index);
@@ -97,6 +101,7 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
                     onCheckedChange={(checked) =>
                       handleSwitchChange(index, checked)
                     }
+                    disabled={isReadOnly}
                   />
                   <Label
                     htmlFor={`switch-${index}`}
@@ -112,7 +117,7 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
                     onChange={(e) =>
                       handleTimeChange(index, "startTime", e.target.value)
                     }
-                    disabled={!dayConfig.isWorking}
+                    disabled={!dayConfig.isWorking || isReadOnly}
                   />
                   <span>-</span>
                   <Input
@@ -121,7 +126,7 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
                     onChange={(e) =>
                       handleTimeChange(index, "endTime", e.target.value)
                     }
-                    disabled={!dayConfig.isWorking}
+                    disabled={!dayConfig.isWorking || isReadOnly}
                   />
                 </div>
               </div>
@@ -129,21 +134,23 @@ export default function ScheduleForm({ workingHours }: ScheduleFormProps) {
           })}
         </CardContent>
       </Card>
-      <Button
-        onClick={handleSave}
-        className="flex w-full mx-auto mt-6 lg:w-80"
-        disabled={isPending}
-      >
-        {isPending ? (
-          <>
-            <Loader2Icon className="w-4 h-4 animate-spin" /> Guardando...
-          </>
-        ) : (
-          <>
-            <Save className="w-4 h-4" /> Guardar horarios
-          </>
-        )}
-      </Button>
+      {!isReadOnly && (
+        <Button
+          onClick={handleSave}
+          className="flex w-full mx-auto mt-6 lg:w-80"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="w-4 h-4 animate-spin" /> Guardando...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" /> Guardar horarios
+            </>
+          )}
+        </Button>
+      )}
     </div>
   );
 }

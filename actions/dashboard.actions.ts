@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { BookingStatus, Barbershop } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
+import { Role } from "@prisma/client";
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -68,7 +69,10 @@ const TimeBlockSchema = z
 
 const UserProfileSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
-  barbershopName: z.string().min(1, "El nombre de la barbería es requerido."),
+  barbershopName: z
+    .string()
+    .min(1, "El nombre de la barbería es requerido.")
+    .optional(),
   slug: z
     .string()
     .min(3, "La URL debe tener al menos 3 caracteres.")
@@ -179,6 +183,7 @@ export async function updateUserProfile(
     return { success: null, error: "No autorizado" };
   }
   const userId = session.user.id;
+  const userRole = session.user.role;
 
   try {
     const avatarFile = formData.get("avatar") as File | null;
@@ -192,18 +197,13 @@ export async function updateUserProfile(
       avatarUrl = blob.url;
     }
 
-    const fieldsToValidate = {
+    const fieldsToValidate: { [key: string]: FormDataEntryValue | null } = {
       name: formData.get("name"),
-      barbershopName: formData.get("barbershopName"),
-      slug: formData.get("slug"),
     };
 
-    const existingBarbershop = await prisma.barbershop.findUnique({
-      where: { ownerId: userId },
-    });
-
-    if (existingBarbershop) {
-      delete (fieldsToValidate as any).slug;
+    if (userRole === Role.OWNER) {
+      fieldsToValidate.barbershopName = formData.get("barbershopName");
+      fieldsToValidate.slug = formData.get("slug");
     }
 
     const validatedFields = UserProfileSchema.safeParse(fieldsToValidate);
@@ -215,68 +215,81 @@ export async function updateUserProfile(
       };
     }
 
-    const { name, barbershopName } = validatedFields.data;
-    const slug = validatedFields.data.slug;
+    const { name } = validatedFields.data;
 
-    if (!existingBarbershop && !slug) {
-      return {
-        success: null,
-        error:
-          "La URL personalizada es un campo requerido al crear tu perfil por primera vez.",
-      };
-    }
-
-    if (slug) {
-      const slugConflict = await prisma.barbershop.findFirst({
-        where: { slug: slug, ownerId: { not: userId } },
+    if (userRole === Role.OWNER) {
+      const { barbershopName, slug } = validatedFields.data;
+      const existingBarbershop = await prisma.barbershop.findUnique({
+        where: { ownerId: userId },
       });
-      if (slugConflict) {
+
+      if (!existingBarbershop && !slug) {
         return {
           success: null,
-          error: { slug: ["Esta URL ya está en uso. Por favor, elige otra."] },
+          error: "La URL personalizada es requerida al crear tu perfil.",
         };
       }
-    }
 
-    const [updatedUser, finalBarbershop] = await prisma.$transaction(
-      async (tx) => {
-        let barbershop: Barbershop;
+      if (slug) {
+        const slugConflict = await prisma.barbershop.findFirst({
+          where: { slug: slug, ownerId: { not: userId } },
+        });
+        if (slugConflict) {
+          return {
+            success: null,
+            error: { slug: ["Esta URL ya está en uso. Elige otra."] },
+          };
+        }
+      }
 
-        if (existingBarbershop) {
-          barbershop = await tx.barbershop.update({
+      const [updatedUser, finalBarbershop] = await prisma.$transaction(
+        async (tx) => {
+          const barbershop = await tx.barbershop.upsert({
             where: { ownerId: userId },
-            data: { name: barbershopName },
-          });
-        } else {
-          barbershop = await tx.barbershop.create({
-            data: {
-              name: barbershopName,
+            update: { name: barbershopName! },
+            create: {
+              name: barbershopName!,
               slug: slug!,
               owner: { connect: { id: userId } },
             },
           });
+
+          const user = await tx.user.update({
+            where: { id: userId },
+            data: {
+              name,
+              ...(avatarUrl && { image: avatarUrl }),
+            },
+          });
+
+          return [user, barbershop];
         }
+      );
 
-        const user = await tx.user.update({
-          where: { id: userId },
-          data: {
-            name,
-            barbershopId: barbershop.id,
-            ...(avatarUrl && { image: avatarUrl }),
-          },
-        });
+      return {
+        success: "¡Perfil actualizado con éxito!",
+        error: null,
+        newName: updatedUser.name,
+        newImageUrl: updatedUser.image,
+        newSlug: finalBarbershop.slug,
+      };
+    } else {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          name,
+          ...(avatarUrl && { image: avatarUrl }),
+        },
+      });
 
-        return [user, barbershop];
-      }
-    );
-
-    return {
-      success: "¡Perfil actualizado con éxito!",
-      error: null,
-      newName: updatedUser.name,
-      newImageUrl: updatedUser.image,
-      newSlug: finalBarbershop.slug,
-    };
+      return {
+        success: "¡Perfil actualizado con éxito!",
+        error: null,
+        newName: updatedUser.name,
+        newImageUrl: updatedUser.image,
+        newSlug: null,
+      };
+    }
   } catch (error) {
     console.error("Error al actualizar el perfil:", error);
     return {

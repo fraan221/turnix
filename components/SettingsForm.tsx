@@ -19,6 +19,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { AvatarCropper } from "./AvatarCropper";
 import { useRouter } from "next/navigation";
+import { Role } from "@prisma/client";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -209,63 +210,69 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             required
           />
         </div>
-        <div className="grid w-full gap-2">
-          <Label htmlFor="barbershopName">El nombre de mi Barbería</Label>
-          <Input
-            id="barbershopName"
-            name="barbershopName"
-            defaultValue={user.barbershop?.name || ""}
-            required
-          />
-        </div>
-        <div className="grid w-full gap-2">
-          <Label htmlFor="slug">Mi URL personalizada</Label>
-          <div className="flex items-center">
-            <span className="inline-flex items-center h-10 px-3 text-sm border border-r-0 rounded-l-md border-input bg-muted text-muted-foreground">
-              turnix.app/
-            </span>
-            <Input
-              id="slug"
-              name="slug"
-              value={slugValue}
-              onChange={(e) =>
-                setSlugValue(e.target.value.toLowerCase().replace(/\s+/g, "-"))
-              }
-              className="rounded-none focus-visible:ring-ring focus-visible:ring-offset-0 read-only:bg-muted/50 read-only:cursor-not-allowed"
-              required={!user.barbershop?.slug}
-              readOnly={!!user.barbershop?.slug}
-            />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopy}
-                  className="border-l-0 rounded-l-none"
-                  aria-label="Copiar URL"
-                  disabled={!user.barbershop?.slug}
-                >
-                  {isCopied ? (
-                    <Check className="w-5 h-5 mx-3 text-green-500" />
-                  ) : (
-                    <Clipboard className="w-5 h-5 mx-3" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Copiar URL pública</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            <p>
-              {user.barbershop?.slug
-                ? "Tu URL pública ya no se puede cambiar. Esta acción se completa una única vez."
-                : "Usa minúsculas y guiones medios (-). ¡Esta acción es permanente!"}
-            </p>
-          </div>
-        </div>
+        {user.role === Role.OWNER && (
+          <>
+            <div className="grid w-full gap-2">
+              <Label htmlFor="barbershopName">El nombre de mi Barbería</Label>
+              <Input
+                id="barbershopName"
+                name="barbershopName"
+                defaultValue={user.barbershop?.name || ""}
+                required
+              />
+            </div>
+            <div className="grid w-full gap-2">
+              <Label htmlFor="slug">Mi URL personalizada</Label>
+              <div className="flex items-center">
+                <span className="inline-flex items-center h-10 px-3 text-sm border border-r-0 rounded-l-md border-input bg-muted text-muted-foreground">
+                  turnix.app/
+                </span>
+                <Input
+                  id="slug"
+                  name="slug"
+                  value={slugValue}
+                  onChange={(e) =>
+                    setSlugValue(
+                      e.target.value.toLowerCase().replace(/\s+/g, "-")
+                    )
+                  }
+                  className="rounded-none focus-visible:ring-ring focus-visible:ring-offset-0 read-only:bg-muted/50 read-only:cursor-not-allowed"
+                  required={!user.barbershop?.slug}
+                  readOnly={!!user.barbershop?.slug}
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopy}
+                      className="border-l-0 rounded-l-none"
+                      aria-label="Copiar URL"
+                      disabled={!user.barbershop?.slug}
+                    >
+                      {isCopied ? (
+                        <Check className="w-5 h-5 mx-3 text-green-500" />
+                      ) : (
+                        <Clipboard className="w-5 h-5 mx-3" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copiar URL pública</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p>
+                  {user.barbershop?.slug
+                    ? "Tu URL pública ya no se puede cambiar. Esta acción se completa una única vez."
+                    : "Usa minúsculas y guiones medios (-). ¡Esta acción es permanente!"}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
         <SubmitButton />
       </form>
     </TooltipProvider>

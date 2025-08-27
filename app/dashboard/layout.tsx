@@ -18,9 +18,11 @@ export default async function DashboardLayout({
     redirect("/complete-profile");
   }
 
+  const isOwner = session.user.role === "OWNER";
   const hasActiveSubscription =
     session.user.subscription?.status === "authorized";
   const showTrialBanner =
+    isOwner &&
     !hasActiveSubscription &&
     session.user.trialEndsAt &&
     new Date(session.user.trialEndsAt) > new Date();

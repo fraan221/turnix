@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { Role } from "@prisma/client";
 
 import {
   Sidebar,
@@ -51,6 +52,7 @@ const mainNavLinks = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const userRole = session?.user?.role;
 
   const isLinkActive = (href: string) => {
     if (href === "/dashboard") {
@@ -58,6 +60,13 @@ export function DashboardSidebar() {
     }
     return pathname.startsWith(href);
   };
+
+  const navLinks = mainNavLinks.filter((link) => {
+    if (userRole === Role.BARBER) {
+      return !["/dashboard/team", "#"].includes(link.href);
+    }
+    return true;
+  });
 
   return (
     <Sidebar>
@@ -75,7 +84,7 @@ export function DashboardSidebar() {
       <SidebarContent className="p-3">
         <TooltipProvider delayDuration={0}>
           <SidebarMenu>
-            {mainNavLinks.map((link) => (
+            {navLinks.map((link) => (
               <SidebarMenuItem key={link.label}>
                 <Tooltip>
                   <TooltipTrigger asChild>

@@ -111,6 +111,18 @@ const generateSlug = async (
   return slug;
 };
 
+const generateConnectionCode = async (): Promise<string> => {
+  let code: string;
+  let existingUser: any;
+  do {
+    code = crypto.randomBytes(3).toString("hex").toUpperCase();
+    existingUser = await prisma.user.findUnique({
+      where: { connectionCode: code },
+    });
+  } while (existingUser);
+  return code;
+};
+
 type CompleteProfileState = {
   success?: string;
   error?: string;
@@ -173,15 +185,10 @@ export async function registerBarber(prevState: any, formData: FormData) {
             ownerId: newUser.id,
           },
         });
-
-        await tx.user.update({
-          where: { id: newUser.id },
-          data: {
-            barbershopId: newBarbershop.id,
-          },
-        });
       });
     } else {
+      const connectionCode = await generateConnectionCode();
+
       await prisma.user.create({
         data: {
           email,
@@ -189,6 +196,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
           password: hashedPassword,
           phone,
           role: Role.BARBER,
+          connectionCode,
         },
       });
     }
@@ -240,16 +248,17 @@ export async function completeGoogleRegistration(
 
         await tx.user.update({
           where: { id: userId },
-          data: { role: Role.OWNER, phone, barbershopId: b.id },
+          data: { role: Role.OWNER, phone },
         });
 
         return b;
       });
       finalSlug = barbershop.slug;
     } else {
+      const connectionCode = await generateConnectionCode();
       await prisma.user.update({
         where: { id: userId },
-        data: { role: Role.BARBER, phone },
+        data: { role: Role.BARBER, phone, connectionCode },
       });
     }
 

@@ -80,12 +80,14 @@ export function UserNav() {
               </DropdownMenuItem>
             )}
 
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/dashboard/billing">
-                <Crown className="w-4 h-4 mr-2 stroke-primary" />
-                <span className="text-primary">Suscripción</span>
-              </Link>
-            </DropdownMenuItem>
+            {userRole === "OWNER" && (
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/dashboard/billing">
+                  <Crown className="w-4 h-4 mr-2 stroke-primary" />
+                  <span className="text-primary">Suscripción</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuItem asChild className="cursor-pointer">
               <Link href="/dashboard/settings">

@@ -1,0 +1,80 @@
+import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
+import { Role } from "@prisma/client";
+import { AddBarberForm } from "@/components/team/AddBarberForm";
+import { EnableTeamView } from "@/components/team/EnableTeamView";
+import { TeamList } from "@/components/team/TeamList";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+
+export default async function TeamPage() {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== Role.OWNER) {
+    return (
+      <Alert variant="destructive" className="max-w-md mx-auto">
+        <AlertTriangle className="w-4 h-4" />
+        <AlertTitle>Acceso Denegado</AlertTitle>
+        <AlertDescription>
+          No tienes los permisos necesarios para acceder a esta sección.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const barbershop = await prisma.barbershop.findUnique({
+    where: { ownerId: session.user.id },
+    include: {
+      teamMembers: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+    },
+  });
+
+  if (!barbershop) {
+    return (
+      <Alert variant="destructive" className="max-w-md mx-auto">
+        <AlertTriangle className="w-4 h-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          No se pudo encontrar la información de tu barbería.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!barbershop.teamsEnabled) {
+    return <EnableTeamView />;
+  }
+
+  const teamMembers = barbershop.teamMembers.map((member) => member.user);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="grid gap-1">
+          <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
+            Gestión de Equipo
+          </h1>
+          <p className="text-muted-foreground">
+            Añade o visualiza los barberos que trabajan contigo.
+          </p>
+        </div>
+        <AddBarberForm />
+      </div>
+      <TeamList teamMembers={teamMembers} />
+    </div>
+  );
+}
