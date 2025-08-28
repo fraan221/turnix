@@ -6,7 +6,6 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
 
 const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
 const MAX_ATTEMPTS = 5;
@@ -97,7 +96,7 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
           include: {
-            ownedBarbershop: { select: { name: true, slug: true } },
+            ownedBarbershop: { select: { id: true, name: true, slug: true } },
             teamMembership: {
               include: {
                 barbershop: { select: { id: true, name: true, slug: true } },
@@ -133,7 +132,7 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
           include: {
-            ownedBarbershop: { select: { name: true, slug: true } },
+            ownedBarbershop: { select: { id: true, name: true, slug: true } },
             teamMembership: {
               include: {
                 barbershop: { select: { id: true, name: true, slug: true } },

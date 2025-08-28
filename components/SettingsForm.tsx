@@ -210,6 +210,15 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             required
           />
         </div>
+        <div className="grid w-full gap-2">
+          <Label htmlFor="phone">Mi número de celular</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            defaultValue={user.phone || ""}
+          />
+        </div>
         {user.role === Role.OWNER && (
           <>
             <div className="grid w-full gap-2">

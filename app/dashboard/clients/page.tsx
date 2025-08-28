@@ -132,33 +132,42 @@ export default async function ClientsPage() {
   const hasClients = clients.length > 0 || groupedClients.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {!hasClients ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
-          <Users className="w-12 h-12 text-muted-foreground" />
-          <p className="mt-4 font-semibold">No hay clientes para mostrar</p>
-          <p className="text-sm text-muted-foreground">
-            Los clientes aparecerán aquí después de su primer turno.
-          </p>
-        </div>
-      ) : userRole === Role.OWNER && teamsEnabled ? (
-        <div className="space-y-8">
-          {groupedClients.map(({ barberId, barberName, clients }) => (
-            <div key={barberId}>
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="text-lg font-semibold">
-                  {barberName}
-                  {barberId === userId && " (Tú)"}
-                </h3>
-                <Separator className="flex-1" />
-              </div>
-              <ClientList clients={clients} />
+    <div className="max-w-4xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {userRole === Role.OWNER ? "Todos los Clientes" : "Mis Clientes"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!hasClients ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+              <Users className="w-12 h-12 text-muted-foreground" />
+              <p className="mt-4 font-semibold">No hay clientes para mostrar</p>
+              <p className="text-sm text-muted-foreground">
+                Los clientes aparecerán aquí después de su primer turno.
+              </p>
             </div>
-          ))}
-        </div>
-      ) : (
-        <ClientList clients={clients} />
-      )}
+          ) : userRole === Role.OWNER && teamsEnabled ? (
+            <div className="space-y-8">
+              {groupedClients.map(({ barberId, barberName, clients }) => (
+                <div key={barberId}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <h3 className="text-lg font-semibold">
+                      {barberName}
+                      {barberId === userId && " (Tú)"}
+                    </h3>
+                    <Separator className="flex-1" />
+                  </div>
+                  <ClientList clients={clients} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ClientList clients={clients} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

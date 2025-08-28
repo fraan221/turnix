@@ -6,6 +6,7 @@ import AddTimeBlockModal from "@/components/AddTimeBlockModal";
 import { Separator } from "@/components/ui/separator";
 import { Role, WorkingHours } from "@prisma/client";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default async function SchedulePage() {
   const session = await auth();
@@ -57,22 +58,15 @@ export default async function SchedulePage() {
 
       <Separator />
 
-      <div>
-        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="grid gap-1">
-            <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
-              Bloqueos Horarios
-            </h1>
-          </div>
-          <div className="w-full md:w-auto">
-            <AddTimeBlockModal />
-          </div>
-        </div>
-        <div className="max-w-lg mx-auto mt-6">
-          <h2 className="mb-4 text-lg font-semibold">Bloqueos Activos</h2>
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>Bloqueos Horarios</CardTitle>
+          <AddTimeBlockModal />
+        </CardHeader>
+        <CardContent>
           <TimeBlockList timeBlocks={timeBlocks} />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

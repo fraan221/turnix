@@ -1,12 +1,6 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ServiceList from "@/components/ServiceList";
 import AddServiceModal from "@/components/AddServiceModal";
 import { Prisma, Role, Service } from "@prisma/client";
@@ -87,13 +81,11 @@ export default async function ServicesPage() {
   }
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Lista de Servicios</span>
-            <AddServiceModal />
-          </CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle>Lista de Servicios</CardTitle>
+          <AddServiceModal />
         </CardHeader>
         <CardContent>
           {userRole === Role.OWNER && teamsEnabled ? (

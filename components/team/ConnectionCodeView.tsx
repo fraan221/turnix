@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { pusherClient } from "@/lib/pusher-client";
+import { useLoader } from "@/context/LoaderContext";
 import {
   Card,
   CardContent,
@@ -23,26 +24,31 @@ export function ConnectionCodeView({
   connectionCode,
 }: ConnectionCodeViewProps) {
   const [isCopied, setIsCopied] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
+  const { showLoader } = useLoader();
+  const isUpdating = useRef(false);
 
   useEffect(() => {
     if (!session?.user?.id) return;
 
     const channel = pusherClient.subscribe(`user-${session.user.id}`);
 
-    channel.bind("team-joined", () => {
-      toast.info("¡Te han añadido a un equipo!", {
-        description: "Actualizando tu dashboard...",
-      });
+    const handleTeamJoined = async () => {
+      if (isUpdating.current) return;
+      isUpdating.current = true;
+      showLoader("¡Te han añadido a un equipo! Sincronizando tu cuenta...");
+      await update();
       router.refresh();
-    });
+    };
+
+    channel.bind("team-joined", handleTeamJoined);
 
     return () => {
       pusherClient.unsubscribe(`user-${session.user.id}`);
-      channel.unbind_all();
+      channel.unbind("team-joined", handleTeamJoined);
     };
-  }, [session, router]);
+  }, [session, router, update, showLoader]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(connectionCode);

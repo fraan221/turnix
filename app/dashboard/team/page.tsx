@@ -64,7 +64,7 @@ export default async function TeamPage() {
 
   return (
     <Card className="max-w-4xl mx-auto">
-      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Barberos</CardTitle>
         <AddBarberForm />
       </CardHeader>

@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ServiceSchema } from "@/lib/schemas";
+import { Role } from "@prisma/client";
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -73,15 +74,32 @@ export async function createService(data: ServiceInput) {
 }
 
 export async function updateService(serviceId: string, data: ServiceInput) {
-  const { user, error: authError } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  const {
+    user,
+    barbershopId,
+    error: authError,
+  } = await getCurrentUserAndBarbershop();
+  if (authError || !user || !barbershopId) {
+    return { error: authError || "No se pudo verificar la autorización." };
+  }
 
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
   });
 
-  if (!serviceToUpdate || serviceToUpdate.barberId !== user!.id) {
-    return { error: "Operación no permitida." };
+  if (!serviceToUpdate) {
+    return { error: "El servicio que intentas editar no existe." };
+  }
+
+  const isDirectOwner = serviceToUpdate.barberId === user.id;
+  const isBarbershopOwner =
+    user.role === Role.OWNER && serviceToUpdate.barbershopId === barbershopId;
+
+  if (!isDirectOwner && !isBarbershopOwner) {
+    return {
+      error:
+        "Operación no permitida. No tienes permiso para editar este servicio.",
+    };
   }
 
   const { name, price, durationInMinutes, description } = data;

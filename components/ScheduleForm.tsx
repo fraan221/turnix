@@ -137,7 +137,7 @@ export default function ScheduleForm({
       {!isReadOnly && (
         <Button
           onClick={handleSave}
-          className="flex w-full mx-auto mt-6 lg:w-80"
+          className="flex mx-auto mt-6 w-96 lg:w-80"
           disabled={isPending}
         >
           {isPending ? (

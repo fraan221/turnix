@@ -93,10 +93,6 @@ export default function TimeBlockList({
 }: {
   timeBlocks: TimeBlock[];
 }) {
-  if (timeBlocks.length === 0) {
-    return <p>No tienes ningún bloqueo programado.</p>;
-  }
-
   return (
     <div className="space-y-3">
       {timeBlocks.map((block) => (

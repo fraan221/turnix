@@ -76,8 +76,18 @@ const TimeBlockSchema = z
     }
   );
 
+const phoneSchema = z
+  .string()
+  .transform((val) => val.replace(/[\s-()]/g, ""))
+  .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
+  .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
+  .pipe(
+    z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números.")
+  );
+
 const UserProfileSchema = z.object({
   name: z.string().min(1, "El nombre es requerido."),
+  phone: phoneSchema.optional().or(z.literal("")),
   barbershopName: z
     .string()
     .min(1, "El nombre de la barbería es requerido.")
@@ -210,6 +220,7 @@ export async function updateUserProfile(
 
     const fieldsToValidate: { [key: string]: FormDataEntryValue | null } = {
       name: formData.get("name"),
+      phone: formData.get("phone"),
     };
 
     if (userRole === Role.OWNER) {
@@ -226,7 +237,12 @@ export async function updateUserProfile(
       };
     }
 
-    const { name } = validatedFields.data;
+    const { name, phone } = validatedFields.data;
+    const dataToUpdate = {
+      name,
+      phone,
+      ...(avatarUrl && { image: avatarUrl }),
+    };
 
     if (userRole === Role.OWNER) {
       const { barbershopName, slug } = validatedFields.data;
@@ -267,10 +283,7 @@ export async function updateUserProfile(
 
           const user = await tx.user.update({
             where: { id: userId },
-            data: {
-              name,
-              ...(avatarUrl && { image: avatarUrl }),
-            },
+            data: dataToUpdate,
           });
 
           return [user, barbershop];
@@ -287,10 +300,7 @@ export async function updateUserProfile(
     } else {
       const updatedUser = await prisma.user.update({
         where: { id: userId },
-        data: {
-          name,
-          ...(avatarUrl && { image: avatarUrl }),
-        },
+        data: dataToUpdate,
       });
 
       return {

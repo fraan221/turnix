@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import EditServiceForm from "@/components/EditServiceForm";
+import { Role } from "@prisma/client";
 
 interface EditServicePageProps {
   params: { serviceId: string };
@@ -18,8 +19,23 @@ export default async function EditServicePage({
   params,
 }: EditServicePageProps) {
   const session = await auth();
-
   if (!session?.user?.id) {
+    return notFound();
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      ownedBarbershop: true,
+      teamMembership: true,
+    },
+  });
+
+  const barbershopId =
+    currentUser?.ownedBarbershop?.id ||
+    currentUser?.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
     return notFound();
   }
 
@@ -29,11 +45,11 @@ export default async function EditServicePage({
     },
   });
 
-  if (!service) {
+  if (!service || service.barbershopId !== barbershopId) {
     return notFound();
   }
 
-  if (service.barberId !== session.user.id) {
+  if (currentUser.role === Role.BARBER && service.barberId !== currentUser.id) {
     return notFound();
   }
 

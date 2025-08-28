@@ -6,26 +6,32 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarClock, History } from "lucide-react";
+import { CalendarClock, History, User } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { formatPhoneNumberForWhatsApp, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Booking, BookingStatus, Service } from "@prisma/client";
+import { Booking, BookingStatus, Role, Service } from "@prisma/client";
+import { notFound } from "next/navigation";
 
 interface ClientDetailPageProps {
   params: { clientId: string };
 }
 
-type BookingWithService = Booking & {
+type BookingWithDetails = Booking & {
   service: Service;
+  barber: {
+    name: string | null;
+  };
 };
 
 function BookingListItem({
   booking,
   formatString,
+  isOwnerView,
 }: {
-  booking: BookingWithService;
+  booking: BookingWithDetails;
   formatString: string;
+  isOwnerView: boolean;
 }) {
   const statusMap = {
     [BookingStatus.COMPLETED]: {
@@ -47,7 +53,7 @@ function BookingListItem({
   return (
     <li
       key={booking.id}
-      className={cn("text-sm", booking.status === "CANCELLED")}
+      className={cn("text-sm", booking.status === "CANCELLED" && "opacity-60")}
     >
       <div className="flex items-center justify-between">
         <p className="font-semibold">{booking.service.name}</p>
@@ -56,6 +62,11 @@ function BookingListItem({
       <p className="capitalize text-muted-foreground">
         {format(new Date(booking.startTime), formatString, { locale: es })}
       </p>
+      {isOwnerView && (
+        <p className="text-xs text-muted-foreground">
+          con: <span className="font-medium">{booking.barber.name}</span>
+        </p>
+      )}
     </li>
   );
 }
@@ -64,17 +75,38 @@ export default async function ClientDetailPage({
   params,
 }: ClientDetailPageProps) {
   const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
+  if (!session?.user?.id) return notFound();
 
-  const client = await prisma.client.findUnique({
-    where: { id: params.clientId },
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      ownedBarbershop: true,
+      teamMembership: true,
+    },
+  });
+
+  const barbershopId =
+    currentUser?.ownedBarbershop?.id ||
+    currentUser?.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
+    return notFound();
+  }
+
+  const client = await prisma.client.findFirst({
+    where: {
+      id: params.clientId,
+      barbershopId: barbershopId,
+    },
     include: {
       bookings: {
-        where: {
-          barberId: session.user.id,
-        },
         include: {
           service: true,
+          barber: {
+            select: {
+              name: true,
+            },
+          },
         },
         orderBy: {
           startTime: "desc",
@@ -84,26 +116,17 @@ export default async function ClientDetailPage({
   });
 
   if (!client) {
-    return <p>Cliente no encontrado.</p>;
+    return notFound();
   }
 
   const now = new Date();
-
   const turnosFuturos = client.bookings
-    .filter(
-      (booking) =>
-        new Date(booking.startTime) > now && booking.status === "SCHEDULED"
-    )
+    .filter((b) => new Date(b.startTime) > now && b.status === "SCHEDULED")
     .reverse();
-
   const historialDeTurnos = client.bookings.filter(
-    (booking) =>
-      new Date(booking.startTime) <= now || booking.status !== "SCHEDULED"
+    (b) => new Date(b.startTime) <= now || b.status !== "SCHEDULED"
   );
-
-  const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(
-    client.phone
-  )}`;
+  const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`;
 
   return (
     <div className="space-y-6">
@@ -114,7 +137,7 @@ export default async function ClientDetailPage({
           </h1>
         </div>
         <Link href={whatsappUrl} target="_blank">
-          <Button>
+          <Button className="gap-2">
             <WhatsAppIcon />
             Contactar
           </Button>
@@ -144,8 +167,9 @@ export default async function ClientDetailPage({
                   {turnosFuturos.map((booking) => (
                     <BookingListItem
                       key={booking.id}
-                      booking={booking}
+                      booking={booking as BookingWithDetails}
                       formatString="EEEE d 'de' MMMM, HH:mm 'hs'"
+                      isOwnerView={currentUser.role === Role.OWNER}
                     />
                   ))}
                 </ul>
@@ -170,8 +194,9 @@ export default async function ClientDetailPage({
                   {historialDeTurnos.map((booking) => (
                     <BookingListItem
                       key={booking.id}
-                      booking={booking}
+                      booking={booking as BookingWithDetails}
                       formatString="d/MM/yyyy - HH:mm 'hs'"
+                      isOwnerView={currentUser.role === Role.OWNER}
                     />
                   ))}
                 </ul>

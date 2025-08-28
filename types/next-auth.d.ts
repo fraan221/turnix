@@ -17,6 +17,7 @@ declare module "next-auth" {
       id: string;
       role?: Role | null;
       barbershop?: {
+        id: string;
         name: string;
         slug: string;
       } | null;
@@ -32,6 +33,7 @@ declare module "next-auth/jwt" {
     id: string;
     role?: Role | null;
     barbershop?: {
+      id: string;
       name: string;
       slug: string;
     } | null;
