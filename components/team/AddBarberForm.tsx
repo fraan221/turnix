@@ -67,7 +67,7 @@ export function AddBarberForm() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Añadir Barbero
         </Button>
       </DialogTrigger>

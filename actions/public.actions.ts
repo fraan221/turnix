@@ -3,17 +3,49 @@
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { startOfDay, endOfDay } from "date-fns";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { Role } from "@prisma/client";
 
 export async function getBarberAvailability(barberId: string, date: Date) {
   const dayOfWeek = date.getDay();
+
+  const barber = await prisma.user.findUnique({
+    where: { id: barberId },
+    include: {
+      teamMembership: {
+        include: {
+          barbershop: true,
+        },
+      },
+    },
+  });
+
+  if (!barber) {
+    return {
+      workingHours: null,
+      bookings: [],
+      timeBlocks: [],
+    };
+  }
+
+  const scheduleOwnerId =
+    barber.role === Role.OWNER
+      ? barber.id
+      : barber.teamMembership?.barbershop.ownerId;
+
+  if (!scheduleOwnerId) {
+    return {
+      workingHours: null,
+      bookings: [],
+      timeBlocks: [],
+    };
+  }
 
   const [workingHours, bookings, timeBlocks] = await Promise.all([
     prisma.workingHours.findUnique({
       where: {
         barberId_dayOfWeek: {
-          barberId: barberId,
+          barberId: scheduleOwnerId,
           dayOfWeek: dayOfWeek,
         },
       },
@@ -108,20 +140,30 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
   try {
     const barber = await prisma.user.findUnique({
       where: { id: barberId },
-      select: {
-        id: true,
-        phone: true,
-        barbershopId: true,
-        barbershop: {
-          select: {
-            slug: true,
-          },
-        },
+      include: {
+        ownedBarbershop: true,
+        teamMembership: true,
       },
     });
 
-    if (!barber?.barbershopId) {
+    if (!barber) {
+      return { error: "El barbero seleccionado no existe." };
+    }
+
+    const barbershopId =
+      barber.ownedBarbershop?.id || barber.teamMembership?.barbershopId;
+
+    if (!barbershopId) {
       return { error: "No se pudo encontrar la barbería asociada al barbero." };
+    }
+
+    const barbershop = await prisma.barbershop.findUnique({
+      where: { id: barbershopId },
+      select: { teamsEnabled: true, ownerId: true },
+    });
+
+    if (!barbershop) {
+      return { error: "Los detalles de la barbería no fueron encontrados." };
     }
 
     const [client, service] = await Promise.all([
@@ -131,7 +173,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         create: {
           name: clientName,
           phone: clientPhone,
-          barbershopId: barber.barbershopId,
+          barbershopId: barbershopId,
         },
       }),
       prisma.service.findUnique({
@@ -147,48 +189,50 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     await prisma.booking.create({
       data: {
         startTime,
-        barber: {
-          connect: {
-            id: barberId,
-          },
-        },
-        client: {
-          connect: {
-            id: client.id,
-          },
-        },
-        service: {
-          connect: {
-            id: serviceId,
-          },
-        },
-        barbershop: {
-          connect: {
-            id: barber.barbershopId,
-          },
-        },
+        barber: { connect: { id: barberId } },
+        client: { connect: { id: client.id } },
+        service: { connect: { id: serviceId } },
+        barbershop: { connect: { id: barbershopId } },
       },
     });
 
-    const newNotification = await prisma.notification.create({
+    const barberNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}".`;
+    const barberNotification = await prisma.notification.create({
       data: {
         userId: barberId,
-        message: `Nuevo turno: "${service.name}" con ${clientName}`,
+        message: barberNotificationMessage,
         clientId: client.id,
       },
     });
-
     await pusherServer.trigger(
       `notifications_${barberId}`,
       "new-notification",
-      newNotification
+      barberNotification
     );
+
+    const isEmployeeBooking = barber.id !== barbershop.ownerId;
+    if (barbershop.teamsEnabled && isEmployeeBooking) {
+      const ownerNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}" con ${barber.name}.`;
+      const ownerNotification = await prisma.notification.create({
+        data: {
+          userId: barbershop.ownerId,
+          message: ownerNotificationMessage,
+          clientId: client.id,
+        },
+      });
+      await pusherServer.trigger(
+        `notifications_${barbershop.ownerId}`,
+        "new-notification",
+        ownerNotification
+      );
+    }
 
     return {
       success: "¡Turno confirmado con éxito!",
       bookingDetails: {
         clientName: client.name,
         barberPhone: barber.phone || "",
+        barberName: barber.name || "",
       },
     };
   } catch (error: any) {

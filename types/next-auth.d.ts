@@ -20,6 +20,7 @@ declare module "next-auth" {
         name: string;
         slug: string;
       } | null;
+      teamMembership: Team | null;
       trialEndsAt: Date | null;
       subscription: SubscriptionInfo | null;
     } & DefaultSession["user"];
@@ -34,6 +35,7 @@ declare module "next-auth/jwt" {
       name: string;
       slug: string;
     } | null;
+    teamMembership: Team | null;
     trialEndsAt: Date | null;
     subscription: SubscriptionInfo | null;
   }

@@ -6,6 +6,27 @@ import { BookingWizard } from "@/components/booking/BookingWizard";
 import type { Metadata } from "next";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
+import { Prisma, User } from "@prisma/client";
+
+const barbershopWithDetails = Prisma.validator<Prisma.BarbershopDefaultArgs>()({
+  include: {
+    owner: true,
+    teamMembers: {
+      include: {
+        user: true,
+      },
+    },
+    services: {
+      orderBy: {
+        name: "asc",
+      },
+    },
+  },
+});
+
+type BarbershopWithDetails = Prisma.BarbershopGetPayload<
+  typeof barbershopWithDetails
+>;
 
 interface BarberPublicPageProps {
   params: {
@@ -54,29 +75,27 @@ export async function generateMetadata({
 export default async function BarberPublicPage({
   params,
 }: BarberPublicPageProps) {
-  const barbershop = await prisma.barbershop.findUnique({
-    where: {
-      slug: decodeURIComponent(params.slug),
-    },
-    include: {
-      owner: true,
-      services: {
-        orderBy: {
-          name: "asc",
-        },
+  const barbershop: BarbershopWithDetails | null =
+    await prisma.barbershop.findUnique({
+      where: {
+        slug: decodeURIComponent(params.slug),
       },
-    },
-  });
+      include: barbershopWithDetails.include,
+    });
 
   if (!barbershop || !barbershop.owner) {
     notFound();
   }
 
-  const barber = barbershop.owner;
-
-  const whatsappUrl = barber.phone
-    ? `https://wa.me/${formatPhoneNumberForWhatsApp(barber.phone)}`
+  const owner = barbershop.owner;
+  const whatsappUrl = owner.phone
+    ? `https://wa.me/${formatPhoneNumberForWhatsApp(owner.phone)}`
     : null;
+
+  const allBarbers: User[] = [
+    owner,
+    ...barbershop.teamMembers.map((member) => member.user),
+  ];
 
   return (
     <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
@@ -85,11 +104,11 @@ export default async function BarberPublicPage({
           <CardHeader className="flex flex-col items-center justify-center p-6 text-center bg-card">
             <Avatar className="w-24 h-24 mb-4 border-4 border-background">
               <AvatarImage
-                src={barber.image || ""}
-                alt={barber.name || "Avatar del barbero"}
+                src={owner.image || ""}
+                alt={owner.name || "Avatar del barbero"}
               />
               <AvatarFallback>
-                {barber.name?.charAt(0).toUpperCase()}
+                {owner.name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <CardTitle className="text-3xl font-bold">
@@ -108,7 +127,7 @@ export default async function BarberPublicPage({
             )}
           </CardHeader>
         </Card>
-        <BookingWizard services={barbershop.services} barberId={barber.id} />
+        <BookingWizard allServices={barbershop.services} barbers={allBarbers} />
       </div>
     </main>
   );

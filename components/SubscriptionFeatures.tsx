@@ -9,7 +9,7 @@ const features = [
   { name: "Portal de Clientes", included: true },
   { name: "Página Pública con Flujo de Reserva", included: true },
   { name: "Personalización de Perfil", included: true },
-  { name: "Gestión de Equipos", included: false },
+  { name: "Gestión de Equipos", included: true },
   { name: "Estadísticas de Negocio", included: false },
 ];
 

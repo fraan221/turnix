@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { pusherServer } from "@/lib/pusher";
 
 type TeamActionState = {
   success?: string | null;
@@ -89,6 +90,10 @@ export async function linkBarberToShop(
         where: { id: barberToLink.id },
         data: { connectionCode: null },
       });
+    });
+
+    await pusherServer.trigger(`user-${barberToLink.id}`, "team-joined", {
+      message: "Fuiste agregado a un equipo!",
     });
 
     revalidatePath("/dashboard/team");

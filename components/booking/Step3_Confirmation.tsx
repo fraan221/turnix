@@ -37,11 +37,13 @@ type CreateBookingState = {
   bookingDetails?: {
     clientName: string;
     barberPhone: string;
+    barberName: string;
   } | null;
 } | null;
 
 interface Step3ConfirmationProps {
   barberId: string;
+  barberName: string;
   selectedServices: Service[];
   selectedDateTime: Date;
   onBack: () => void;
@@ -65,6 +67,7 @@ function SubmitButton() {
 
 export function Step3_Confirmation({
   barberId,
+  barberName,
   selectedServices,
   selectedDateTime,
   onBack,
@@ -90,6 +93,7 @@ export function Step3_Confirmation({
       const queryParams = new URLSearchParams({
         client: state.bookingDetails?.clientName || "",
         phone: state.bookingDetails?.barberPhone || "",
+        barberName: state.bookingDetails?.barberName || "",
       });
       router.push(`/booking-confirmed?${queryParams.toString()}`);
     }
@@ -119,6 +123,11 @@ export function Step3_Confirmation({
               </li>
             ))}
           </ul>
+        </div>
+        <Separator />
+        <div>
+          <h3 className="font-semibold">Barbero</h3>
+          <p className="text-sm text-muted-foreground">{barberName}</p>
         </div>
         <Separator />
         <div>

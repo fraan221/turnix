@@ -14,18 +14,28 @@ async function getCurrentUserAndBarbershop() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, barbershopId: true },
+    include: {
+      ownedBarbershop: true,
+      teamMembership: true,
+    },
   });
 
-  if (!user || !user.barbershopId) {
+  if (!user) {
+    return { user: null, barbershopId: null, error: "Usuario no encontrado." };
+  }
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
     return {
-      user: null,
+      user,
       barbershopId: null,
-      error: "Usuario no encontrado o no asociado a una barbería.",
+      error: "Usuario no asociado a una barbería.",
     };
   }
 
-  return { user, barbershopId: user.barbershopId, error: null };
+  return { user, barbershopId, error: null };
 }
 
 type ServiceInput = z.infer<typeof ServiceSchema>;
@@ -36,7 +46,10 @@ export async function createService(data: ServiceInput) {
     barbershopId,
     error: authError,
   } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+
+  if (authError || !barbershopId) {
+    return { error: authError || "No se encontró la barbería." };
+  }
 
   const { name, price, durationInMinutes, description } = data;
 
@@ -48,7 +61,7 @@ export async function createService(data: ServiceInput) {
         durationInMinutes,
         description,
         barberId: user!.id,
-        barbershopId: barbershopId!,
+        barbershopId: barbershopId,
       },
     });
     revalidatePath("/dashboard/services");

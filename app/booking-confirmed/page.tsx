@@ -15,13 +15,14 @@ interface BookingConfirmedPageProps {
   searchParams: {
     client?: string;
     phone?: string;
+    barberName?: string;
   };
 }
 
 export default function BookingConfirmedPage({
   searchParams,
 }: BookingConfirmedPageProps) {
-  const { client, phone } = searchParams;
+  const { client, phone, barberName } = searchParams;
 
   const message = `Hola! Soy ${client || "un cliente"}, acabo de agendar un turno y quería confirmar mi asistencia. ¡Gracias!`;
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(phone || "")}?text=${encodeURIComponent(message)}`;
@@ -40,8 +41,8 @@ export default function BookingConfirmedPage({
           <div className="py-6 space-y-4 text-center border-t border-b">
             <h3 className="font-semibold">Confirma tu asistencia</h3>
             <p className="text-sm text-muted-foreground">
-              Para asegurar tu turno, envía un mensaje de confirmación al
-              barbero.
+              Para asegurar tu turno, envía un mensaje de confirmación a{" "}
+              <span className="font-bold">{barberName || "tu barbero"}</span>.
             </p>
             <Button asChild size="lg">
               <Link href={whatsappUrl} target="_blank">

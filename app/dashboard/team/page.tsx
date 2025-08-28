@@ -4,6 +4,7 @@ import { Role } from "@prisma/client";
 import { AddBarberForm } from "@/components/team/AddBarberForm";
 import { EnableTeamView } from "@/components/team/EnableTeamView";
 import { TeamList } from "@/components/team/TeamList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
@@ -62,19 +63,14 @@ export default async function TeamPage() {
   const teamMembers = barbershop.teamMembers.map((member) => member.user);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
-            Gestión de Equipo
-          </h1>
-          <p className="text-muted-foreground">
-            Añade o visualiza los barberos que trabajan contigo.
-          </p>
-        </div>
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <CardTitle>Barberos</CardTitle>
         <AddBarberForm />
-      </div>
-      <TeamList teamMembers={teamMembers} />
-    </div>
+      </CardHeader>
+      <CardContent>
+        <TeamList teamMembers={teamMembers} />
+      </CardContent>
+    </Card>
   );
 }

@@ -1,11 +1,4 @@
 import { User } from "@prisma/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users } from "lucide-react";
 
@@ -15,54 +8,46 @@ interface TeamListProps {
 
 export function TeamList({ teamMembers }: TeamListProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Miembros del Equipo</CardTitle>
-        <CardDescription>
-          Aquí puedes ver todos los barberos que forman parte de tu barbería.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {teamMembers.length > 0 ? (
-          <ul className="space-y-4">
-            {teamMembers.map((member) => (
-              <li
-                key={member.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage
-                      src={member.image ?? ""}
-                      alt={member.name ?? "Avatar del barbero"}
-                    />
-                    <AvatarFallback>
-                      {member.name?.charAt(0).toUpperCase() ?? "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{member.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {member.email}
-                    </p>
-                  </div>
+    <>
+      {teamMembers.length > 0 ? (
+        <ul className="space-y-4">
+          {teamMembers.map((member) => (
+            <li
+              key={member.id}
+              className="flex items-center justify-between p-3 border rounded-lg"
+            >
+              <div className="flex items-center w-auto gap-4">
+                <Avatar>
+                  <AvatarImage
+                    src={member.image ?? ""}
+                    alt={member.name ?? "Avatar del barbero"}
+                  />
+                  <AvatarFallback>
+                    {member.name?.charAt(0).toUpperCase() ?? "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{member.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {member.email}
+                  </p>
                 </div>
-                {/* TODO: Futura implementación de acciones por miembro.
+              </div>
+              {/* TODO: Futura implementación de acciones por miembro.
                   Aquí irá un DropdownMenu con opciones como "Eliminar del equipo".
                 */}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
-            <Users className="w-12 h-12 text-muted-foreground" />
-            <p className="mt-4 font-semibold">Tu equipo está vacío</p>
-            <p className="text-sm text-muted-foreground">
-              Usa el botón "+ Añadir Barbero" para empezar a invitar miembros.
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+          <Users className="w-12 h-12 text-muted-foreground" />
+          <p className="mt-4 font-semibold">Tu equipo está vacío</p>
+          <p className="text-sm text-muted-foreground">
+            Usa el botón "+ Añadir Barbero" para empezar a invitar miembros.
+          </p>
+        </div>
+      )}
+    </>
   );
 }

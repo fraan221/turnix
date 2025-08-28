@@ -115,7 +115,7 @@ const generateConnectionCode = async (): Promise<string> => {
   let code: string;
   let existingUser: any;
   do {
-    code = crypto.randomBytes(3).toString("hex").toUpperCase();
+    code = Math.floor(100000 + Math.random() * 900000).toString();
     existingUser = await prisma.user.findUnique({
       where: { connectionCode: code },
     });

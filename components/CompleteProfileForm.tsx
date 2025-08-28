@@ -78,10 +78,10 @@ export default function CompleteProfileForm({ user }: { user: User }) {
                 <span>Soy Dueño de una Barbería</span>
               </div>
             </SelectItem>
-            <SelectItem value="BARBER" disabled>
+            <SelectItem value="BARBER">
               <div className="flex items-center gap-2">
                 <Briefcase className="w-4 h-4" />
-                <span>Soy Barbero / Empleado (Próximamente)</span>
+                <span>Soy Barbero / Empleado</span>
               </div>
             </SelectItem>
           </SelectContent>

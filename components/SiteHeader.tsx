@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "./NotificationBell";
+import { useSession } from "next-auth/react";
+import { Role } from "@prisma/client";
 
 const pageTitles: { [key: string]: string } = {
   "/dashboard/services": "Servicios",
@@ -12,13 +14,16 @@ const pageTitles: { [key: string]: string } = {
   "/dashboard/settings": "Ajustes",
   "/dashboard/notifications": "Notificaciones",
   "/dashboard/billing": "Suscripción",
-  // "/dashboard/team": "Equipo",
+  "/dashboard/team": "Equipo",
+  "/dashboard/connect": "Conectar",
   // "/dashboard/stats": "Estadísticas",
   "/dashboard": "Agenda",
 };
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
 
   const getTitle = () => {
     if (pageTitles[pathname]) {
@@ -46,9 +51,7 @@ export function SiteHeader() {
             {title}
           </h1>
         </div>
-        <div>
-          <NotificationBell />
-        </div>
+        <div>{userRole === Role.OWNER && <NotificationBell />}</div>
       </div>
     </header>
   );

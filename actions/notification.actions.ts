@@ -1,13 +1,13 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'No autorizado' };
+    return { error: "No autorizado" };
   }
 
   try {
@@ -16,20 +16,20 @@ export async function getNotifications() {
         userId: session.user.id,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       take: 10,
     });
     return { notifications };
   } catch (error) {
-    return { error: 'No se pudieron obtener las notificaciones.' };
+    return { error: "No se pudieron obtener las notificaciones." };
   }
 }
 
 export async function markNotificationsAsRead() {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'No autorizado' };
+    return { error: "No autorizado" };
   }
 
   try {
@@ -42,9 +42,9 @@ export async function markNotificationsAsRead() {
         read: true,
       },
     });
-    revalidatePath('/dashboard');
-    return { success: 'Notificaciones marcadas como leídas.' };
+    revalidatePath("/dashboard");
+    return { success: "Notificaciones marcadas como leídas." };
   } catch (error) {
-    return { error: 'No se pudieron marcar las notificaciones.' };
+    return { error: "No se pudieron marcar las notificaciones." };
   }
 }

@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { pusherClient } from "@/lib/pusher-client";
 import {
   Card,
   CardContent,
@@ -20,6 +23,26 @@ export function ConnectionCodeView({
   connectionCode,
 }: ConnectionCodeViewProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = pusherClient.subscribe(`user-${session.user.id}`);
+
+    channel.bind("team-joined", () => {
+      toast.info("¡Te han añadido a un equipo!", {
+        description: "Actualizando tu dashboard...",
+      });
+      router.refresh();
+    });
+
+    return () => {
+      pusherClient.unsubscribe(`user-${session.user.id}`);
+      channel.unbind_all();
+    };
+  }, [session, router]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(connectionCode);

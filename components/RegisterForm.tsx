@@ -44,9 +44,12 @@ const RegisterSchema = z
       .string()
       .min(3, { message: "El nombre debe tener al menos 3 caracteres." })
       .max(50, { message: "El nombre no puede exceder los 50 caracteres." }),
-    barbershopName: z.string().max(50, {
-      message: "El nombre de la barbería no puede exceder los 50 caracteres.",
-    }),
+    barbershopName: z
+      .string()
+      .max(50, {
+        message: "El nombre de la barbería no puede exceder los 50 caracteres.",
+      })
+      .optional(),
     phone: z.string(),
     email: z.string().email({ message: "Por favor, ingresa un email válido." }),
     password: z
@@ -200,10 +203,10 @@ export default function RegisterForm() {
                           <span>Soy el Dueño de la Barbería</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="BARBER" disabled>
+                      <SelectItem value="BARBER">
                         <div className="flex items-center gap-2">
                           <Briefcase className="w-4 h-4" />
-                          <span>Soy un Barbero / Empleado (Próximamente)</span>
+                          <span>Soy un Barbero / Empleado</span>
                         </div>
                       </SelectItem>
                     </SelectContent>

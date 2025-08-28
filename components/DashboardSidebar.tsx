@@ -40,7 +40,7 @@ const mainNavLinks = [
   { href: "/dashboard/services", label: "Servicios", icon: Scissors },
   { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  { href: "#", label: "Equipo (Próximamente)", icon: User, disabled: true },
+  { href: "/dashboard/team", label: "Equipo", icon: User },
   {
     href: "#",
     label: "Estadísticas (Próximamente)",

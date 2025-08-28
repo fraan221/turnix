@@ -3,10 +3,9 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { BookingStatus, Barbershop } from "@prisma/client";
+import { BookingStatus, Barbershop, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
-import { Role } from "@prisma/client";
 
 async function getCurrentUserAndBarbershop() {
   const session = await auth();
@@ -16,18 +15,28 @@ async function getCurrentUserAndBarbershop() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, barbershopId: true },
+    include: {
+      ownedBarbershop: true,
+      teamMembership: true,
+    },
   });
 
-  if (!user || !user.barbershopId) {
+  if (!user) {
+    return { user: null, barbershopId: null, error: "Usuario no encontrado." };
+  }
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
     return {
-      user: null,
+      user,
       barbershopId: null,
-      error: "Usuario no encontrado o no asociado a una barbería.",
+      error: "Usuario no asociado a una barbería.",
     };
   }
 
-  return { user, barbershopId: user.barbershopId, error: null };
+  return { user, barbershopId, error: null };
 }
 
 export type FormState = {
@@ -111,8 +120,10 @@ type DaySchedule = {
 };
 
 export async function saveSchedule(schedule: DaySchedule[]) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== Role.OWNER) {
+    return { error: "Acción no autorizada." };
+  }
 
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
 
@@ -128,7 +139,7 @@ export async function saveSchedule(schedule: DaySchedule[]) {
     return { error: "Hubo un error al validar los horarios." };
   }
 
-  const barberId = user!.id;
+  const barberId = session.user.id;
 
   try {
     await prisma.$transaction(
@@ -300,18 +311,21 @@ export async function updateUserProfile(
 }
 
 export async function deleteClient(clientId: string) {
-  const { user, error: authError } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  const {
+    user,
+    barbershopId,
+    error: authError,
+  } = await getCurrentUserAndBarbershop();
+
+  if (authError || !barbershopId) {
+    return { error: authError || "No se encontró la barbería." };
+  }
 
   try {
     const client = await prisma.client.findFirst({
       where: {
         id: clientId,
-        bookings: {
-          some: {
-            barberId: user!.id,
-          },
-        },
+        barbershopId: barbershopId,
       },
     });
 
@@ -322,10 +336,7 @@ export async function deleteClient(clientId: string) {
     await prisma.$transaction(async (tx) => {
       await tx.notification.deleteMany({
         where: {
-          OR: [
-            { clientId: clientId },
-            { message: { contains: `con ${client.name}` } },
-          ],
+          clientId: clientId,
           userId: user!.id,
         },
       });
@@ -529,10 +540,13 @@ export async function updateClientNotes(
   const clientId = formData.get("clientId")?.toString();
   const notes = formData.get("notes")?.toString();
 
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { success: null, error: "No autorizado." };
+  const { barbershopId, error: authError } =
+    await getCurrentUserAndBarbershop();
+
+  if (authError || !barbershopId) {
+    return { success: null, error: authError || "No se encontró la barbería." };
   }
+
   if (!clientId) {
     return { success: null, error: "ID de cliente no encontrado." };
   }
@@ -541,13 +555,7 @@ export async function updateClientNotes(
     const client = await prisma.client.findFirst({
       where: {
         id: clientId,
-        barbershop: {
-          barbers: {
-            some: {
-              id: session.user.id,
-            },
-          },
-        },
+        barbershopId: barbershopId,
       },
     });
 

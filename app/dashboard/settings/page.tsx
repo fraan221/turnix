@@ -9,24 +9,43 @@ import {
 } from "@/components/ui/card";
 import SettingsForm from "@/components/SettingsForm";
 import { notFound } from "next/navigation";
+import { Role } from "@prisma/client";
 
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) return notFound();
 
-  const user = await prisma.user.findUnique({
+  const userWithRelations = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      barbershop: {
+      ownedBarbershop: {
         select: {
           name: true,
           slug: true,
         },
       },
+      teamMembership: {
+        include: {
+          barbershop: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
 
-  if (!user) return notFound();
+  if (!userWithRelations) return notFound();
+
+  const user = {
+    ...userWithRelations,
+    barbershop:
+      userWithRelations.role === Role.OWNER
+        ? userWithRelations.ownedBarbershop
+        : userWithRelations.teamMembership?.barbershop || null,
+  };
 
   return (
     <div>

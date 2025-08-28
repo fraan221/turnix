@@ -98,6 +98,11 @@ const config: NextAuthConfig = {
           where: { id: user.id },
           include: {
             ownedBarbershop: { select: { name: true, slug: true } },
+            teamMembership: {
+              include: {
+                barbershop: { select: { id: true, name: true, slug: true } },
+              },
+            },
             subscription: true,
           },
         });
@@ -113,11 +118,13 @@ const config: NextAuthConfig = {
               }
             : null;
 
+          token.teamMembership = dbUser.teamMembership;
           if (dbUser.ownedBarbershop) {
-            token.barbershop = {
-              name: dbUser.ownedBarbershop.name,
-              slug: dbUser.ownedBarbershop.slug,
-            };
+            token.barbershop = dbUser.ownedBarbershop;
+          } else if (dbUser.teamMembership?.barbershop) {
+            token.barbershop = dbUser.teamMembership.barbershop;
+          } else {
+            token.barbershop = null;
           }
         }
       }
@@ -127,6 +134,11 @@ const config: NextAuthConfig = {
           where: { id: token.id },
           include: {
             ownedBarbershop: { select: { name: true, slug: true } },
+            teamMembership: {
+              include: {
+                barbershop: { select: { id: true, name: true, slug: true } },
+              },
+            },
             subscription: true,
           },
         });
@@ -142,11 +154,13 @@ const config: NextAuthConfig = {
               }
             : null;
 
+          token.teamMembership = dbUser.teamMembership;
           if (dbUser.ownedBarbershop) {
-            token.barbershop = {
-              name: dbUser.ownedBarbershop.name,
-              slug: dbUser.ownedBarbershop.slug,
-            };
+            token.barbershop = dbUser.ownedBarbershop;
+          } else if (dbUser.teamMembership?.barbershop) {
+            token.barbershop = dbUser.teamMembership.barbershop;
+          } else {
+            token.barbershop = null;
           }
         }
       }
@@ -161,6 +175,7 @@ const config: NextAuthConfig = {
         session.user.image = token.picture as string | null;
         session.user.trialEndsAt = token.trialEndsAt;
         session.user.subscription = token.subscription;
+        session.user.teamMembership = token.teamMembership;
       }
       return session;
     },
