@@ -178,7 +178,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
           },
         });
 
-        const newBarbershop = await tx.barbershop.create({
+        await tx.barbershop.create({
           data: {
             name: barbershopName,
             slug: await generateSlug(barbershopName, tx),
@@ -235,6 +235,8 @@ export async function completeGoogleRegistration(
     let finalSlug: string | null = null;
 
     if (role === "OWNER" && barbershopName) {
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
       const barbershop = await prisma.$transaction(async (tx) => {
         const b = await tx.barbershop.upsert({
           where: { ownerId: userId },
@@ -248,7 +250,7 @@ export async function completeGoogleRegistration(
 
         await tx.user.update({
           where: { id: userId },
-          data: { role: Role.OWNER, phone },
+          data: { role: Role.OWNER, phone, trialEndsAt },
         });
 
         return b;

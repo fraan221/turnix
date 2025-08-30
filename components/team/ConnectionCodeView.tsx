@@ -26,8 +26,8 @@ export function ConnectionCodeView({
   const [isCopied, setIsCopied] = useState(false);
   const { data: session, update } = useSession();
   const router = useRouter();
-  const { showLoader } = useLoader();
-  const isUpdating = useRef(false);
+  const { showLoader, hideLoader } = useLoader();
+  const navigationTriggered = useRef(false);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -35,11 +35,15 @@ export function ConnectionCodeView({
     const channel = pusherClient.subscribe(`user-${session.user.id}`);
 
     const handleTeamJoined = async () => {
-      if (isUpdating.current) return;
-      isUpdating.current = true;
-      showLoader("¡Te han añadido a un equipo! Sincronizando tu cuenta...");
-      await update();
-      router.refresh();
+      console.log("Evento 'team-joined' recibido. Forzando actualización de sesión...");
+      showLoader("¡Te han añadido a un equipo! Actualizando tu sesión...");
+
+      try {
+        await update({ forceRefetch: true });
+      } catch (error) {
+        console.error("Error al forzar la actualización de la sesión:", error);
+        router.refresh();
+      }
     };
 
     channel.bind("team-joined", handleTeamJoined);
@@ -48,7 +52,24 @@ export function ConnectionCodeView({
       pusherClient.unsubscribe(`user-${session.user.id}`);
       channel.unbind("team-joined", handleTeamJoined);
     };
-  }, [session, router, update, showLoader]);
+  }, [session?.user?.id, showLoader]);
+
+  useEffect(() => {
+    if (session?.user?.teamMembership && !navigationTriggered.current) {
+      navigationTriggered.current = true;
+      
+      console.log("Sesión actualizada detectada. Navegando al dashboard.");
+      
+      toast.success("¡Sincronización completa!", {
+        description: "Bienvenido a tu nuevo equipo.",
+      });
+
+      setTimeout(() => {
+        hideLoader();
+        window.location.href = "/dashboard";
+      }, 500);
+    }
+  }, [session, router, hideLoader]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(connectionCode);
@@ -95,3 +116,4 @@ export function ConnectionCodeView({
     </div>
   );
 }
+

@@ -1,27 +1,57 @@
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const barbershop = await prisma.barbershop.findUnique({
-      where: { slug: 'test-barber' },
-      include: { owner: true, services: true },
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        teamMembership: {
+          include: {
+            barbershop: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        ownedBarbershop: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
     });
 
-    if (!barbershop) {
+    if (!user) {
       return NextResponse.json(
-        { found: false, error: 'Barbershop with slug test-barber not found.' },
+        { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ found: true, data: barbershop });
-
+    return NextResponse.json({
+      id: user.id,
+      role: user.role,
+      teamMembership: user.teamMembership,
+      barbershop: user.ownedBarbershop || user.teamMembership?.barbershop,
+      hasTeam: !!user.teamMembership,
+    });
   } catch (error) {
-    console.error('[TEST_DATA_API_ERROR]', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Error en /api/test-data:", error);
     return NextResponse.json(
-      { found: false, error: 'An error occurred while querying the database.', details: errorMessage },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }

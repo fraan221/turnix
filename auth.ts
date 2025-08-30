@@ -79,17 +79,6 @@ const config: NextAuthConfig = {
       },
     }),
   ],
-  events: {
-    async createUser({ user }) {
-      if (user.id && user.email) {
-        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { trialEndsAt },
-        });
-      }
-    },
-  },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {

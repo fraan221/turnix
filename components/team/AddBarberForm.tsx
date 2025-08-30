@@ -68,7 +68,7 @@ export function AddBarberForm() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4" />
-          Añadir Barbero
+          Añadir barbero
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
