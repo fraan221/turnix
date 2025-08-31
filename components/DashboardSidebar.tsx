@@ -72,11 +72,18 @@ export function DashboardSidebar() {
     <Sidebar>
       <SidebarHeader className="p-3">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Logo de Turnix" width={30} height={30} />
           {session?.user?.barbershop?.name && (
-            <span className="text-lg font-semibold truncate">
-              {session.user.barbershop.name}
-            </span>
+            <>
+              <Image
+                src="/logo.png"
+                alt="Logo de Turnix"
+                width={30}
+                height={30}
+              />
+              <span className="text-lg font-semibold truncate">
+                {session.user.barbershop.name}
+              </span>
+            </>
           )}
         </Link>
       </SidebarHeader>

@@ -36,11 +36,11 @@ export function EnableTeamView() {
             <Users className="w-12 h-12 text-primary" />
           </div>
           <CardTitle className="mt-4 text-3xl">
-            Gestiona tu Equipo de Barberos
+            ¿Trabajás con otros barberos?
           </CardTitle>
-          <CardDescription className="max-w-md pt-2 text-base">
-            Invita a otros barberos a tu espacio de trabajo. Cada uno tendrá su
-            propia agenda y servicios, todo bajo el mismo techo.
+          <CardDescription className="max-w-sm pt-2 text-base">
+            Agregá a tu equipo y que cada barbero maneje su propia agenda. Más
+            organización, más clientes, más facturación.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -48,25 +48,23 @@ export function EnableTeamView() {
             <li className="flex items-start">
               <CheckCircle className="w-5 h-5 mr-3 text-green-500 shrink-0" />
               <span>
-                <span className="font-semibold">Centraliza la Gestión:</span>{" "}
-                Añade barberos a tu barbería y gestiona todo desde un solo
-                lugar.
+                <span className="font-semibold">Control Total:</span> Agregás
+                barberos y manejás toda la barbería desde un solo panel.
               </span>
             </li>
             <li className="flex items-start">
               <CheckCircle className="w-5 h-5 mr-3 text-green-500 shrink-0" />
               <span>
-                <span className="font-semibold">Agendas Individuales:</span>{" "}
-                Cada barbero gestiona sus propios turnos y servicios, evitando
-                conflictos.
+                <span className="font-semibold">Sin Líos:</span> Cada barbero
+                tiene su agenda propia. No más confusiones ni turnos
+                superpuestos.
               </span>
             </li>
             <li className="flex items-start">
               <CheckCircle className="w-5 h-5 mr-3 text-green-500 shrink-0" />
               <span>
-                <span className="font-semibold">Más Reservas:</span> Ofrece a
-                tus clientes la opción de elegir con qué barbero agendar su
-                turno.
+                <span className="font-semibold">Más Turnos:</span> Los clientes
+                pueden elegir barbero y horario. Más opciones = más reservas.
               </span>
             </li>
           </ul>
@@ -85,7 +83,7 @@ export function EnableTeamView() {
                   Activando...
                 </>
               ) : (
-                "Comenzar a crear mi equipo"
+                "Activar gestión de equipo"
               )}
             </Button>
           </form>

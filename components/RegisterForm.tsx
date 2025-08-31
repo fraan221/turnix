@@ -168,10 +168,10 @@ export default function RegisterForm() {
             <div className="p-3 bg-green-100 rounded-full">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">¡Cuenta Creada!</CardTitle>
+            <CardTitle className="text-2xl">¡Listo! Ya podés empezar</CardTitle>
             <CardDescription>
-              Tu cuenta ha sido creada con éxito. Serás redirigido a la página
-              de inicio de sesión en unos momentos.
+              Tu cuenta ya está lista. Te llevamos al login para que puedas
+              acceder a tu panel de barbero.
             </CardDescription>
           </CardContent>
         ) : (
@@ -179,16 +179,13 @@ export default function RegisterForm() {
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Crea tu cuenta</CardTitle>
               <CardDescription>
-                Ingresa tus datos para empezar a gestionar tu barbería con
-                Turnix
+                Completá estos datos y empezá a gestionar tu barbería en minutos
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(processForm)} className="grid gap-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="role">
-                    Primero, ¿cuál es tu rol en la barbería?
-                  </Label>
+                  <Label htmlFor="role">¿Cuál es tu situación?</Label>
                   <Select onValueChange={handleRoleChange}>
                     <SelectTrigger
                       id="role"
@@ -321,7 +318,7 @@ export default function RegisterForm() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 bg-card text-muted-foreground">
-                      O registrate con
+                      O creá tu cuenta con
                     </span>
                   </div>
                 </div>

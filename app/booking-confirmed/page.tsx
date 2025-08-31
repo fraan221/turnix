@@ -24,7 +24,7 @@ export default function BookingConfirmedPage({
 }: BookingConfirmedPageProps) {
   const { client, phone, barberName } = searchParams;
 
-  const message = `Hola! Soy ${client || "un cliente"}, acabo de agendar un turno y quería confirmar mi asistencia. ¡Gracias!`;
+  const message = `Hola! Soy ${client || "un cliente"}. Acabo de reservar un turno y quería confirmar que voy a asistir. ¡Gracias!`;
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(phone || "")}?text=${encodeURIComponent(message)}`;
 
   return (
@@ -32,29 +32,29 @@ export default function BookingConfirmedPage({
       <Card className="w-full max-w-lg text-center">
         <CardHeader className="items-center">
           <CheckCircle2 className="w-16 h-16 mb-4 text-green-500" />
-          <CardTitle className="text-3xl">¡Turno Confirmado!</CardTitle>
+          <CardTitle className="text-3xl">¡Tu turno está reservado!</CardTitle>
           <CardDescription className="pt-2 text-lg sr-only text-muted-foreground">
-            Tu reserva ha sido agendada con éxito.
+            Ya tenés tu lugar asegurado.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="py-6 space-y-4 text-center border-t border-b">
-            <h3 className="font-semibold">Confirma tu asistencia</h3>
+            <h3 className="font-semibold">Solo falta un paso</h3>
             <p className="text-sm text-muted-foreground">
-              Para asegurar tu turno, envía un mensaje de confirmación a{" "}
-              <span className="font-bold">{barberName || "tu barbero"}</span>.
+              Enviá un mensaje rápido a {barberName || "tu barbero"} para
+              confirmar que vas a ir. ¡Así evitás perder tu lugar!
             </p>
             <Button asChild size="lg">
               <Link href={whatsappUrl} target="_blank">
-                <WhatsAppIcon className="w-5 h-5 mr-2" />
+                <WhatsAppIcon className="w-5 h-5" />
                 Confirmar por WhatsApp
               </Link>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            ¡Muchas gracias por confiar en nosotros!
+            ¡Gracias por elegirnos!
             <br />
-            Ya puedes cerrar esta pestaña. 😊
+            Ya podés cerrar esta ventana. 😊
           </p>
         </CardContent>
       </Card>
