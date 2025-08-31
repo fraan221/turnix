@@ -35,7 +35,6 @@ export function ConnectionCodeView({
     const channel = pusherClient.subscribe(`user-${session.user.id}`);
 
     const handleTeamJoined = async () => {
-      console.log("Evento 'team-joined' recibido. Forzando actualización de sesión...");
       showLoader("¡Te han añadido a un equipo! Actualizando tu sesión...");
 
       try {
@@ -57,9 +56,9 @@ export function ConnectionCodeView({
   useEffect(() => {
     if (session?.user?.teamMembership && !navigationTriggered.current) {
       navigationTriggered.current = true;
-      
+
       console.log("Sesión actualizada detectada. Navegando al dashboard.");
-      
+
       toast.success("¡Sincronización completa!", {
         description: "Bienvenido a tu nuevo equipo.",
       });
@@ -116,4 +115,3 @@ export function ConnectionCodeView({
     </div>
   );
 }
-

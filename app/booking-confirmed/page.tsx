@@ -58,6 +58,18 @@ export default function BookingConfirmedPage({
           </p>
         </CardContent>
       </Card>
+      <div className="mt-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          Powered by{" "}
+          <Link
+            href="/"
+            target="_blank"
+            className="font-semibold text-primary hover:underline"
+          >
+            Turnix
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

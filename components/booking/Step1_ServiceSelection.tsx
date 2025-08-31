@@ -68,6 +68,11 @@ export function Step1_ServiceSelection({
               >
                 <div className="space-y-1">
                   <h3 className="font-semibold">{service.name}</h3>
+                  {service.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {service.description}
+                    </p>
+                  )}
                   {service.durationInMinutes && (
                     <p className="text-sm text-muted-foreground">
                       {formatDuration(service.durationInMinutes)}

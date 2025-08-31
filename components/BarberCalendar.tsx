@@ -289,6 +289,7 @@ export default function BarberCalendar({
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView={view}
           {...calendarOptions}
           datesSet={handleDatesSet}
           events={events}
