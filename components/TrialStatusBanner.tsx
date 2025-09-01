@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { intervalToDuration } from "date-fns";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface TrialStatusBannerProps {
   trialEndsAt: Date | null | undefined;
@@ -48,14 +48,8 @@ export default function TrialStatusBanner({
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">
-      <div className="flex items-center gap-2 font-semibold">
-        <Clock className="w-5 h-5" />
-        <p>
-          Tu período de prueba termina en:{" "}
-          <span className="px-2 py-1 ml-1 font-mono text-base bg-white rounded-md text-primary">
-            {timeLeft}
-          </span>
-        </p>
+      <div className="flex items-center gap-2 font-semibold text-md">
+        <p>Te quedan {timeLeft} de prueba gratuita</p>
       </div>
       <Button
         asChild
@@ -64,7 +58,7 @@ export default function TrialStatusBanner({
         className="bg-white text-primary hover:bg-white/90"
       >
         <Link href="/subscribe?reason=trial">
-          Suscribirme <ArrowRight className="w-4 h-4 ml-2" />
+          Continuar con Turnix <ArrowRight className="w-4 h-4" />
         </Link>
       </Button>
     </div>

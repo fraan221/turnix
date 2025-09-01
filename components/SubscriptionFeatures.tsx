@@ -1,16 +1,15 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 
 const features = [
-  { name: "Gestión de Agenda Completa", included: true },
-  { name: "Creación de Servicios Ilimitados", included: true },
-  { name: "Gestión de Horarios y Bloqueos", included: true },
-  { name: "Portal de Clientes", included: true },
-  { name: "Página Pública con Flujo de Reserva", included: true },
-  { name: "Personalización de Perfil", included: true },
-  { name: "Gestión de Equipos", included: true },
-  { name: "Estadísticas de Negocio", included: false },
+  { name: "Agenda completa y fácil de usar", included: true },
+  { name: "Servicios ilimitados (cortes, barba, etc.)", included: true },
+  { name: "Horarios y bloqueos personalizados", included: true },
+  { name: "Portal para que tus clientes reserven", included: true },
+  { name: "Página web propia para recibir turnos", included: true },
+  { name: "Perfil personalizado con tu marca", included: true },
+  { name: "Manejo de equipo de barberos", included: true },
+  { name: "Estadísticas de tu negocio", included: true },
 ];
 
 export function SubscriptionFeatures() {
@@ -27,11 +26,6 @@ export function SubscriptionFeatures() {
                 <Check className="w-4 h-4 text-primary" />
               </div>
               <span className="flex-1">{feature.name}</span>
-              {!feature.included && (
-                <Badge variant="outline" className="text-primary">
-                  Próximamente
-                </Badge>
-              )}
             </li>
           ))}
         </ul>

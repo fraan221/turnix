@@ -14,17 +14,17 @@ function SubmitButton({ isTrial }: { isTrial: boolean }) {
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Redirigiendo...
+          Procesando pago...
         </>
       ) : isTrial ? (
         <>
           <ShoppingBag className="mr-2" />
-          Suscribirme al Plan PRO
+          Continuar con Plan PRO
         </>
       ) : (
         <>
           <ShoppingBag className="mr-2" />
-          Reactivar mi Suscripción PRO
+          Reactivar Plan PRO
         </>
       )}
     </Button>

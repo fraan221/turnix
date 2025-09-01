@@ -176,7 +176,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
       />
       <form
         action={handleFormAction}
-        className="flex flex-col items-center justify-center max-w-lg mx-auto space-y-4"
+        className="flex flex-col items-center justify-center mx-auto space-y-4 max-w-7xl"
       >
         <div className="flex items-center w-full gap-4">
           <Avatar className="w-20 h-20">

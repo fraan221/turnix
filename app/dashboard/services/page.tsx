@@ -81,7 +81,7 @@ export default async function ServicesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto space-y-6 max-w-7xl">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>Lista de Servicios</CardTitle>

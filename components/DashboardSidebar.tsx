@@ -41,12 +41,7 @@ const mainNavLinks = [
   { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
   { href: "/dashboard/team", label: "Equipo", icon: User },
-  {
-    href: "#",
-    label: "Estadísticas (Próximamente)",
-    icon: BarChart2,
-    disabled: true,
-  },
+  { href: "/dashboard/analytics", label: "Estadísticas", icon: BarChart2 },
 ];
 
 export function DashboardSidebar() {
@@ -63,7 +58,7 @@ export function DashboardSidebar() {
 
   const navLinks = mainNavLinks.filter((link) => {
     if (userRole === Role.BARBER) {
-      return !["/dashboard/team", "#"].includes(link.href);
+      return !["/dashboard/team", "/dashboard/analytics"].includes(link.href);
     }
     return true;
   });

@@ -44,7 +44,7 @@ export function TeamList({ teamMembers }: TeamListProps) {
           <Users className="w-12 h-12 text-muted-foreground" />
           <p className="mt-4 font-semibold">Tu equipo está vacío</p>
           <p className="text-sm text-muted-foreground">
-            Usa el botón "+ Añadir Barbero" para empezar a invitar miembros.
+            Usa el botón "+ Añadir barbero" para empezar a invitar miembros.
           </p>
         </div>
       )}
