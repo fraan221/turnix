@@ -251,7 +251,7 @@ export default function BarberCalendar({
   return (
     <>
       <div
-        className="bg-white "
+        className="mx-auto bg-white max-w-7xl"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >

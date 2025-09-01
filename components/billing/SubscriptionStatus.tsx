@@ -45,15 +45,14 @@ export default function SubscriptionStatus({
       <CardHeader className="text-center">
         {isInTrial ? (
           <>
-            <CardTitle>¡Asegura tu acceso al Plan PRO!</CardTitle>
-            <CardDescription>Tu prueba gratuita termina en:</CardDescription>
+            <CardTitle>¡No pierdas tu barbería digital!</CardTitle>
+            <CardDescription>Tu prueba gratuita se vence en:</CardDescription>
           </>
         ) : (
           <>
-            <CardTitle>Tu suscripción no está activa</CardTitle>
+            <CardTitle>Tu cuenta está pausada</CardTitle>
             <CardDescription>
-              Reactiva tu Plan PRO para seguir gestionando tu barbería sin
-              límites.
+              Reactivá tu Plan PRO y volvé a gestionar tu barbería como siempre.
             </CardDescription>
           </>
         )}

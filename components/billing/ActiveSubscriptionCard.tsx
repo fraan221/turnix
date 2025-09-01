@@ -60,7 +60,7 @@ export default function ActiveSubscriptionCard({
   };
 
   return (
-    <div className="p-6">
+    <div className="max-w-lg p-6 mx-auto ">
       <div className="space-y-4">
         <div>
           <h1 className="text-lg font-bold">PLAN PRO ACTIVO</h1>

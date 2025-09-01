@@ -46,7 +46,6 @@ const PeriodSelector: React.FC<{
   );
 };
 
-// Solución: Asegurarse de que sea una exportación por defecto.
 export default function AnalyticsDashboard({
   initialData,
 }: AnalyticsDashboardProps) {
@@ -73,49 +72,41 @@ export default function AnalyticsDashboard({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-        <h1 className="text-2xl font-bold font-heading">
-          Resumen de Actividad
-        </h1>
-        <div className="w-full md:w-auto">
+    <div className="mx-auto space-y-2 max-w-7xl">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Tu facturación</CardTitle>
           <PeriodSelector
             currentPeriod={currentPeriod}
             onPeriodChange={handlePeriodChange}
           />
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid max-w-4xl grid-cols-1 gap-4 mx-auto md:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="Ingresos Totales"
+          title="Total facturado"
           value={formatPrice(initialData.totalRevenue)}
-          description={`Total facturado ${periodDescriptions[currentPeriod]}`}
+          description={`Plata que ingresó ${periodDescriptions[currentPeriod]}`}
           icon={<DollarSign className="w-6 h-6 text-green-500" />}
         />
         <StatCard
-          title="Turnos Completados"
+          title="Turnos atendidos"
           value={initialData.completedBookings}
-          description={`Turnos finalizados ${periodDescriptions[currentPeriod]}`}
+          description={`Clientes que vinieron ${periodDescriptions[currentPeriod]}`}
           icon={<CheckCircle className="w-6 h-6 text-blue-500" />}
         />
         <StatCard
-          title="Turnos Cancelados"
+          title="Turnos perdidos"
           value={initialData.cancelledBookings}
-          description={`Cancelaciones ${periodDescriptions[currentPeriod]}`}
+          description={`Te cancelaron ${periodDescriptions[currentPeriod]}`}
           icon={<XCircle className="w-6 h-6 text-red-500" />}
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ingresos a lo largo del tiempo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Este componente necesita ser de cliente también */}
-          <IncomeOverTimeChart data={initialData.chartData} />
-        </CardContent>
-      </Card>
+      <div className="max-w-4xl mx-auto">
+        <IncomeOverTimeChart data={initialData.chartData} />
+      </div>
     </div>
   );
 }

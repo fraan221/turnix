@@ -1,4 +1,4 @@
-"use client"; // Solución: Añadir esta directiva
+"use client";
 
 import {
   BarChart,

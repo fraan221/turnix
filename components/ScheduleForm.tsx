@@ -84,7 +84,7 @@ export default function ScheduleForm({
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="mx-auto max-w-7xl">
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
           {schedule.map((dayConfig, index) => {

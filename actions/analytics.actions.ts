@@ -15,7 +15,6 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 
-// Solución: Exportar los tipos para que puedan ser importados en otros archivos.
 export type Period = "day" | "week" | "month";
 
 export type ChartDataPoint = {
@@ -46,7 +45,6 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
   });
 
   if (user?.role !== Role.OWNER) {
-    // Para ser consistentes, devolvemos un objeto con error en lugar de lanzar una excepción
     return {
       totalRevenue: 0,
       completedBookings: 0,

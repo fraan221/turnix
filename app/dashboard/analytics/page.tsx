@@ -3,7 +3,7 @@ import {
   Period,
   AnalyticsData,
 } from "@/actions/analytics.actions";
-import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard"; // Se mantiene la importación por defecto
+import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 
 interface AnalyticsPageProps {
   searchParams: {

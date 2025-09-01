@@ -58,7 +58,7 @@ export default async function SchedulePage() {
 
       <Separator />
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="mx-auto max-w-7xl">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Bloqueos Horarios</CardTitle>
           <AddTimeBlockModal />

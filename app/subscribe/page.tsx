@@ -22,13 +22,13 @@ export default function SubscribePage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             {isProactiveSubscription
-              ? "¡Asegura tu acceso al Plan PRO!"
-              : "Tu período de prueba ha terminado..."}
+              ? "¡Continuá sin interrupciones!"
+              : "Tu prueba gratuita terminó"}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="max-w-xs mx-auto text-muted-foreground">
             {isProactiveSubscription
-              ? "Continúa sin interrupciones cuando finalice tu prueba suscribiéndote a nuestro Plan PRO."
-              : "Para seguir utilizando todas las funciones de Turnix, por favor, suscríbete."}
+              ? "Suscríbete ahora y seguí gestionando tu barbería sin perder ni un turno."
+              : "Suscríbete al Plan PRO para recuperar el acceso a todos tus datos y turnos."}
           </CardDescription>
         </CardHeader>
         <CardContent>

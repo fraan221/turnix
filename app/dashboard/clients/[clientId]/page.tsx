@@ -129,7 +129,7 @@ export default async function ClientDetailPage({
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto space-y-6 max-w-7xl">
       <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
         <div className="grid gap-1">
           <h1 className="text-2xl font-bold tracking-tight font-heading md:text-3xl">
