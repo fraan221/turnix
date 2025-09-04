@@ -392,8 +392,6 @@ export async function updateBookingStatus(
       data: { status: newStatus },
     });
 
-    revalidatePath("/dashboard");
-
     const statusTextMap = {
       [BookingStatus.SCHEDULED]: "agendado",
       [BookingStatus.COMPLETED]: "completado",

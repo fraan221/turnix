@@ -1,74 +1,16 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { ClientNotesForm } from "./ClientNotesForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { CalendarClock, History, User } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
-import { formatPhoneNumberForWhatsApp, cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Booking, BookingStatus, Role, Service } from "@prisma/client";
+import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
+import { Role } from "@prisma/client";
+import { BookingHistory } from "./BookingHistory";
 import { notFound } from "next/navigation";
 
 interface ClientDetailPageProps {
   params: { clientId: string };
-}
-
-type BookingWithDetails = Booking & {
-  service: Service;
-  barber: {
-    name: string | null;
-  };
-};
-
-function BookingListItem({
-  booking,
-  formatString,
-  isOwnerView,
-}: {
-  booking: BookingWithDetails;
-  formatString: string;
-  isOwnerView: boolean;
-}) {
-  const statusMap = {
-    [BookingStatus.COMPLETED]: {
-      text: "Completado",
-      className: "bg-green-100 text-green-800",
-    },
-    [BookingStatus.CANCELLED]: {
-      text: "Cancelado",
-      className: "bg-red-100 text-red-800",
-    },
-    [BookingStatus.SCHEDULED]: {
-      text: "Próximo",
-      className: "bg-blue-100 text-blue-800",
-    },
-  };
-
-  const status = statusMap[booking.status];
-
-  return (
-    <li
-      key={booking.id}
-      className={cn("text-sm", booking.status === "CANCELLED" && "opacity-60")}
-    >
-      <div className="flex items-center justify-between">
-        <p className="font-semibold">{booking.service.name}</p>
-        {status && <Badge className={status.className}>{status.text}</Badge>}
-      </div>
-      <p className="capitalize text-muted-foreground">
-        {format(new Date(booking.startTime), formatString, { locale: es })}
-      </p>
-      {isOwnerView && (
-        <p className="text-xs text-muted-foreground">
-          con: <span className="font-medium">{booking.barber.name}</span>
-        </p>
-      )}
-    </li>
-  );
 }
 
 export default async function ClientDetailPage({
@@ -153,61 +95,11 @@ export default async function ClientDetailPage({
           />
         </div>
 
-        <div className="space-y-6 lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock className="w-5 h-5" />
-                Próximos turnos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {turnosFuturos.length > 0 ? (
-                <ul className="space-y-3">
-                  {turnosFuturos.map((booking) => (
-                    <BookingListItem
-                      key={booking.id}
-                      booking={booking as BookingWithDetails}
-                      formatString="EEEE d 'de' MMMM, HH:mm 'hs'"
-                      isOwnerView={currentUser.role === Role.OWNER}
-                    />
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No hay turnos futuros agendados.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Historial
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {historialDeTurnos.length > 0 ? (
-                <ul className="space-y-3">
-                  {historialDeTurnos.map((booking) => (
-                    <BookingListItem
-                      key={booking.id}
-                      booking={booking as BookingWithDetails}
-                      formatString="d/MM/yyyy - HH:mm 'hs'"
-                      isOwnerView={currentUser.role === Role.OWNER}
-                    />
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No hay historial de turnos.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <BookingHistory
+          turnosFuturos={turnosFuturos as any}
+          historialDeTurnos={historialDeTurnos as any}
+          isOwnerView={currentUser.role === Role.OWNER}
+        />
       </div>
     </div>
   );
