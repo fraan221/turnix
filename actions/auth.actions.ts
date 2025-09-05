@@ -99,9 +99,12 @@ const generateSlug = async (
   prismaClient: any = prisma
 ): Promise<string> => {
   const baseSlug = name
+    .trim()
     .toLowerCase()
     .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "");
+
   let slug = baseSlug;
   let count = 1;
   while (await prismaClient.barbershop.findUnique({ where: { slug } })) {
