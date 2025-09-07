@@ -1,10 +1,33 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import BarberCalendar from "@/components/BarberCalendar";
 import { Suspense } from "react";
 import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 import { Role } from "@prisma/client";
 import { ConnectionCodeView } from "@/components/team/ConnectionCodeView";
+import dynamic from "next/dynamic";
+import BarberCalendarSkeleton from "@/components/BarberCalendarSkeleton";
+
+const BarberCalendarWrapper = dynamic(
+  () => import("@/components/BarberCalendar"),
+  {
+    ssr: false,
+    loading: () => <BarberCalendarSkeleton />,
+  }
+);
+
+async function CalendarDataWrapper({ userId }: { userId: string }) {
+  const [bookings, services] = await Promise.all([
+    prisma.booking.findMany({
+      where: { barberId: userId },
+      include: { service: true, client: true },
+    }),
+    prisma.service.findMany({
+      where: { barberId: userId },
+    }),
+  ]);
+
+  return <BarberCalendarWrapper bookings={bookings} services={services} />;
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -27,22 +50,14 @@ export default async function DashboardPage() {
     return <ConnectionCodeView connectionCode={user.connectionCode} />;
   }
 
-  const [bookings, services] = await Promise.all([
-    prisma.booking.findMany({
-      where: { barberId: session.user.id },
-      include: { service: true, client: true },
-    }),
-    prisma.service.findMany({
-      where: { barberId: session.user.id },
-    }),
-  ]);
-
   return (
     <>
       <Suspense>
         <SubscriptionStatusHandler />
       </Suspense>
-      <BarberCalendar bookings={bookings} services={services} />
+      <Suspense fallback={<BarberCalendarSkeleton />}>
+        <CalendarDataWrapper userId={session.user.id} />
+      </Suspense>
     </>
   );
 }
