@@ -49,6 +49,9 @@ export async function getBarberAvailability(barberId: string, date: Date) {
           dayOfWeek: dayOfWeek,
         },
       },
+      include: {
+        blocks: true,
+      },
     }),
     prisma.booking.findMany({
       where: {

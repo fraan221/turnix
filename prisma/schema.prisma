@@ -146,12 +146,14 @@ model VerificationToken {
 model WorkingHours {
   id        String  @id @default(cuid())
   dayOfWeek Int
-  startTime String
-  endTime   String
+  startTime String?
+  endTime   String?
   isWorking Boolean @default(true)
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
+
+  blocks WorkScheduleBlock[]
 
   @@unique([barberId, dayOfWeek])
 }
@@ -215,4 +217,13 @@ model Team {
   updatedAt    DateTime   @updatedAt
 
   @@index([barbershopId])
+}
+
+model WorkScheduleBlock {
+  id        String @id @default(cuid())
+  startTime String
+  endTime   String
+
+  workingHours   WorkingHours @relation(fields: [workingHoursId], references: [id], onDelete: Cascade)
+  workingHoursId String
 }

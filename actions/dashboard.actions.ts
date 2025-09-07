@@ -102,34 +102,38 @@ const UserProfileSchema = z.object({
     .optional(),
 });
 
-const DayScheduleSchema = z
-  .object({
-    dayOfWeek: z.number().min(0).max(6),
-    isWorking: z.boolean(),
-    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  })
-  .refine(
-    (data) => {
-      if (!data.isWorking) return true;
-      return data.endTime > data.startTime;
-    },
-    {
-      message: "La hora de fin debe ser posterior a la hora de inicio.",
-      path: ["endTime"],
+const WorkScheduleBlockSchema = z.object({
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+});
+
+const DayScheduleSchema = z.object({
+  dayOfWeek: z.number().min(0).max(6),
+  isWorking: z.boolean(),
+  blocks: z.array(WorkScheduleBlockSchema),
+});
+
+const ScheduleSchema = z.array(DayScheduleSchema).refine(
+  (schedule) => {
+    for (const day of schedule) {
+      if (day.isWorking) {
+        for (const block of day.blocks) {
+          if (block.startTime >= block.endTime) {
+            return false;
+          }
+        }
+      }
     }
-  );
+    return true;
+  },
+  {
+    message: "La hora de inicio debe ser anterior a la hora de fin",
+    // Esta función de path es compleja de tipar correctamente en el refine,
+    // por lo que simplificaremos el mensaje de error para evitar complejidad.
+  }
+);
 
-const ScheduleSchema = z.array(DayScheduleSchema);
-
-type DaySchedule = {
-  dayOfWeek: number;
-  isWorking: boolean;
-  startTime: string;
-  endTime: string;
-};
-
-export async function saveSchedule(schedule: DaySchedule[]) {
+export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== Role.OWNER) {
     return { error: "Acción no autorizada." };
@@ -138,23 +142,26 @@ export async function saveSchedule(schedule: DaySchedule[]) {
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
 
   if (!validatedSchedule.success) {
-    const firstError = validatedSchedule.error.issues[0];
-    if (firstError.code === "custom" && firstError.path.length > 0) {
-      const dayIndex = firstError.path[0] as number;
-      const dayName = daysOfWeek[dayIndex];
-      return {
-        error: `${firstError.message} (en ${dayName})`,
-      };
-    }
-    return { error: "Hubo un error al validar los horarios." };
+    // Encontrar el día que falló para un mensaje de error más útil
+    const erroringDayIndex = schedule.findIndex(
+      (day) =>
+        day.isWorking &&
+        day.blocks.some((block) => block.startTime >= block.endTime)
+    );
+    const dayName =
+      erroringDayIndex !== -1 ? daysOfWeek[erroringDayIndex] : "un día";
+
+    return {
+      error: `${validatedSchedule.error.issues[0].message} (en ${dayName}).`,
+    };
   }
 
   const barberId = session.user.id;
 
   try {
-    await prisma.$transaction(
-      validatedSchedule.data.map((day) =>
-        prisma.workingHours.upsert({
+    await prisma.$transaction(async (tx) => {
+      for (const day of validatedSchedule.data) {
+        const workingHoursRecord = await tx.workingHours.upsert({
           where: {
             barberId_dayOfWeek: {
               barberId: barberId,
@@ -163,19 +170,32 @@ export async function saveSchedule(schedule: DaySchedule[]) {
           },
           update: {
             isWorking: day.isWorking,
-            startTime: day.startTime,
-            endTime: day.endTime,
+            // Limpiamos los campos antiguos
+            startTime: null,
+            endTime: null,
           },
           create: {
             barberId: barberId,
             dayOfWeek: day.dayOfWeek,
             isWorking: day.isWorking,
-            startTime: day.startTime,
-            endTime: day.endTime,
           },
-        })
-      )
-    );
+        });
+
+        await tx.workScheduleBlock.deleteMany({
+          where: { workingHoursId: workingHoursRecord.id },
+        });
+
+        if (day.isWorking && day.blocks.length > 0) {
+          await tx.workScheduleBlock.createMany({
+            data: day.blocks.map((block) => ({
+              startTime: block.startTime,
+              endTime: block.endTime,
+              workingHoursId: workingHoursRecord.id,
+            })),
+          });
+        }
+      }
+    });
 
     revalidatePath("/dashboard/schedule");
     return { success: "¡Horario guardado con éxito!" };
