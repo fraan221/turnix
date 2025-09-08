@@ -1,20 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-interface TrialStatusBannerProps {
-  trialEndsAt: Date | null | undefined;
-  isSubscribed: boolean;
-}
-
-export default function TrialStatusBanner({
-  trialEndsAt,
-  isSubscribed,
-}: TrialStatusBannerProps) {
+export default function TrialStatusBanner() {
+  const { data: session } = useSession();
   const [timeLeft, setTimeLeft] = useState("");
+
+  const user = session?.user;
+
+  const trialEndsAt = user?.trialEndsAt;
+  const isSubscribed = user?.subscription?.status === "authorized";
+
+  const isOwner = user?.role === "OWNER";
+  const showTrialBanner =
+    isOwner &&
+    !isSubscribed &&
+    trialEndsAt &&
+    new Date(trialEndsAt) > new Date();
 
   useEffect(() => {
     if (!trialEndsAt) return;
@@ -41,8 +47,9 @@ export default function TrialStatusBanner({
     return () => clearInterval(intervalId);
   }, [trialEndsAt]);
 
-  if (!timeLeft || !trialEndsAt) return null;
-  if (isSubscribed) return null;
+  if (!showTrialBanner) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">

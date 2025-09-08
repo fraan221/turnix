@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import TeamListSkeleton from "@/components/skeletons/TeamListSkeleton";
 import { getTeamPageData } from "@/lib/data";
 import { AddBarberForm } from "@/components/team/AddBarberForm";
 import { EnableTeamView } from "@/components/team/EnableTeamView";
@@ -6,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
-export default async function TeamPage() {
+async function TeamPageContent() {
   const barbershop = await getTeamPageData();
 
   if (!barbershop) {
@@ -49,5 +51,13 @@ export default async function TeamPage() {
         <TeamList teamMembers={teamMembers} />
       </CardContent>
     </Card>
+  );
+}
+
+export default async function TeamPage() {
+  return (
+    <Suspense fallback={<TeamListSkeleton />}>
+      <TeamPageContent />
+    </Suspense>
   );
 }

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import ServiceListSkeleton from "@/components/skeletons/ServiceListSkeleton";
 import { getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,18 +8,7 @@ import AddServiceModal from "@/components/AddServiceModal";
 import { Prisma, Role, Service } from "@prisma/client";
 import { Separator } from "@/components/ui/separator";
 
-const serviceWithBarber = Prisma.validator<Prisma.ServiceDefaultArgs>()({
-  include: { barber: { select: { id: true, name: true } } },
-});
-type ServiceWithBarber = Prisma.ServiceGetPayload<typeof serviceWithBarber>;
-
-type GroupedService = {
-  barberId: string;
-  barberName: string;
-  services: Service[];
-};
-
-export default async function ServicesPage() {
+async function ServicesPageContent() {
   const user = await getCurrentUserWithBarbershop();
   if (!user) return <p>No autorizado</p>;
 
@@ -107,5 +98,24 @@ export default async function ServicesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const serviceWithBarber = Prisma.validator<Prisma.ServiceDefaultArgs>()({
+  include: { barber: { select: { id: true, name: true } } },
+});
+type ServiceWithBarber = Prisma.ServiceGetPayload<typeof serviceWithBarber>;
+
+type GroupedService = {
+  barberId: string;
+  barberName: string;
+  services: Service[];
+};
+
+export default async function ServicesPage() {
+  return (
+    <Suspense fallback={<ServiceListSkeleton />}>
+      <ServicesPageContent />
+    </Suspense>
   );
 }

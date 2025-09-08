@@ -1,9 +1,12 @@
-import {
-  getAnalyticsData,
-  Period,
-  AnalyticsData,
-} from "@/actions/analytics.actions";
+import { Suspense } from "react";
+import AnalyticsDashboardSkeleton from "@/components/skeletons/AnalyticsDashboardSkeleton";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
+import { getAnalyticsData, Period } from "@/actions/analytics.actions";
+
+async function AnalyticsDataWrapper({ period }: { period: Period }) {
+  const analyticsData = await getAnalyticsData(period);
+  return <AnalyticsDashboard initialData={analyticsData} />;
+}
 
 interface AnalyticsPageProps {
   searchParams: {
@@ -11,11 +14,14 @@ interface AnalyticsPageProps {
   };
 }
 
-export default async function AnalyticsPage({
-  searchParams,
-}: AnalyticsPageProps) {
+export default function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const period = searchParams.period || "week";
-  const analyticsData: AnalyticsData = await getAnalyticsData(period);
 
-  return <AnalyticsDashboard initialData={analyticsData} />;
+  return (
+    <div>
+      <Suspense fallback={<AnalyticsDashboardSkeleton />}>
+        <AnalyticsDataWrapper period={period} />
+      </Suspense>
+    </div>
+  );
 }

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import TimeBlockListSkeleton from "@/components/skeletons/TimeBlockListSkeleton";
 import { getUserForDashboard } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import ScheduleForm from "@/components/ScheduleForm";
@@ -7,6 +9,28 @@ import { Separator } from "@/components/ui/separator";
 import { Role, WorkingHours } from "@prisma/client";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+async function TimeBlocksSection() {
+  const user = await getUserForDashboard();
+  if (!user) return null;
+
+  const timeBlocks = await prisma.timeBlock.findMany({
+    where: { barberId: user.id },
+    orderBy: { startTime: "desc" },
+  });
+
+  return (
+    <Card className="mx-auto max-w-7xl">
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <CardTitle>Bloqueos Horarios</CardTitle>
+        <AddTimeBlockModal />
+      </CardHeader>
+      <CardContent>
+        <TimeBlockList timeBlocks={timeBlocks} />
+      </CardContent>
+    </Card>
+  );
+}
 
 export default async function SchedulePage() {
   const user = await getUserForDashboard();
@@ -38,11 +62,6 @@ export default async function SchedulePage() {
     }
   }
 
-  const timeBlocks = await prisma.timeBlock.findMany({
-    where: { barberId: user.id },
-    orderBy: { startTime: "desc" },
-  });
-
   const workingHoursKey = JSON.stringify(barbershopWorkingHours);
 
   return (
@@ -62,15 +81,9 @@ export default async function SchedulePage() {
 
       <Separator />
 
-      <Card className="mx-auto max-w-7xl">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Bloqueos Horarios</CardTitle>
-          <AddTimeBlockModal />
-        </CardHeader>
-        <CardContent>
-          <TimeBlockList timeBlocks={timeBlocks} />
-        </CardContent>
-      </Card>
+      <Suspense fallback={<TimeBlockListSkeleton />}>
+        <TimeBlocksSection />
+      </Suspense>
     </div>
   );
 }

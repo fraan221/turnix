@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import SettingsFormSkeleton from "@/components/skeletons/SettingsFormSkeleton";
 import {
   Card,
   CardContent,
@@ -10,7 +12,7 @@ import { notFound } from "next/navigation";
 import { getUserForSettings } from "@/lib/data";
 import { Role } from "@prisma/client";
 
-export default async function SettingsPage() {
+async function SettingsPageContent() {
   const userWithRelations = await getUserForSettings();
 
   if (!userWithRelations) return notFound();
@@ -37,5 +39,13 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default async function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsFormSkeleton />}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }
