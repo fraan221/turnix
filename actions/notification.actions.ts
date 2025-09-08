@@ -1,19 +1,19 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function getNotifications() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado" };
   }
 
   try {
     const notifications = await prisma.notification.findMany({
       where: {
-        userId: session.user.id,
+        userId: user.id,
       },
       orderBy: {
         createdAt: "desc",
@@ -27,15 +27,15 @@ export async function getNotifications() {
 }
 
 export async function markNotificationsAsRead() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado" };
   }
 
   try {
     await prisma.notification.updateMany({
       where: {
-        userId: session.user.id,
+        userId: user.id,
         read: false,
       },
       data: {

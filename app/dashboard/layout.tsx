@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getUserForLayout } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -10,22 +10,21 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) {
+  const user = await getUserForLayout();
+  if (!user) {
     redirect("/login");
   }
-  if (!session.user.role) {
+  if (!user.role) {
     redirect("/complete-profile");
   }
 
-  const isOwner = session.user.role === "OWNER";
-  const hasActiveSubscription =
-    session.user.subscription?.status === "authorized";
+  const isOwner = user.role === "OWNER";
+  const hasActiveSubscription = user.subscription?.status === "authorized";
   const showTrialBanner =
     isOwner &&
     !hasActiveSubscription &&
-    session.user.trialEndsAt &&
-    new Date(session.user.trialEndsAt) > new Date();
+    user.trialEndsAt &&
+    new Date(user.trialEndsAt) > new Date();
 
   return (
     <SidebarProvider>
@@ -33,7 +32,7 @@ export default async function DashboardLayout({
       <SidebarInset>
         {showTrialBanner && (
           <TrialStatusBanner
-            trialEndsAt={session.user.trialEndsAt}
+            trialEndsAt={user.trialEndsAt}
             isSubscribed={hasActiveSubscription}
           />
         )}

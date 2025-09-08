@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,9 +12,9 @@ import {
 import CompleteProfileForm from "@/components/CompleteProfileForm";
 
 export default async function CompleteProfilePage() {
-  const session = await auth();
+  const user = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -38,12 +38,12 @@ export default async function CompleteProfilePage() {
           <CardHeader>
             <CardTitle className="text-xl">Un último paso...</CardTitle>
             <CardDescription>
-              ¡Hola, {session.user.name}! Para terminar de configurar tu cuenta,
+              ¡Hola, {user.name}! Para terminar de configurar tu cuenta,
               necesitamos un par de datos más.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CompleteProfileForm user={session.user} />
+            <CompleteProfileForm user={user} />
           </CardContent>
         </Card>
       </div>

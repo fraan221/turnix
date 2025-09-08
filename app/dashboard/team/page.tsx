@@ -1,6 +1,4 @@
-import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { getTeamPageData } from "@/lib/data";
 import { AddBarberForm } from "@/components/team/AddBarberForm";
 import { EnableTeamView } from "@/components/team/EnableTeamView";
 import { TeamList } from "@/components/team/TeamList";
@@ -9,40 +7,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
 export default async function TeamPage() {
-  const session = await auth();
+  const barbershop = await getTeamPageData();
 
-  if (!session?.user || session.user.role !== Role.OWNER) {
+  if (!barbershop) {
     return (
       <Alert variant="destructive" className="max-w-md mx-auto">
         <AlertTriangle className="w-4 h-4" />
-        <AlertTitle>Acceso Denegado</AlertTitle>
+        <AlertTitle>Acceso Denegado o Error</AlertTitle>
         <AlertDescription>
-          No tienes los permisos necesarios para acceder a esta sección.
+          No tienes permisos o no se encontró tu barbería.
         </AlertDescription>
       </Alert>
     );
   }
-
-  const barbershop = await prisma.barbershop.findUnique({
-    where: { ownerId: session.user.id },
-    include: {
-      teamMembers: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-  });
 
   if (!barbershop) {
     return (

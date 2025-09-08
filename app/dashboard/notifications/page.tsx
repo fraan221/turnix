@@ -1,22 +1,22 @@
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { NotificationList } from "./components/NotificationList";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 export default async function NotificationsPage() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return <p>No autorizado</p>;
   }
 
-  if (session.user.role !== Role.OWNER) {
+  if (user.role !== Role.OWNER) {
     redirect("/dashboard");
   }
 
   const notifications = await prisma.notification.findMany({
     where: {
-      userId: session.user.id,
+      userId: user.id,
     },
     orderBy: {
       createdAt: "desc",

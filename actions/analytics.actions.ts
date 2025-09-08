@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { BookingStatus, Role } from "@prisma/client";
 import {
@@ -31,18 +31,11 @@ export type AnalyticsData = {
 };
 
 export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getUserForSettings();
+
+  if (!user) {
     throw new Error("No autenticado");
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: true,
-      teamMembership: { include: { barbershop: true } },
-    },
-  });
 
   if (user?.role !== Role.OWNER) {
     return {

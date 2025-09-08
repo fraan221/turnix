@@ -1,5 +1,5 @@
-import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { getUserForDashboard } from "@/lib/data";
 import { Suspense } from "react";
 import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 import { Role } from "@prisma/client";
@@ -30,20 +30,14 @@ async function CalendarDataWrapper({ userId }: { userId: string }) {
 }
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getUserForDashboard();
+
+  if (!user) {
     return <p>No estás autorizado.</p>;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      teamMembership: true,
-    },
-  });
-
   if (
-    user?.role === Role.BARBER &&
+    user.role === Role.BARBER &&
     !user.teamMembership &&
     user.connectionCode
   ) {
@@ -56,7 +50,7 @@ export default async function DashboardPage() {
         <SubscriptionStatusHandler />
       </Suspense>
       <Suspense fallback={<BarberCalendarSkeleton />}>
-        <CalendarDataWrapper userId={session.user.id} />
+        <CalendarDataWrapper userId={user.id} />
       </Suspense>
     </>
   );

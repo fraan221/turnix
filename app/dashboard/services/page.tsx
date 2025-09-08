@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ServiceList from "@/components/ServiceList";
@@ -18,32 +18,30 @@ type GroupedService = {
 };
 
 export default async function ServicesPage() {
-  const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
+  const user = await getCurrentUserWithBarbershop();
+  if (!user) return <p>No autorizado</p>;
 
-  const userId = session.user.id;
-  const userRole = session.user.role;
+  const userId = user.id;
+  const userRole = user.role;
+
   let services: Service[] = [];
   let groupedServices: GroupedService[] = [];
   let teamsEnabled = false;
 
   if (userRole === Role.OWNER) {
-    const barbershop = await prisma.barbershop.findUnique({
-      where: { ownerId: userId },
-      include: {
-        services: {
+    const barbershopInfo = user.ownedBarbershop;
+
+    const barbershop = barbershopInfo
+      ? await prisma.barbershop.findUnique({
+          where: { id: barbershopInfo.id },
           include: {
-            barber: {
-              select: {
-                id: true,
-                name: true,
-              },
+            services: {
+              include: { barber: { select: { id: true, name: true } } },
+              orderBy: { name: "asc" },
             },
           },
-          orderBy: { name: "asc" },
-        },
-      },
-    });
+        })
+      : null;
 
     if (barbershop) {
       teamsEnabled = barbershop.teamsEnabled;

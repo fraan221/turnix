@@ -1,5 +1,3 @@
-import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
 import {
   Card,
   CardContent,
@@ -9,33 +7,11 @@ import {
 } from "@/components/ui/card";
 import SettingsForm from "@/components/SettingsForm";
 import { notFound } from "next/navigation";
+import { getUserForSettings } from "@/lib/data";
 import { Role } from "@prisma/client";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  if (!session?.user?.id) return notFound();
-
-  const userWithRelations = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: {
-        select: {
-          name: true,
-          slug: true,
-        },
-      },
-      teamMembership: {
-        include: {
-          barbershop: {
-            select: {
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  const userWithRelations = await getUserForSettings();
 
   if (!userWithRelations) return notFound();
 

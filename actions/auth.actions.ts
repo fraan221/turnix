@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 import crypto from "crypto";
@@ -215,8 +215,8 @@ export async function completeGoogleRegistration(
   prevState: null,
   formData: FormData
 ): Promise<CompleteProfileState> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado" };
   }
 
@@ -232,7 +232,7 @@ export async function completeGoogleRegistration(
   }
 
   const { role, barbershopName, phone } = validatedFields.data;
-  const userId = session.user.id;
+  const userId = user.id;
 
   try {
     let finalSlug: string | null = null;

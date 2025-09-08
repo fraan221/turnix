@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import {
@@ -18,18 +18,10 @@ interface EditServicePageProps {
 export default async function EditServicePage({
   params,
 }: EditServicePageProps) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const currentUser = await getUserForSettings();
+  if (!currentUser) {
     return notFound();
   }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: true,
-      teamMembership: true,
-    },
-  });
 
   const barbershopId =
     currentUser?.ownedBarbershop?.id ||

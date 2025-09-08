@@ -1,23 +1,12 @@
-import { auth } from "@/auth";
+import { getUserForLayout } from "@/lib/data";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
 import ActiveSubscriptionCard from "@/components/billing/ActiveSubscriptionCard";
 import SubscriptionStatus from "@/components/billing/SubscriptionStatus";
 import SubscriptionButton from "@/components/billing/SubscriptionButton";
 import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
 
 export default async function BillingPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      subscription: true,
-    },
-  });
+  const user = await getUserForLayout();
 
   if (!user) {
     redirect("/login");

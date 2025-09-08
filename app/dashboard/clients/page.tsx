@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -40,11 +40,12 @@ function ClientList({ clients }: { clients: Client[] }) {
 }
 
 export default async function ClientsPage() {
-  const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
+  const user = await getCurrentUserWithBarbershop();
+  if (!user) return <p>No autorizado</p>;
 
-  const userId = session.user.id;
-  const userRole = session.user.role;
+  const userId = user.id;
+  const userRole = user.role;
+
   let clients: Client[] = [];
   let groupedClients: {
     barberId: string;
@@ -54,10 +55,7 @@ export default async function ClientsPage() {
   let teamsEnabled = false;
 
   if (userRole === Role.OWNER) {
-    const barbershop = await prisma.barbershop.findUnique({
-      where: { ownerId: userId },
-      select: { id: true, teamsEnabled: true },
-    });
+    const barbershop = user.ownedBarbershop;
 
     if (barbershop) {
       teamsEnabled = barbershop.teamsEnabled;

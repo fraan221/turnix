@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { revalidatePath } from "next/cache";
@@ -18,15 +18,12 @@ export async function createSubscription(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado. Por favor, inicia sesión de nuevo." };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-  if (!user || !user.email) {
+  if (!user.email) {
     return { error: "Usuario no encontrado o sin email configurado." };
   }
 
@@ -65,8 +62,8 @@ export async function createSubscription(
 export async function cancelSubscription(
   mercadopagoSubscriptionId: string
 ): Promise<{ error?: string; success?: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado." };
   }
 
@@ -74,7 +71,7 @@ export async function cancelSubscription(
     where: { mercadopagoSubscriptionId },
   });
 
-  if (subscriptionInDb?.userId !== session.user.id) {
+  if (subscriptionInDb?.userId !== user.id) {
     return { error: "No tienes permiso para cancelar esta suscripción." };
   }
 
