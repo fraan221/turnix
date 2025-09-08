@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { intervalToDuration } from "date-fns";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -21,21 +20,20 @@ export default function TrialStatusBanner({
     if (!trialEndsAt) return;
 
     const intervalId = setInterval(() => {
-      const duration = intervalToDuration({
-        start: new Date(),
-        end: new Date(trialEndsAt),
-      });
+      const distance = new Date(trialEndsAt).getTime() - new Date().getTime();
 
-      if (new Date() > new Date(trialEndsAt)) {
+      if (distance < 0) {
         setTimeLeft("Tu prueba ha finalizado.");
         clearInterval(intervalId);
         return;
       }
 
-      const days = duration.days || 0;
-      const hours = duration.hours || 0;
-      const minutes = duration.minutes || 0;
-      const seconds = duration.seconds || 0;
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
       setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
     }, 1000);

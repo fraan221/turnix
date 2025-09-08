@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatDistanceToNow, isThisWeek, isThisMonth } from "date-fns";
-import { es } from "date-fns/locale";
+import {
+  isDateInThisWeek,
+  isDateInThisMonth,
+  formatDistanceFromNow,
+} from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@prisma/client";
 
@@ -19,9 +22,9 @@ const groupNotifications = (notifications: Notification[]) => {
 
   notifications.forEach((n) => {
     const notificationDate = new Date(n.createdAt);
-    if (isThisWeek(notificationDate, { weekStartsOn: 1 })) {
+    if (isDateInThisWeek(notificationDate)) {
       groups.estaSemana.push(n);
-    } else if (isThisMonth(notificationDate)) {
+    } else if (isDateInThisMonth(notificationDate)) {
       groups.esteMes.push(n);
     } else {
       groups.anteriores.push(n);
@@ -67,10 +70,7 @@ export function NotificationList({
                 {n.message}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(n.createdAt), {
-                  addSuffix: true,
-                  locale: es,
-                })}
+                {formatDistanceFromNow(n.createdAt)}
               </p>
             </div>
           ))}

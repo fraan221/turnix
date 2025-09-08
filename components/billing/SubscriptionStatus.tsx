@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { intervalToDuration } from "date-fns";
 import {
   Card,
   CardContent,
@@ -24,15 +23,25 @@ export default function SubscriptionStatus({
     if (!trialEndsAt || new Date() > new Date(trialEndsAt)) return;
 
     const intervalId = setInterval(() => {
-      const duration = intervalToDuration({
-        start: new Date(),
-        end: new Date(trialEndsAt),
-      });
+      const distance = new Date(trialEndsAt).getTime() - new Date().getTime();
 
-      const days = duration.days || 0;
-      const hours = (duration.hours || 0).toString().padStart(2, "0");
-      const minutes = (duration.minutes || 0).toString().padStart(2, "0");
-      const seconds = (duration.seconds || 0).toString().padStart(2, "0");
+      if (distance < 0) {
+        clearInterval(intervalId);
+        return;
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      )
+        .toString()
+        .padStart(2, "0");
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+        .toString()
+        .padStart(2, "0");
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+        .toString()
+        .padStart(2, "0");
 
       setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
     }, 1000);

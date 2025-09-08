@@ -29,8 +29,7 @@ import {
   updateBookingStatus,
   updateClientNotes,
 } from "@/actions/dashboard.actions";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
@@ -162,14 +161,11 @@ export default function BookingDetailsDialog({
         <p>
           <strong>Fecha:</strong>{" "}
           <span className="capitalize">
-            {format(new Date(booking.startTime), "EEEE d 'de' MMMM, yyyy", {
-              locale: es,
-            })}
+            {formatLongDate(booking.startTime)}
           </span>
         </p>
         <p>
-          <strong>Hora:</strong>{" "}
-          {format(new Date(booking.startTime), "HH:mm 'hs'")}
+          <strong>Hora:</strong> {`${formatTime(booking.startTime)} hs`}
         </p>
         <p>
           <strong>Estado:</strong>{" "}

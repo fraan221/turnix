@@ -1,8 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { Booking, BookingStatus, Role, Service } from "@prisma/client";
+import { formatLongDateTime, formatShortDateTime } from "@/lib/date-helpers";
+import { Booking, BookingStatus, Service } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,11 +22,11 @@ interface BookingHistoryProps {
 
 function BookingListItem({
   booking,
-  formatString,
+  formattedDate,
   isOwnerView,
 }: {
   booking: BookingWithDetails;
-  formatString: string;
+  formattedDate: string;
   isOwnerView: boolean;
 }) {
   const statusMap = {
@@ -56,9 +55,7 @@ function BookingListItem({
         <p className="font-semibold">{booking.service.name}</p>
         {status && <Badge className={status.className}>{status.text}</Badge>}
       </div>
-      <p className="capitalize text-muted-foreground">
-        {format(new Date(booking.startTime), formatString, { locale: es })}
-      </p>
+      <p className="capitalize text-muted-foreground">{formattedDate}</p>
       {isOwnerView && (
         <p className="text-xs text-muted-foreground">
           con: <span className="font-medium">{booking.barber.name}</span>
@@ -89,7 +86,7 @@ export function BookingHistory({
                 <BookingListItem
                   key={booking.id}
                   booking={booking}
-                  formatString="EEEE d 'de' MMMM, HH:mm 'hs'"
+                  formattedDate={formatLongDateTime(booking.startTime)}
                   isOwnerView={isOwnerView}
                 />
               ))}
@@ -116,7 +113,7 @@ export function BookingHistory({
                 <BookingListItem
                   key={booking.id}
                   booking={booking}
-                  formatString="d/MM/yyyy - HH:mm 'hs'"
+                  formattedDate={formatShortDateTime(booking.startTime)}
                   isOwnerView={isOwnerView}
                 />
               ))}

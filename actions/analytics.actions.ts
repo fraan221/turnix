@@ -4,16 +4,14 @@ import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { BookingStatus, Role } from "@prisma/client";
 import {
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  format,
-} from "date-fns";
-import { es } from "date-fns/locale";
+  getStartOfDay,
+  getEndOfDay,
+  getStartOfWeek,
+  getEndOfWeek,
+  getStartOfMonth,
+  getEndOfMonth,
+  getEachDayOfInterval,
+} from "@/lib/date-helpers";
 
 export type Period = "day" | "week" | "month";
 
@@ -65,16 +63,16 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
 
   switch (period) {
     case "day":
-      startDate = startOfDay(now);
-      endDate = endOfDay(now);
+      startDate = getStartOfDay(now);
+      endDate = getEndOfDay(now);
       break;
     case "week":
-      startDate = startOfWeek(now, { weekStartsOn: 1 });
-      endDate = endOfWeek(now, { weekStartsOn: 1 });
+      startDate = getStartOfWeek(now);
+      endDate = getEndOfWeek(now);
       break;
     case "month":
-      startDate = startOfMonth(now);
-      endDate = endOfMonth(now);
+      startDate = getStartOfMonth(now);
+      endDate = getEndOfMonth(now);
       break;
     default:
       throw new Error("Período no válido");
@@ -110,17 +108,28 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
     });
 
     const dailyRevenue: { [key: string]: number } = {};
-    const intervalDays = eachDayOfInterval({ start: startDate, end: endDate });
-    const dateFormat =
-      period === "day" ? "HH:mm" : period === "month" ? "dd/MM" : "EEEE";
+    const intervalDays = getEachDayOfInterval(startDate, endDate);
+    const getFormatOptions = (p: Period): Intl.DateTimeFormatOptions => {
+      switch (p) {
+        case "day":
+          return { hour: "2-digit", minute: "2-digit", hour12: false };
+        case "month":
+          return { day: "2-digit", month: "2-digit" };
+        case "week":
+          return { weekday: "long" };
+      }
+    };
+
+    const formatOptions = getFormatOptions(period);
+    const formatter = new Intl.DateTimeFormat("es-AR", formatOptions);
 
     intervalDays.forEach((day) => {
-      const dayKey = format(day, dateFormat, { locale: es });
+      const dayKey = formatter.format(day);
       dailyRevenue[dayKey] = 0;
     });
 
     completedBookingsForPeriod.forEach((booking) => {
-      const dayKey = format(booking.startTime, dateFormat, { locale: es });
+      const dayKey = formatter.format(booking.startTime);
       dailyRevenue[dayKey] =
         (dailyRevenue[dayKey] || 0) + booking.service.price;
     });

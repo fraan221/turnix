@@ -5,8 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Service } from "@prisma/client";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatConfirmationDateTime } from "@/lib/date-helpers";
 import {
   Card,
   CardContent,
@@ -133,13 +132,7 @@ export function Step3_Confirmation({
         <div>
           <h3 className="font-semibold">Día y Hora</h3>
           <p className="text-sm capitalize text-muted-foreground">
-            {format(
-              selectedDateTime,
-              "EEEE d 'de' MMMM, yyyy 'a las' HH:mm 'hs'",
-              {
-                locale: es,
-              }
-            )}
+            {formatConfirmationDateTime(selectedDateTime)}
           </p>
         </div>
         <Separator />
