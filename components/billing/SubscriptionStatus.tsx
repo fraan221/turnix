@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Card,
   CardContent,
@@ -9,45 +10,51 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-interface SubscriptionStatusProps {
-  trialEndsAt: Date | null;
-}
+const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
+  if (!endDate) return "";
+  const distance = new Date(endDate).getTime() - new Date().getTime();
 
-export default function SubscriptionStatus({
-  trialEndsAt,
-}: SubscriptionStatusProps) {
-  const [timeLeft, setTimeLeft] = useState("");
-  const isInTrial = trialEndsAt && trialEndsAt > new Date();
+  if (distance < 0) {
+    return "Tu prueba ha finalizado.";
+  }
+
+  const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(
+    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+  )
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+    .toString()
+    .padStart(2, "0");
+
+  return `${days} días ${hours}:${minutes}:${seconds}`;
+};
+
+export default function SubscriptionStatus() {
+  const { data: session } = useSession();
+  const trialEndsAt = session?.user?.trialEndsAt;
+
+  const [timeLeft, setTimeLeft] = useState(() =>
+    calculateTimeLeft(trialEndsAt)
+  );
+
+  const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
 
   useEffect(() => {
-    if (!trialEndsAt || new Date() > new Date(trialEndsAt)) return;
+    if (!trialEndsAt || !isInTrial) return;
+
+    setTimeLeft(calculateTimeLeft(trialEndsAt));
 
     const intervalId = setInterval(() => {
-      const distance = new Date(trialEndsAt).getTime() - new Date().getTime();
-
-      if (distance < 0) {
-        clearInterval(intervalId);
-        return;
-      }
-
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      )
-        .toString()
-        .padStart(2, "0");
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
-        .toString()
-        .padStart(2, "0");
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
-        .toString()
-        .padStart(2, "0");
-
-      setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
+      setTimeLeft(calculateTimeLeft(trialEndsAt));
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [trialEndsAt]);
+  }, [trialEndsAt, isInTrial]);
 
   return (
     <Card>

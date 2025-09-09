@@ -34,8 +34,11 @@ async function NotificationsPageContent() {
 
 export default async function NotificationsPage() {
   return (
-    <Suspense fallback={<NotificationListSkeleton />}>
-      <NotificationsPageContent />
-    </Suspense>
+    <>
+      <NotificationListSkeleton />
+      <Suspense fallback={<NotificationListSkeleton />}>
+        <NotificationsPageContent />
+      </Suspense>
+    </>
   );
 }

@@ -1,21 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
+  if (!endDate) return "";
+  const distance = new Date(endDate).getTime() - new Date().getTime();
+
+  if (distance < 0) {
+    return "Tu prueba ha finalizado.";
+  }
+
+  const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(
+    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+  );
+  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+  return `${days} días ${hours}:${minutes}:${seconds}`;
+};
+
 export default function TrialStatusBanner() {
   const { data: session } = useSession();
-  const [timeLeft, setTimeLeft] = useState("");
-
   const user = session?.user;
-
   const trialEndsAt = user?.trialEndsAt;
-  const isSubscribed = user?.subscription?.status === "authorized";
+
+  const [timeLeft, setTimeLeft] = useState(() =>
+    calculateTimeLeft(trialEndsAt)
+  );
 
   const isOwner = user?.role === "OWNER";
+  const isSubscribed = user?.subscription?.status === "authorized";
   const showTrialBanner =
     isOwner &&
     !isSubscribed &&
@@ -23,29 +42,16 @@ export default function TrialStatusBanner() {
     new Date(trialEndsAt) > new Date();
 
   useEffect(() => {
-    if (!trialEndsAt) return;
+    if (!trialEndsAt || !showTrialBanner) return;
+
+    setTimeLeft(calculateTimeLeft(trialEndsAt));
 
     const intervalId = setInterval(() => {
-      const distance = new Date(trialEndsAt).getTime() - new Date().getTime();
-
-      if (distance < 0) {
-        setTimeLeft("Tu prueba ha finalizado.");
-        clearInterval(intervalId);
-        return;
-      }
-
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      );
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-      setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
+      setTimeLeft(calculateTimeLeft(trialEndsAt));
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [trialEndsAt]);
+  }, [trialEndsAt, showTrialBanner]);
 
   if (!showTrialBanner) {
     return null;
