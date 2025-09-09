@@ -11,12 +11,12 @@ export default function TimeBlockListSkeleton() {
         <Skeleton className="h-10 w-36" />
       </CardHeader>
       <CardContent>
-        <div className="divide-y">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div>
+          {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between p-3">
               <div className="space-y-2">
                 <Skeleton className="w-40 h-5" />
-                <Skeleton className="w-24 h-4" />
+                <Skeleton className="w-56 h-4" />
               </div>
               <div className="flex items-center gap-2">
                 <Skeleton className="h-9 w-9" />

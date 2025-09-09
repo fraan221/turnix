@@ -89,6 +89,11 @@ export const getCurrentUserWithBarbershop = cache(async () => {
           teamsEnabled: true,
         },
       },
+      teamMembership: {
+        select: {
+          barbershopId: true,
+        },
+      },
     },
   });
 });

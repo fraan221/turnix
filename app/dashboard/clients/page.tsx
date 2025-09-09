@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import ClientListSkeleton from "@/components/skeletons/ClientListSkeleton";
 import { getCurrentUserWithBarbershop } from "@/lib/data";
+import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,26 +13,29 @@ async function ClientsPageContent() {
   const user = await getCurrentUserWithBarbershop();
   if (!user) return <p>No autorizado</p>;
 
-  const userId = user.id;
-  const userRole = user.role;
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
 
-  let clients: Client[] = [];
-  let groupedClients: {
-    barberId: string;
-    barberName: string;
-    clients: Client[];
-  }[] = [];
-  let teamsEnabled = false;
+  if (!barbershopId) {
+    return <p>No estás asociado a ninguna barbería.</p>;
+  }
 
-  const hasClients = clients.length > 0 || groupedClients.length > 0;
+  const clients: Client[] = await prisma.client.findMany({
+    where: {
+      barbershopId: barbershopId,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  const hasClients = clients.length > 0;
 
   return (
     <div className="mx-auto max-w-7xl">
       <Card>
         <CardHeader>
-          <CardTitle>
-            {userRole === Role.OWNER ? "Todos los Clientes" : "Mis Clientes"}
-          </CardTitle>
+          <CardTitle>Clientes de la Barbería</CardTitle>
         </CardHeader>
         <CardContent>
           {!hasClients ? (
@@ -41,21 +45,6 @@ async function ClientsPageContent() {
               <p className="text-sm text-muted-foreground">
                 Los clientes aparecerán aquí después de su primer turno.
               </p>
-            </div>
-          ) : userRole === Role.OWNER && teamsEnabled ? (
-            <div className="space-y-8">
-              {groupedClients.map(({ barberId, barberName, clients }) => (
-                <div key={barberId}>
-                  <div className="flex items-center gap-4 mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {barberName}
-                      {barberId === userId && " (Tú)"}
-                    </h3>
-                    <Separator className="flex-1" />
-                  </div>
-                  <ClientList clients={clients} />
-                </div>
-              ))}
             </div>
           ) : (
             <ClientList clients={clients} />

@@ -18,10 +18,8 @@ export default function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const period = searchParams.period || "week";
 
   return (
-    <div>
-      <Suspense fallback={<AnalyticsDashboardSkeleton />}>
-        <AnalyticsDataWrapper period={period} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<AnalyticsDashboardSkeleton />}>
+      <AnalyticsDataWrapper period={period} />
+    </Suspense>
   );
 }

@@ -15,11 +15,11 @@ export default function ClientListSkeleton() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-4 border rounded-md"
+                className="flex items-center justify-between p-4 border rounded-lg border-gray-200/40"
               >
                 <div className="space-y-2">
                   <Skeleton className="w-32 h-5" />
-                  <Skeleton className="w-24 h-4" />
+                  <Skeleton className="h-5 w-28" />
                 </div>
                 <Skeleton className="w-20 h-9" />
               </div>
