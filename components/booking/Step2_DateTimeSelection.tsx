@@ -19,7 +19,7 @@ import {
   isToday,
   formatFullDate,
 } from "@/lib/date-helpers";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import TimeSlotsSkeleton from "@/components/skeletons/TimeSlotsSkeleton";
 import { cn } from "@/lib/utils";
 
@@ -185,9 +185,11 @@ export function Step2_DateTimeSelection({
           <h4 className="mb-4 font-semibold text-center">
             {date ? formatFullDate(date) : "Elige un día"}
           </h4>
-          <div className="grid grid-cols-3 gap-2 pr-2 overflow-y-auto sm:grid-cols-4 max-h-64">
+          <div className="grid w-full grid-cols-3 gap-2 pr-2 overflow-y-auto sm:grid-cols-4 max-h-64">
             {isLoading ? (
-              <TimeSlotsSkeleton />
+              <div className="flex items-center justify-center col-span-full">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
             ) : timeSlots.length > 0 ? (
               timeSlots.map((slot) => (
                 <Button
