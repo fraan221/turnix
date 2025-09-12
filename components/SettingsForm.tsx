@@ -219,7 +219,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             defaultValue={user.phone || ""}
           />
         </div>
-        {user.role === Role.OWNER && (
+        {user.role === Role.OWNER ? (
           <>
             <div className="grid w-full gap-2">
               <Label htmlFor="barbershopName">El nombre de mi Barbería</Label>
@@ -281,6 +281,46 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               </div>
             </div>
           </>
+        ) : (
+          user.role === Role.BARBER &&
+          user.barbershop?.slug && (
+            <div className="grid w-full gap-2">
+              <Label htmlFor="slug">URL de la Barbería</Label>
+              <div className="flex items-center">
+                <span className="inline-flex items-center h-10 px-3 text-sm border border-r-0 rounded-l-md border-input bg-muted text-muted-foreground">
+                  turnix.app/
+                </span>
+                <Input
+                  id="slug"
+                  name="slug"
+                  value={user.barbershop.slug}
+                  className="rounded-none read-only:bg-muted/50 read-only:cursor-not-allowed"
+                  readOnly
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopy}
+                      className="border-l-0 rounded-l-none"
+                      aria-label="Copiar URL"
+                    >
+                      {isCopied ? (
+                        <Check className="w-5 h-5 mx-3 text-green-500" />
+                      ) : (
+                        <Clipboard className="w-5 h-5 mx-3" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copiar URL pública</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          )
         )}
         <SubmitButton />
       </form>
