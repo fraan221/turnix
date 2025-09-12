@@ -212,14 +212,13 @@ export function Step2_DateTimeSelection({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Anterior
+          <ArrowLeft className="w-4 h-4" />
         </Button>
         <Button onClick={handleNextClick} disabled={!selectedSlot} size="lg">
           Siguiente
-          <ArrowRight className="w-4 h-4 ml-2" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
       </CardFooter>
     </Card>

@@ -25,7 +25,7 @@ export default function SubscriptionStatusHandler() {
       });
 
       await update();
-
+      router.refresh();
       router.replace(pathname, { scroll: false });
     };
 

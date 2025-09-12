@@ -1,7 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getUserForDashboard } from "@/lib/data";
 import { Suspense } from "react";
-import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 import { Role } from "@prisma/client";
 import { ConnectionCodeView } from "@/components/team/ConnectionCodeView";
 import dynamic from "next/dynamic";
@@ -46,9 +45,6 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Suspense>
-        <SubscriptionStatusHandler />
-      </Suspense>
       <Suspense fallback={<BarberCalendarSkeleton />}>
         <CalendarDataWrapper userId={user.id} />
       </Suspense>

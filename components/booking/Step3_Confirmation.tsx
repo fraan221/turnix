@@ -58,7 +58,7 @@ function SubmitButton() {
           Reservando...
         </>
       ) : (
-        "Confirmar Reserva"
+        "Confirmar reserva"
       )}
     </Button>
   );
@@ -131,7 +131,7 @@ export function Step3_Confirmation({
         <Separator />
         <div>
           <h3 className="font-semibold">Día y Hora</h3>
-          <p className="text-sm capitalize text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {formatConfirmationDateTime(selectedDateTime)}
           </p>
         </div>
@@ -141,15 +141,14 @@ export function Step3_Confirmation({
           <span>{formatPrice(totalPrice)}</span>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Anterior
+          <ArrowLeft className="w-4 h-4" />
         </Button>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="lg">Completar Reserva</Button>
+            <Button>Completar reserva</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

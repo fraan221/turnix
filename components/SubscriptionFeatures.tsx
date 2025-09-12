@@ -17,6 +17,12 @@ export function SubscriptionFeatures() {
     <Card className="max-w-md p-4 mx-auto border rounded-lg border-primary/50">
       <CardHeader>
         <CardTitle className="text-center font-heading">Plan PRO</CardTitle>
+        <div className="flex items-baseline justify-center gap-2 pt-2">
+          <span className="text-4xl font-bold tracking-tight">$9.900</span>
+          <span className="text-lg font-semibold text-muted-foreground">
+            /mes
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="max-w-md mx-auto">
         <ul className="space-y-4">

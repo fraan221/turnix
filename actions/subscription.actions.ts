@@ -29,6 +29,29 @@ export async function createSubscription(
 
   try {
     const preapproval = new PreApproval(client);
+
+    console.log(`Buscando suscripción pendiente para el usuario: ${user.id}`);
+    const searchResult = await preapproval.search({
+      options: {
+        external_reference: user.id,
+        status: "pending",
+      },
+    });
+
+    if (searchResult.results && searchResult.results.length > 0) {
+      const existingSubscription = searchResult.results[0];
+      const initPoint = existingSubscription.init_point;
+
+      if (initPoint) {
+        console.log(
+          "Suscripción pendiente encontrada. Redirigiendo a link existente."
+        );
+        return { init_point: initPoint };
+      }
+    }
+
+    console.log("No se encontró suscripción pendiente. Creando una nueva.");
+
     const response = await preapproval.create({
       body: {
         reason: "Suscripción Plan PRO Turnix",
