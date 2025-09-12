@@ -1,42 +1,20 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import TrialStatusBanner from "@/components/TrialStatusBanner";
+import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
-  if (!session.user.role) {
-    redirect("/complete-profile");
-  }
-
-  const isOwner = session.user.role === "OWNER";
-  const hasActiveSubscription =
-    session.user.subscription?.status === "authorized";
-  const showTrialBanner =
-    isOwner &&
-    !hasActiveSubscription &&
-    session.user.trialEndsAt &&
-    new Date(session.user.trialEndsAt) > new Date();
-
   return (
     <SidebarProvider>
       <DashboardSidebar />
       <SidebarInset>
-        {showTrialBanner && (
-          <TrialStatusBanner
-            trialEndsAt={session.user.trialEndsAt}
-            isSubscribed={hasActiveSubscription}
-          />
-        )}
+        <SubscriptionStatusHandler />
+        <TrialStatusBanner />
         <SiteHeader />
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </SidebarInset>

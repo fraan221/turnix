@@ -1,55 +1,25 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ServiceSchema } from "@/lib/schemas";
 import { Role } from "@prisma/client";
 
-async function getCurrentUserAndBarbershop() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { user: null, barbershopId: null, error: "No autorizado" };
-  }
+type ServiceInput = z.infer<typeof ServiceSchema>;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: true,
-      teamMembership: true,
-    },
-  });
-
+export async function createService(data: ServiceInput) {
+  const user = await getUserForSettings();
   if (!user) {
-    return { user: null, barbershopId: null, error: "Usuario no encontrado." };
+    return { error: "No autorizado." };
   }
 
   const barbershopId =
     user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
 
   if (!barbershopId) {
-    return {
-      user,
-      barbershopId: null,
-      error: "Usuario no asociado a una barbería.",
-    };
-  }
-
-  return { user, barbershopId, error: null };
-}
-
-type ServiceInput = z.infer<typeof ServiceSchema>;
-
-export async function createService(data: ServiceInput) {
-  const {
-    user,
-    barbershopId,
-    error: authError,
-  } = await getCurrentUserAndBarbershop();
-
-  if (authError || !barbershopId) {
-    return { error: authError || "No se encontró la barbería." };
+    return { error: "Usuario no asociado a una barbería." };
   }
 
   const { name, price, durationInMinutes, description } = data;
@@ -74,13 +44,16 @@ export async function createService(data: ServiceInput) {
 }
 
 export async function updateService(serviceId: string, data: ServiceInput) {
-  const {
-    user,
-    barbershopId,
-    error: authError,
-  } = await getCurrentUserAndBarbershop();
-  if (authError || !user || !barbershopId) {
-    return { error: authError || "No se pudo verificar la autorización." };
+  const user = await getUserForSettings();
+
+  if (!user) {
+    return { error: "No se pudo verificar la autorización." };
+  }
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+  if (!barbershopId) {
+    return { error: "Usuario no asociado a una barbería." };
   }
 
   const serviceToUpdate = await prisma.service.findUnique({
@@ -118,8 +91,10 @@ export async function updateService(serviceId: string, data: ServiceInput) {
 }
 
 export async function deleteService(serviceId: string) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   try {
     const service = await prisma.service.findUnique({

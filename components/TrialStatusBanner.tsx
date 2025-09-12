@@ -1,50 +1,61 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { intervalToDuration } from "date-fns";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-interface TrialStatusBannerProps {
-  trialEndsAt: Date | null | undefined;
-  isSubscribed: boolean;
-}
+const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
+  if (!endDate) return "";
+  const distance = new Date(endDate).getTime() - new Date().getTime();
 
-export default function TrialStatusBanner({
-  trialEndsAt,
-  isSubscribed,
-}: TrialStatusBannerProps) {
-  const [timeLeft, setTimeLeft] = useState("");
+  if (distance < 0) {
+    return "Tu prueba ha finalizado.";
+  }
+
+  const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(
+    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+  );
+  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+  return `${days} días ${hours}:${minutes}:${seconds}`;
+};
+
+export default function TrialStatusBanner() {
+  const { data: session } = useSession();
+  const user = session?.user;
+  const trialEndsAt = user?.trialEndsAt;
+
+  const [timeLeft, setTimeLeft] = useState(() =>
+    calculateTimeLeft(trialEndsAt)
+  );
+
+  const isOwner = user?.role === "OWNER";
+  const isSubscribed = user?.subscription?.status === "authorized";
+  const showTrialBanner =
+    isOwner &&
+    !isSubscribed &&
+    trialEndsAt &&
+    new Date(trialEndsAt) > new Date();
 
   useEffect(() => {
-    if (!trialEndsAt) return;
+    if (!trialEndsAt || !showTrialBanner) return;
+
+    setTimeLeft(calculateTimeLeft(trialEndsAt));
 
     const intervalId = setInterval(() => {
-      const duration = intervalToDuration({
-        start: new Date(),
-        end: new Date(trialEndsAt),
-      });
-
-      if (new Date() > new Date(trialEndsAt)) {
-        setTimeLeft("Tu prueba ha finalizado.");
-        clearInterval(intervalId);
-        return;
-      }
-
-      const days = duration.days || 0;
-      const hours = duration.hours || 0;
-      const minutes = duration.minutes || 0;
-      const seconds = duration.seconds || 0;
-
-      setTimeLeft(`${days} días ${hours}:${minutes}:${seconds}`);
+      setTimeLeft(calculateTimeLeft(trialEndsAt));
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [trialEndsAt]);
+  }, [trialEndsAt, showTrialBanner]);
 
-  if (!timeLeft || !trialEndsAt) return null;
-  if (isSubscribed) return null;
+  if (!showTrialBanner) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">

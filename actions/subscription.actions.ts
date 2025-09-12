@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { revalidatePath } from "next/cache";
@@ -18,20 +18,40 @@ export async function createSubscription(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado. Por favor, inicia sesión de nuevo." };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-  if (!user || !user.email) {
+  if (!user.email) {
     return { error: "Usuario no encontrado o sin email configurado." };
   }
 
   try {
     const preapproval = new PreApproval(client);
+
+    console.log(`Buscando suscripción pendiente para el usuario: ${user.id}`);
+    const searchResult = await preapproval.search({
+      options: {
+        external_reference: user.id,
+        status: "pending",
+      },
+    });
+
+    if (searchResult.results && searchResult.results.length > 0) {
+      const existingSubscription = searchResult.results[0];
+      const initPoint = existingSubscription.init_point;
+
+      if (initPoint) {
+        console.log(
+          "Suscripción pendiente encontrada. Redirigiendo a link existente."
+        );
+        return { init_point: initPoint };
+      }
+    }
+
+    console.log("No se encontró suscripción pendiente. Creando una nueva.");
+
     const response = await preapproval.create({
       body: {
         reason: "Suscripción Plan PRO Turnix",
@@ -65,8 +85,8 @@ export async function createSubscription(
 export async function cancelSubscription(
   mercadopagoSubscriptionId: string
 ): Promise<{ error?: string; success?: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return { error: "No autorizado." };
   }
 
@@ -74,7 +94,7 @@ export async function cancelSubscription(
     where: { mercadopagoSubscriptionId },
   });
 
-  if (subscriptionInDb?.userId !== session.user.id) {
+  if (subscriptionInDb?.userId !== user.id) {
     return { error: "No tienes permiso para cancelar esta suscripción." };
   }
 

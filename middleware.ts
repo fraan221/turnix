@@ -54,5 +54,16 @@ export default auth(async (req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Coincide con todas las rutas que requieren autenticación.
+     * Esto protege todo el dashboard y las páginas de configuración/suscripción.
+     */
+    "/dashboard/:path*",
+    "/subscribe",
+    "/complete-profile",
+
+    "/login",
+    "/register",
+  ],
 };

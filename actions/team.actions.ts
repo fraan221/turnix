@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser, getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -29,17 +29,13 @@ export async function linkBarberToShop(
   prevState: LinkBarberState,
   formData: FormData
 ): Promise<LinkBarberState> {
-  const session = await auth();
+  const user = await getCurrentUserWithBarbershop();
 
-  if (!session?.user?.id || session.user.role !== Role.OWNER) {
+  if (!user || user.role !== Role.OWNER) {
     return { error: "Acción no autorizada. Debes ser dueño de una barbería." };
   }
 
-  const ownerId = session.user.id;
-
-  const barbershop = await prisma.barbershop.findUnique({
-    where: { ownerId },
-  });
+  const barbershop = user.ownedBarbershop;
 
   if (!barbershop) {
     return { error: "No se encontró la barbería asociada a tu cuenta." };
@@ -107,22 +103,19 @@ export async function linkBarberToShop(
 }
 
 export async function enableTeamFeature(): Promise<TeamActionState> {
-  // 1. Autenticación y Autorización
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== Role.OWNER) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== Role.OWNER) {
     return { error: "Acción no autorizada." };
   }
 
-  const ownerId = session.user.id;
+  const ownerId = user.id;
 
-  // 2. Lógica de Negocio
   try {
     await prisma.barbershop.update({
       where: { ownerId },
       data: { teamsEnabled: true },
     });
 
-    // 3. Revalidación y Respuesta
     revalidatePath("/dashboard/team");
     return { success: "¡La gestión de equipos ha sido activada!" };
   } catch (error) {

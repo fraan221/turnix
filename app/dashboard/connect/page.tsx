@@ -1,26 +1,16 @@
-import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
+import { getUserForDashboard } from "@/lib/data";
 import { ConnectionCodeView } from "@/components/team/ConnectionCodeView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, UserCheck } from "lucide-react";
+import { UserCheck } from "lucide-react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 export default async function ConnectPage() {
-  const session = await auth();
+  const user = await getUserForDashboard();
 
-  if (!session?.user?.id || session.user.role !== Role.BARBER) {
+  if (!user || user.role !== Role.BARBER || user.teamMembership) {
     redirect("/dashboard");
   }
-
-  if (session.user.teamMembership) {
-    redirect("/dashboard");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { connectionCode: true },
-  });
 
   if (!user?.connectionCode) {
     return (

@@ -74,7 +74,7 @@ export default function AnalyticsDashboard({
   return (
     <div className="mx-auto space-y-2 max-w-7xl">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex items-center justify-between gap-2 sm:flex-row xs:flex-col">
           <CardTitle>Tu facturación</CardTitle>
           <PeriodSelector
             currentPeriod={currentPeriod}

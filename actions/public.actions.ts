@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { startOfDay, endOfDay } from "date-fns";
+import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 
@@ -57,8 +57,8 @@ export async function getBarberAvailability(barberId: string, date: Date) {
       where: {
         barberId: barberId,
         startTime: {
-          gte: startOfDay(date),
-          lt: endOfDay(date),
+          gte: getStartOfDay(date),
+          lt: getEndOfDay(date),
         },
         status: { not: "CANCELLED" },
       },
@@ -75,8 +75,8 @@ export async function getBarberAvailability(barberId: string, date: Date) {
         barberId: barberId,
         OR: [
           {
-            startTime: { lte: endOfDay(date) },
-            endTime: { gte: startOfDay(date) },
+            startTime: { lte: getEndOfDay(date) },
+            endTime: { gte: getStartOfDay(date) },
           },
         ],
       },

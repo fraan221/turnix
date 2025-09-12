@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { ClientNotesForm } from "./ClientNotesForm";
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,8 @@ interface ClientDetailPageProps {
 export default async function ClientDetailPage({
   params,
 }: ClientDetailPageProps) {
-  const session = await auth();
-  if (!session?.user?.id) return notFound();
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: true,
-      teamMembership: true,
-    },
-  });
+  const currentUser = await getUserForSettings();
+  if (!currentUser) return notFound();
 
   const barbershopId =
     currentUser?.ownedBarbershop?.id ||

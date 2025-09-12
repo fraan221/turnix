@@ -1,43 +1,11 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { BookingStatus, Barbershop, Role } from "@prisma/client";
+import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
-
-async function getCurrentUserAndBarbershop() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { user: null, barbershopId: null, error: "No autorizado" };
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      ownedBarbershop: true,
-      teamMembership: true,
-    },
-  });
-
-  if (!user) {
-    return { user: null, barbershopId: null, error: "Usuario no encontrado." };
-  }
-
-  const barbershopId =
-    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
-
-  if (!barbershopId) {
-    return {
-      user,
-      barbershopId: null,
-      error: "Usuario no asociado a una barbería.",
-    };
-  }
-
-  return { user, barbershopId, error: null };
-}
 
 export type FormState = {
   success: string | null;
@@ -134,8 +102,8 @@ const ScheduleSchema = z.array(DayScheduleSchema).refine(
 );
 
 export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== Role.OWNER) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== Role.OWNER) {
     return { error: "Acción no autorizada." };
   }
 
@@ -156,7 +124,7 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
     };
   }
 
-  const barberId = session.user.id;
+  const barberId = user.id;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -219,12 +187,12 @@ export async function updateUserProfile(
   prevState: any,
   formData: FormData
 ): Promise<FormState> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { success: null, error: "No autorizado" };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: null, error: "Acción no autorizada." };
   }
-  const userId = session.user.id;
-  const userRole = session.user.role;
+  const userId = user.id;
+  const userRole = user.role;
 
   try {
     const avatarFile = formData.get("avatar") as File | null;
@@ -341,14 +309,16 @@ export async function updateUserProfile(
 }
 
 export async function deleteClient(clientId: string) {
-  const {
-    user,
-    barbershopId,
-    error: authError,
-  } = await getCurrentUserAndBarbershop();
+  const user = await getUserForSettings();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
 
-  if (authError || !barbershopId) {
-    return { error: authError || "No se encontró la barbería." };
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
+    return { error: "Usuario no asociado a una barbería." };
   }
 
   try {
@@ -395,8 +365,10 @@ export async function updateBookingStatus(
   bookingId: string,
   newStatus: BookingStatus
 ) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   try {
     const booking = await prisma.booking.findUnique({
@@ -428,8 +400,10 @@ export async function updateBookingStatus(
 }
 
 export async function completeOnboarding() {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   try {
     await prisma.user.update({
@@ -448,12 +422,17 @@ export async function createBooking(
   prevState: any,
   formData: FormData
 ): Promise<FormState> {
-  const {
-    user,
-    barbershopId,
-    error: authError,
-  } = await getCurrentUserAndBarbershop();
-  if (authError) return { success: null, error: authError };
+  const user = await getUserForSettings();
+  if (!user) {
+    return { success: null, error: "No autorizado" };
+  }
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
+    return { success: null, error: "Usuario no asociado a una barbería." };
+  }
 
   const DashboardBookingSchema = z.object({
     serviceId: z.string().cuid(),
@@ -503,13 +482,18 @@ export async function createBooking(
       },
     });
 
-    if (!workingHours || !workingHours.isWorking) {
+    if (
+      !workingHours ||
+      !workingHours.isWorking ||
+      !workingHours.startTime ||
+      !workingHours.endTime
+    ) {
       const dayName = new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
       }).format(startTime);
       return {
         success: null,
-        error: `No es posible agendar un turno porque no trabajas los ${dayName}.`,
+        error: `No es posible agendar un turno porque no trabajas los ${dayName} o no se han configurado los horarios para ese día.`,
       };
     }
 
@@ -568,15 +552,16 @@ export async function updateClientNotes(
   const clientId = formData.get("clientId")?.toString();
   const notes = formData.get("notes")?.toString();
 
-  const { barbershopId, error: authError } =
-    await getCurrentUserAndBarbershop();
-
-  if (authError || !barbershopId) {
-    return { success: null, error: authError || "No se encontró la barbería." };
+  const user = await getUserForSettings();
+  if (!user) {
+    return { success: null, error: "No autorizado" };
   }
 
-  if (!clientId) {
-    return { success: null, error: "ID de cliente no encontrado." };
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
+    return { success: null, error: "Usuario no asociado a una barbería." };
   }
 
   try {
@@ -613,8 +598,10 @@ export async function updateClientNotes(
 }
 
 export async function deleteTimeBlock(blockId: string) {
-  const { user, error } = await getCurrentUserAndBarbershop();
-  if (error) return { error };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   try {
     const block = await prisma.timeBlock.findUnique({
@@ -642,8 +629,10 @@ export async function updateTimeBlock(
   prevState: any,
   formData: FormData
 ) {
-  const { user, error: authError } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   const blockToUpdate = await prisma.timeBlock.findUnique({
     where: { id: blockId },
@@ -684,8 +673,10 @@ export async function updateTimeBlock(
 }
 
 export async function createTimeBlock(prevState: any, formData: FormData) {
-  const { user, error: authError } = await getCurrentUserAndBarbershop();
-  if (authError) return { error: authError };
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
 
   const validatedFields = TimeBlockSchema.safeParse(
     Object.fromEntries(formData.entries())

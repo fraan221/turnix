@@ -1,4 +1,6 @@
-import { auth } from "@/auth";
+import { Suspense } from "react";
+import ServiceListSkeleton from "@/components/skeletons/ServiceListSkeleton";
+import { getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ServiceList from "@/components/ServiceList";
@@ -6,44 +8,31 @@ import AddServiceModal from "@/components/AddServiceModal";
 import { Prisma, Role, Service } from "@prisma/client";
 import { Separator } from "@/components/ui/separator";
 
-const serviceWithBarber = Prisma.validator<Prisma.ServiceDefaultArgs>()({
-  include: { barber: { select: { id: true, name: true } } },
-});
-type ServiceWithBarber = Prisma.ServiceGetPayload<typeof serviceWithBarber>;
+async function ServicesPageContent() {
+  const user = await getCurrentUserWithBarbershop();
+  if (!user) return <p>No autorizado</p>;
 
-type GroupedService = {
-  barberId: string;
-  barberName: string;
-  services: Service[];
-};
+  const userId = user.id;
+  const userRole = user.role;
 
-export default async function ServicesPage() {
-  const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
-
-  const userId = session.user.id;
-  const userRole = session.user.role;
   let services: Service[] = [];
   let groupedServices: GroupedService[] = [];
   let teamsEnabled = false;
 
   if (userRole === Role.OWNER) {
-    const barbershop = await prisma.barbershop.findUnique({
-      where: { ownerId: userId },
-      include: {
-        services: {
+    const barbershopInfo = user.ownedBarbershop;
+
+    const barbershop = barbershopInfo
+      ? await prisma.barbershop.findUnique({
+          where: { id: barbershopInfo.id },
           include: {
-            barber: {
-              select: {
-                id: true,
-                name: true,
-              },
+            services: {
+              include: { barber: { select: { id: true, name: true } } },
+              orderBy: { name: "asc" },
             },
           },
-          orderBy: { name: "asc" },
-        },
-      },
-    });
+        })
+      : null;
 
     if (barbershop) {
       teamsEnabled = barbershop.teamsEnabled;
@@ -109,5 +98,24 @@ export default async function ServicesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const serviceWithBarber = Prisma.validator<Prisma.ServiceDefaultArgs>()({
+  include: { barber: { select: { id: true, name: true } } },
+});
+type ServiceWithBarber = Prisma.ServiceGetPayload<typeof serviceWithBarber>;
+
+type GroupedService = {
+  barberId: string;
+  barberName: string;
+  services: Service[];
+};
+
+export default async function ServicesPage() {
+  return (
+    <Suspense fallback={<ServiceListSkeleton />}>
+      <ServicesPageContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,6 @@
-import { auth } from "@/auth";
+import { Suspense } from "react";
+import TimeBlockListSkeleton from "@/components/skeletons/TimeBlockListSkeleton";
+import { getUserForDashboard } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
@@ -8,36 +10,57 @@ import { Role, WorkingHours } from "@prisma/client";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
+async function TimeBlocksSection() {
+  const user = await getUserForDashboard();
+  if (!user) return null;
+
+  const timeBlocks = await prisma.timeBlock.findMany({
+    where: { barberId: user.id },
+    orderBy: { startTime: "desc" },
+  });
+
+  return (
+    <Card className="mx-auto max-w-7xl">
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <CardTitle>Bloqueos Horarios</CardTitle>
+        <AddTimeBlockModal />
+      </CardHeader>
+      <CardContent>
+        <TimeBlockList timeBlocks={timeBlocks} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function SchedulePage() {
-  const session = await auth();
-  if (!session?.user?.id) return <p>No autorizado</p>;
+  const user = await getUserForDashboard();
+  if (!user) return <p>No autorizado</p>;
 
   let barbershopWorkingHours: WorkingHours[] = [];
-  const isOwner = session.user.role === Role.OWNER;
+  const isOwner = user.role === Role.OWNER;
 
   if (isOwner) {
     barbershopWorkingHours = await prisma.workingHours.findMany({
-      where: { barberId: session.user.id },
+      where: { barberId: user.id },
       orderBy: { dayOfWeek: "asc" },
     });
   } else {
-    const teamMembership = await prisma.team.findUnique({
-      where: { userId: session.user.id },
-      include: { barbershop: true },
-    });
+    const teamMembership = user.teamMembership;
 
     if (teamMembership) {
-      barbershopWorkingHours = await prisma.workingHours.findMany({
-        where: { barberId: teamMembership.barbershop.ownerId },
-        orderBy: { dayOfWeek: "asc" },
+      const barbershop = await prisma.barbershop.findUnique({
+        where: { id: teamMembership.barbershopId },
+        select: { ownerId: true },
       });
+
+      if (barbershop) {
+        barbershopWorkingHours = await prisma.workingHours.findMany({
+          where: { barberId: barbershop.ownerId },
+          orderBy: { dayOfWeek: "asc" },
+        });
+      }
     }
   }
-
-  const timeBlocks = await prisma.timeBlock.findMany({
-    where: { barberId: session.user.id },
-    orderBy: { startTime: "desc" },
-  });
 
   const workingHoursKey = JSON.stringify(barbershopWorkingHours);
 
@@ -58,15 +81,9 @@ export default async function SchedulePage() {
 
       <Separator />
 
-      <Card className="mx-auto max-w-7xl">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Bloqueos Horarios</CardTitle>
-          <AddTimeBlockModal />
-        </CardHeader>
-        <CardContent>
-          <TimeBlockList timeBlocks={timeBlocks} />
-        </CardContent>
-      </Card>
+      <Suspense fallback={<TimeBlockListSkeleton />}>
+        <TimeBlocksSection />
+      </Suspense>
     </div>
   );
 }

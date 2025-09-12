@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { formatToDateInput, formatTime } from "@/lib/date-helpers";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -20,9 +20,6 @@ function SubmitButton() {
     </Button>
   );
 }
-
-const formatDateForInput = (date: Date) => format(new Date(date), "yyyy-MM-dd");
-const formatTimeForInput = (date: Date) => format(new Date(date), "HH:mm");
 
 export default function EditTimeBlockForm({
   timeBlock,
@@ -80,7 +77,7 @@ export default function EditTimeBlockForm({
             id="startDate"
             name="startDate"
             type="date"
-            defaultValue={formatDateForInput(timeBlock.startTime)}
+            defaultValue={formatToDateInput(timeBlock.startTime)}
             required
           />
         </div>
@@ -90,7 +87,7 @@ export default function EditTimeBlockForm({
             id="endDate"
             name="endDate"
             type="date"
-            defaultValue={formatDateForInput(timeBlock.endTime)}
+            defaultValue={formatToDateInput(timeBlock.endTime)}
             required
           />
         </div>
@@ -102,7 +99,7 @@ export default function EditTimeBlockForm({
             id="startTime"
             name="startTime"
             type="time"
-            defaultValue={formatTimeForInput(timeBlock.startTime)}
+            defaultValue={formatToDateInput(timeBlock.startTime)}
             required
           />
         </div>
@@ -112,7 +109,7 @@ export default function EditTimeBlockForm({
             id="endTime"
             name="endTime"
             type="time"
-            defaultValue={formatTimeForInput(timeBlock.endTime)}
+            defaultValue={formatToDateInput(timeBlock.endTime)}
             required
           />
         </div>

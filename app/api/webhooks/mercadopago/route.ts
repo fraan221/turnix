@@ -61,35 +61,36 @@ export async function POST(req: NextRequest) {
         JSON.stringify(subscriptionData, null, 2)
       );
 
-      const userId = subscriptionData.external_reference;
+      if (subscriptionData.status === "authorized") {
+        const userId = subscriptionData.external_reference;
 
-      if (userId) {
-        console.log(`Vinculando suscripción al User ID: ${userId}`);
-        await prisma.subscription.upsert({
-          where: { userId: userId },
-          create: {
-            userId: userId,
-            mercadopagoSubscriptionId: subscriptionData.id!,
-            status: subscriptionData.status!,
-            currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
-          },
-          update: {
-            mercadopagoSubscriptionId: subscriptionData.id!,
-            status: subscriptionData.status!,
-            currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
-          },
-        });
+        if (userId) {
+          console.log(`Vinculando suscripción al User ID: ${userId}`);
+          await prisma.subscription.upsert({
+            where: { userId: userId },
+            create: {
+              userId: userId,
+              mercadopagoSubscriptionId: subscriptionData.id!,
+              status: subscriptionData.status!,
+              currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
+            },
+            update: {
+              mercadopagoSubscriptionId: subscriptionData.id!,
+              status: subscriptionData.status!,
+              currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
+            },
+          });
 
-        console.log(
-          `ÉXITO: Base de datos actualizada para el usuario: ${userId}, Estado: ${subscriptionData.status}`
-        );
-      } else {
-        console.error(
-          "Error crítico: No se encontró 'external_reference' (userId) en la suscripción."
-        );
+          console.log(
+            `ÉXITO: Base de datos actualizada para el usuario: ${userId}, Estado: ${subscriptionData.status}`
+          );
+        } else {
+          console.error(
+            "Error crítico: No se encontró 'external_reference' (userId) en la suscripción."
+          );
+        }
       }
     }
-
     console.log("--- FINALIZANDO PROCESAMIENTO DE WEBHOOK ---");
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

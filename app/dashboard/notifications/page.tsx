@@ -1,22 +1,18 @@
-import { auth } from "@/auth";
+import { Suspense } from "react";
+import NotificationListSkeleton from "@/components/skeletons/NotificationListSkeleton";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { NotificationList } from "./components/NotificationList";
-import { Role } from "@prisma/client";
-import { redirect } from "next/navigation";
 
-export default async function NotificationsPage() {
-  const session = await auth();
-  if (!session?.user?.id) {
+async function NotificationsPageContent() {
+  const user = await getCurrentUser();
+  if (!user) {
     return <p>No autorizado</p>;
-  }
-
-  if (session.user.role !== Role.OWNER) {
-    redirect("/dashboard");
   }
 
   const notifications = await prisma.notification.findMany({
     where: {
-      userId: session.user.id,
+      userId: user.id,
     },
     orderBy: {
       createdAt: "desc",
@@ -27,5 +23,13 @@ export default async function NotificationsPage() {
     <div className="mx-auto max-w-7xl">
       <NotificationList initialNotifications={notifications} />
     </div>
+  );
+}
+
+export default async function NotificationsPage() {
+  return (
+    <Suspense fallback={<NotificationListSkeleton />}>
+      <NotificationsPageContent />
+    </Suspense>
   );
 }

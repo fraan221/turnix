@@ -1,23 +1,14 @@
-import { auth } from "@/auth";
+import { Suspense } from "react";
+import BillingSkeleton from "@/components/skeletons/BillingSkeleton";
+import { getUserForLayout } from "@/lib/data";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
 import ActiveSubscriptionCard from "@/components/billing/ActiveSubscriptionCard";
 import SubscriptionStatus from "@/components/billing/SubscriptionStatus";
 import SubscriptionButton from "@/components/billing/SubscriptionButton";
 import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
 
-export default async function BillingPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      subscription: true,
-    },
-  });
+async function BillingPageContent() {
+  const user = await getUserForLayout();
 
   if (!user) {
     redirect("/login");
@@ -37,11 +28,19 @@ export default async function BillingPage() {
 
       {shouldShowSubscribeCta && !hasActiveSubscription && (
         <div className="flex flex-col items-center justify-center space-y-4">
-          <SubscriptionStatus trialEndsAt={user.trialEndsAt} />
+          <SubscriptionStatus />
           <SubscriptionFeatures />
           <SubscriptionButton isTrial={!!isInTrial} />
         </div>
       )}
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<BillingSkeleton />}>
+      <BillingPageContent />
+    </Suspense>
   );
 }

@@ -51,7 +51,9 @@ export function SiteHeader() {
             {title}
           </h1>
         </div>
-        <div>{userRole === Role.OWNER && <NotificationBell />}</div>
+        <div>
+          <NotificationBell />
+        </div>
       </div>
     </header>
   );

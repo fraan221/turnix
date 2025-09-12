@@ -1,17 +1,24 @@
-import { auth } from "@/auth";
+import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import EditTimeBlockForm from "@/components/EditTimeBlockForm";
 
 interface EditTimeBlockPageProps {
   params: { blockId: string };
 }
 
-export default async function EditTimeBlockPage({ params }: EditTimeBlockPageProps) {
-  const session = await auth();
-  
-  if (!session?.user?.id) {
+export default async function EditTimeBlockPage({
+  params,
+}: EditTimeBlockPageProps) {
+  const user = await getCurrentUser();
+  if (!user) {
     return notFound();
   }
 
@@ -25,7 +32,7 @@ export default async function EditTimeBlockPage({ params }: EditTimeBlockPagePro
     return notFound();
   }
 
-  if (timeBlock.barberId !== session.user.id) {
+  if (timeBlock.barberId !== user.id) {
     return notFound();
   }
 

@@ -14,15 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { getBarberAvailability } from "@/actions/public.actions";
 import {
-  addMinutes,
-  format,
-  setHours,
-  setMinutes,
-  startOfDay,
+  getStartOfDay,
+  formatTime,
   isToday,
-} from "date-fns";
-import { es } from "date-fns/locale";
+  formatFullDate,
+} from "@/lib/date-helpers";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import TimeSlotsSkeleton from "@/components/skeletons/TimeSlotsSkeleton";
 import { cn } from "@/lib/utils";
 
 type AvailabilityData = {
@@ -96,16 +94,24 @@ export function Step2_DateTimeSelection({
     const slots: { time: string; available: boolean }[] = [];
     const now = new Date();
 
-    const dayStartTime = setMinutes(
-      setHours(date, parseInt(workingHours.startTime.split(":")[0])),
-      parseInt(workingHours.startTime.split(":")[1])
+    const dayStartTime = new Date(date);
+    dayStartTime.setHours(
+      parseInt(workingHours.startTime.split(":")[0]),
+      parseInt(workingHours.startTime.split(":")[1]),
+      0,
+      0
     );
-    const dayEndTime = setMinutes(
-      setHours(date, parseInt(workingHours.endTime.split(":")[0])),
-      parseInt(workingHours.endTime.split(":")[1])
+
+    const dayEndTime = new Date(date);
+    dayEndTime.setHours(
+      parseInt(workingHours.endTime.split(":")[0]),
+      parseInt(workingHours.endTime.split(":")[1]),
+      0,
+      0
     );
 
     let currentTime = isToday(date) && now > dayStartTime ? now : dayStartTime;
+
     if (isToday(date)) {
       const minutes = currentTime.getMinutes();
       if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
@@ -117,14 +123,16 @@ export function Step2_DateTimeSelection({
     }
 
     while (currentTime < dayEndTime) {
-      const slotEndTime = addMinutes(currentTime, totalDuration);
+      const slotEndTime = new Date(
+        currentTime.getTime() + totalDuration * 60000
+      );
       if (slotEndTime > dayEndTime) break;
 
       const overlapsWithBooking = bookings.some((booking) => {
         const bookingStart = new Date(booking.startTime);
-        const bookingEnd = addMinutes(
-          bookingStart,
-          booking.service.durationInMinutes || 30
+        const bookingEnd = new Date(
+          bookingStart.getTime() +
+            (booking.service.durationInMinutes || 30) * 60000
         );
         return currentTime < bookingEnd && slotEndTime > bookingStart;
       });
@@ -136,12 +144,11 @@ export function Step2_DateTimeSelection({
       );
 
       slots.push({
-        time: format(currentTime, "HH:mm"),
+        time: formatTime(currentTime),
         available: !overlapsWithBooking && !overlapsWithTimeBlock,
       });
 
-      // El intervalo de avance ahora es la duración total del servicio.
-      currentTime = addMinutes(currentTime, totalDuration);
+      currentTime = new Date(currentTime.getTime() + totalDuration * 60000);
     }
 
     setTimeSlots(slots);
@@ -150,7 +157,8 @@ export function Step2_DateTimeSelection({
   const handleNextClick = () => {
     if (date && selectedSlot) {
       const [hours, minutes] = selectedSlot.split(":").map(Number);
-      const finalDate = setMinutes(setHours(date, hours), minutes);
+      const finalDate = new Date(date);
+      finalDate.setHours(hours, minutes, 0, 0);
       onNext(finalDate);
     }
   };
@@ -170,13 +178,12 @@ export function Step2_DateTimeSelection({
             selected={date}
             onSelect={setDate}
             className="p-0"
-            disabled={(currentDate) => currentDate < startOfDay(new Date())}
-            locale={es}
+            disabled={(currentDate) => currentDate < getStartOfDay(new Date())}
           />
         </div>
         <div className="flex flex-col items-center">
           <h4 className="mb-4 font-semibold text-center">
-            {date ? format(date, "PPP", { locale: es }) : "Elige un día"}
+            {date ? formatFullDate(date) : "Elige un día"}
           </h4>
           <div className="grid w-full grid-cols-3 gap-2 pr-2 overflow-y-auto sm:grid-cols-4 max-h-64">
             {isLoading ? (
@@ -184,23 +191,19 @@ export function Step2_DateTimeSelection({
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : timeSlots.length > 0 ? (
-              timeSlots.map(
-                (
-                  slot // 👈 El map ahora recibe un objeto `slot`
-                ) => (
-                  <Button
-                    key={slot.time}
-                    variant={selectedSlot === slot.time ? "default" : "outline"}
-                    onClick={() => slot.available && setSelectedSlot(slot.time)}
-                    disabled={!slot.available} // 👈 Deshabilitado si no está disponible
-                    className={cn(
-                      !slot.available && "line-through text-muted-foreground" // 👈 Estilo de tachado
-                    )}
-                  >
-                    {slot.time}
-                  </Button>
-                )
-              )
+              timeSlots.map((slot) => (
+                <Button
+                  key={slot.time}
+                  variant={selectedSlot === slot.time ? "default" : "outline"}
+                  onClick={() => slot.available && setSelectedSlot(slot.time)}
+                  disabled={!slot.available}
+                  className={cn(
+                    !slot.available && "line-through text-muted-foreground"
+                  )}
+                >
+                  {slot.time}
+                </Button>
+              ))
             ) : (
               <p className="text-sm text-center col-span-full text-muted-foreground">
                 No hay horarios disponibles para este día.
@@ -209,14 +212,13 @@ export function Step2_DateTimeSelection({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Anterior
+          <ArrowLeft className="w-4 h-4" />
         </Button>
         <Button onClick={handleNextClick} disabled={!selectedSlot} size="lg">
           Siguiente
-          <ArrowRight className="w-4 h-4 ml-2" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
       </CardFooter>
     </Card>

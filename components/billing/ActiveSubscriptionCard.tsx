@@ -3,8 +3,7 @@
 import { useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { cancelSubscription } from "@/actions/subscription.actions";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatFullDate } from "@/lib/date-helpers";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -67,9 +66,7 @@ export default function ActiveSubscriptionCard({
           <h2 className="text-md text-muted-foreground">
             Tu próximo cobro será el{" "}
             <span className="font-medium text-foreground">
-              {format(subscription.currentPeriodEnd, "d 'de' MMMM 'de' yyyy", {
-                locale: es,
-              })}
+              {formatFullDate(subscription.currentPeriodEnd)}
             </span>
             .
           </h2>

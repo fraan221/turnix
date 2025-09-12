@@ -71,14 +71,12 @@ export function UserNav() {
             align="end"
             sideOffset={12}
           >
-            {userRole === "OWNER" && barbershopSlug && (
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href={`/${barbershopSlug}`} target="_blank">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  <span>Ver perfil público</span>
-                </Link>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href={`/${barbershopSlug}`} target="_blank">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                <span>Ver perfil público</span>
+              </Link>
+            </DropdownMenuItem>
 
             {userRole === "OWNER" && (
               <DropdownMenuItem asChild className="cursor-pointer">
