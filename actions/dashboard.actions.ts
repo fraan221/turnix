@@ -68,25 +68,34 @@ const UserProfileSchema = z.object({
       "Formato de URL no válido. Usa solo minúsculas, números y guiones."
     )
     .optional(),
+  barbershopDescription: z.string().optional(),
+  barbershopAddress: z.string().optional(),
 });
 
-const WorkScheduleBlockSchema = z.object({
-  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+const WorkShiftSchema = z.object({
+  enabled: z.boolean(),
+  startTime: z.string().regex(timeRegex),
+  endTime: z.string().regex(timeRegex),
 });
 
 const DayScheduleSchema = z.object({
   dayOfWeek: z.number().min(0).max(6),
   isWorking: z.boolean(),
-  blocks: z.array(WorkScheduleBlockSchema),
+  shifts: z.object({
+    MORNING: WorkShiftSchema,
+    AFTERNOON: WorkShiftSchema,
+    NIGHT: WorkShiftSchema,
+  }),
 });
 
 const ScheduleSchema = z.array(DayScheduleSchema).refine(
   (schedule) => {
     for (const day of schedule) {
       if (day.isWorking) {
-        for (const block of day.blocks) {
-          if (block.startTime >= block.endTime) {
+        for (const shift of Object.values(day.shifts)) {
+          if (shift.enabled && shift.startTime >= shift.endTime) {
             return false;
           }
         }
@@ -96,8 +105,6 @@ const ScheduleSchema = z.array(DayScheduleSchema).refine(
   },
   {
     message: "La hora de inicio debe ser anterior a la hora de fin",
-    // Esta función de path es compleja de tipar correctamente en el refine,
-    // por lo que simplificaremos el mensaje de error para evitar complejidad.
   }
 );
 
@@ -110,18 +117,7 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
 
   if (!validatedSchedule.success) {
-    // Encontrar el día que falló para un mensaje de error más útil
-    const erroringDayIndex = schedule.findIndex(
-      (day) =>
-        day.isWorking &&
-        day.blocks.some((block) => block.startTime >= block.endTime)
-    );
-    const dayName =
-      erroringDayIndex !== -1 ? daysOfWeek[erroringDayIndex] : "un día";
-
-    return {
-      error: `${validatedSchedule.error.issues[0].message} (en ${dayName}).`,
-    };
+    return { error: validatedSchedule.error.issues[0].message };
   }
 
   const barberId = user.id;
@@ -130,37 +126,47 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
     await prisma.$transaction(async (tx) => {
       for (const day of validatedSchedule.data) {
         const workingHoursRecord = await tx.workingHours.upsert({
-          where: {
-            barberId_dayOfWeek: {
-              barberId: barberId,
-              dayOfWeek: day.dayOfWeek,
-            },
-          },
-          update: {
-            isWorking: day.isWorking,
-            // Limpiamos los campos antiguos
-            startTime: null,
-            endTime: null,
-          },
+          where: { barberId_dayOfWeek: { barberId, dayOfWeek: day.dayOfWeek } },
+          update: { isWorking: day.isWorking },
           create: {
-            barberId: barberId,
+            barberId,
             dayOfWeek: day.dayOfWeek,
             isWorking: day.isWorking,
           },
         });
 
-        await tx.workScheduleBlock.deleteMany({
-          where: { workingHoursId: workingHoursRecord.id },
-        });
+        for (const type of Object.keys(
+          day.shifts
+        ) as (keyof typeof day.shifts)[]) {
+          const shift = day.shifts[type];
 
-        if (day.isWorking && day.blocks.length > 0) {
-          await tx.workScheduleBlock.createMany({
-            data: day.blocks.map((block) => ({
-              startTime: block.startTime,
-              endTime: block.endTime,
-              workingHoursId: workingHoursRecord.id,
-            })),
-          });
+          if (day.isWorking && shift.enabled) {
+            await tx.workScheduleBlock.upsert({
+              where: {
+                workingHoursId_type: {
+                  workingHoursId: workingHoursRecord.id,
+                  type: type,
+                },
+              },
+              update: {
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+              },
+              create: {
+                workingHoursId: workingHoursRecord.id,
+                type: type,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+              },
+            });
+          } else {
+            await tx.workScheduleBlock.deleteMany({
+              where: {
+                workingHoursId: workingHoursRecord.id,
+                type: type,
+              },
+            });
+          }
         }
       }
     });
@@ -172,16 +178,6 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
     return { error: "No se pudo guardar el horario." };
   }
 }
-
-const daysOfWeek = [
-  "Domingo",
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-];
 
 export async function updateUserProfile(
   prevState: any,
@@ -206,6 +202,17 @@ export async function updateUserProfile(
       avatarUrl = blob.url;
     }
 
+    const barbershopImageFile = formData.get("barbershopImage") as File | null;
+    let barbershopImageUrl: string | undefined = undefined;
+
+    if (barbershopImageFile && barbershopImageFile.size > 0) {
+      const blob = await put(barbershopImageFile.name, barbershopImageFile, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      barbershopImageUrl = blob.url;
+    }
+
     const fieldsToValidate: { [key: string]: FormDataEntryValue | null } = {
       name: formData.get("name"),
       phone: formData.get("phone"),
@@ -214,6 +221,10 @@ export async function updateUserProfile(
     if (userRole === Role.OWNER) {
       fieldsToValidate.barbershopName = formData.get("barbershopName");
       fieldsToValidate.slug = formData.get("slug");
+      fieldsToValidate.barbershopDescription = formData.get(
+        "barbershopDescription"
+      );
+      fieldsToValidate.barbershopAddress = formData.get("barbershopAddress");
     }
 
     const validatedFields = UserProfileSchema.safeParse(fieldsToValidate);
@@ -233,7 +244,8 @@ export async function updateUserProfile(
     };
 
     if (userRole === Role.OWNER) {
-      const { barbershopName, slug } = validatedFields.data;
+      const { barbershopName, slug, barbershopAddress, barbershopDescription } =
+        validatedFields.data;
       const existingBarbershop = await prisma.barbershop.findUnique({
         where: { ownerId: userId },
       });
@@ -261,10 +273,18 @@ export async function updateUserProfile(
         async (tx) => {
           const barbershop = await tx.barbershop.upsert({
             where: { ownerId: userId },
-            update: { name: barbershopName! },
+            update: {
+              name: barbershopName!,
+              description: barbershopDescription,
+              address: barbershopAddress,
+              ...(barbershopImageUrl && { image: barbershopImageUrl }),
+            },
             create: {
               name: barbershopName!,
               slug: slug!,
+              description: barbershopDescription,
+              address: barbershopAddress,
+              ...(barbershopImageUrl && { image: barbershopImageUrl }),
               owner: { connect: { id: userId } },
             },
           });

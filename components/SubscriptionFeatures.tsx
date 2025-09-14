@@ -5,11 +5,11 @@ const features = [
   { name: "Agenda completa y fácil de usar", included: true },
   { name: "Servicios ilimitados (cortes, barba, etc.)", included: true },
   { name: "Horarios y bloqueos personalizados", included: true },
-  { name: "Portal para que tus clientes reserven", included: true },
   { name: "Portal de clientes", included: true },
-  { name: "Perfil personalizado con tu marca", included: true },
+  // { name: "Perfil personalizado con tu marca", included: true },
   { name: "Manejo de equipo de barberos", included: true },
   { name: "Estadísticas de tu negocio", included: true },
+  { name: "Web propia para que tus clientes reserven", included: true },
 ];
 
 export function SubscriptionFeatures() {

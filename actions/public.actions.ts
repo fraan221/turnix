@@ -21,11 +21,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
   });
 
   if (!barber) {
-    return {
-      workingHours: null,
-      bookings: [],
-      timeBlocks: [],
-    };
+    return { isWorking: false, shifts: [], bookings: [], timeBlocks: [] };
   }
 
   const scheduleOwnerId =
@@ -34,11 +30,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
       : barber.teamMembership?.barbershop.ownerId;
 
   if (!scheduleOwnerId) {
-    return {
-      workingHours: null,
-      bookings: [],
-      timeBlocks: [],
-    };
+    return { isWorking: false, shifts: [], bookings: [], timeBlocks: [] };
   }
 
   const [workingHours, bookings, timeBlocks] = await Promise.all([
@@ -50,7 +42,11 @@ export async function getBarberAvailability(barberId: string, date: Date) {
         },
       },
       include: {
-        blocks: true,
+        blocks: {
+          orderBy: {
+            startTime: "asc",
+          },
+        },
       },
     }),
     prisma.booking.findMany({
@@ -84,7 +80,8 @@ export async function getBarberAvailability(barberId: string, date: Date) {
   ]);
 
   return {
-    workingHours,
+    isWorking: workingHours?.isWorking ?? false,
+    shifts: workingHours?.blocks ?? [],
     bookings,
     timeBlocks,
   };

@@ -44,6 +44,9 @@ model Barbershop {
   name         String
   slug         String  @unique
   teamsEnabled Boolean @default(false)
+  image        String?
+  address      String?
+  description  String?
 
   owner   User   @relation("BarbershopOwner", fields: [ownerId], references: [id])
   ownerId String @unique
@@ -219,11 +222,20 @@ model Team {
   @@index([barbershopId])
 }
 
+enum WorkShiftType {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
 model WorkScheduleBlock {
-  id        String @id @default(cuid())
+  id        String        @id @default(cuid())
+  type      WorkShiftType @default(MORNING)
   startTime String
   endTime   String
 
   workingHours   WorkingHours @relation(fields: [workingHoursId], references: [id], onDelete: Cascade)
   workingHoursId String
+
+  @@unique([workingHoursId, type])
 }

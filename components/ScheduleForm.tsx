@@ -1,6 +1,6 @@
 "use client";
 
-import { WorkingHours, WorkScheduleBlock } from "@prisma/client";
+import { WorkingHours, WorkScheduleBlock, WorkShiftType } from "@prisma/client";
 import { Card, CardContent } from "./ui/card";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
@@ -9,7 +9,8 @@ import { Button } from "./ui/button";
 import { saveSchedule } from "@/actions/dashboard.actions";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Save, Loader2Icon, PlusCircle, Trash2 } from "lucide-react";
+import { Save, Loader2Icon, Plus, Trash2 } from "lucide-react";
+import { Separator } from "./ui/separator";
 
 const daysOfWeek = [
   "Domingo",
@@ -21,7 +22,34 @@ const daysOfWeek = [
   "Sábado",
 ];
 
-// Tipo extendido para la página de horarios
+const shiftTypes: WorkShiftType[] = ["MORNING", "AFTERNOON", "NIGHT"];
+const shiftNames: Record<WorkShiftType, string> = {
+  MORNING: "Mañana",
+  AFTERNOON: "Tarde",
+  NIGHT: "Noche",
+};
+
+const shiftConfig = {
+  MORNING: {
+    name: "Mañana",
+    defaultValue: { startTime: "08:00", endTime: "12:00" },
+    min: "06:00",
+    max: "13:00",
+  },
+  AFTERNOON: {
+    name: "Tarde",
+    defaultValue: { startTime: "14:00", endTime: "18:00" },
+    min: "12:00",
+    max: "20:00",
+  },
+  NIGHT: {
+    name: "Noche",
+    defaultValue: { startTime: "20:00", endTime: "23:00" },
+    min: "18:00",
+    max: "23:59",
+  },
+};
+
 type WorkingHoursWithBlocks = WorkingHours & {
   blocks: WorkScheduleBlock[];
 };
@@ -31,8 +59,8 @@ interface ScheduleFormProps {
   isReadOnly?: boolean;
 }
 
-// Tipos para el estado del formulario
-type TimeBlockState = {
+type ShiftState = {
+  enabled: boolean;
   startTime: string;
   endTime: string;
 };
@@ -40,7 +68,7 @@ type TimeBlockState = {
 type DayScheduleState = {
   dayOfWeek: number;
   isWorking: boolean;
-  blocks: TimeBlockState[];
+  shifts: Record<WorkShiftType, ShiftState>;
 };
 
 export default function ScheduleForm({
@@ -50,21 +78,32 @@ export default function ScheduleForm({
   const [schedule, setSchedule] = useState<DayScheduleState[]>(() =>
     daysOfWeek.map((_, index) => {
       const dayData = workingHours.find((wh) => wh.dayOfWeek === index);
-      // Migra los datos del formato antiguo si existen y no hay bloques nuevos
-      const initialBlocks =
-        dayData?.blocks && dayData.blocks.length > 0
-          ? dayData.blocks
-          : dayData?.startTime && dayData.endTime
-            ? [{ startTime: dayData.startTime, endTime: dayData.endTime }]
-            : [{ startTime: "09:00", endTime: "18:00" }];
+
+      const getShift = (type: WorkShiftType): ShiftState => {
+        const block = dayData?.blocks.find((b) => b.type === type);
+        return {
+          enabled: !!block,
+          startTime:
+            block?.startTime || shiftConfig[type].defaultValue.startTime,
+          endTime: block?.endTime || shiftConfig[type].defaultValue.endTime,
+        };
+      };
+
+      const shifts = {
+        MORNING: getShift("MORNING"),
+        AFTERNOON: getShift("AFTERNOON"),
+        NIGHT: getShift("NIGHT"),
+      };
+
+      const hasEnabledShifts = Object.values(shifts).some((s) => s.enabled);
+      if (dayData?.isWorking && !hasEnabledShifts) {
+        shifts.MORNING.enabled = true;
+      }
 
       return {
         dayOfWeek: index,
         isWorking: dayData?.isWorking ?? false,
-        blocks: initialBlocks.map((b) => ({
-          startTime: b.startTime,
-          endTime: b.endTime,
-        })),
+        shifts,
       };
     })
   );
@@ -79,45 +118,62 @@ export default function ScheduleForm({
     );
   };
 
-  const handleBlockChange = (
+  const handleShiftTimeChange = (
     dayIndex: number,
-    blockIndex: number,
+    shiftType: WorkShiftType,
     field: "startTime" | "endTime",
     value: string
   ) => {
-    setSchedule((prev) =>
-      prev.map((day) => {
-        if (day.dayOfWeek === dayIndex) {
-          const updatedBlocks = day.blocks.map((block, bIndex) =>
-            bIndex === blockIndex ? { ...block, [field]: value } : block
-          );
-          return { ...day, blocks: updatedBlocks };
-        }
-        return day;
-      })
-    );
-  };
-
-  const addBlock = (dayIndex: number) => {
     setSchedule((prev) =>
       prev.map((day) =>
         day.dayOfWeek === dayIndex
           ? {
               ...day,
-              blocks: [...day.blocks, { startTime: "09:00", endTime: "18:00" }],
+              shifts: {
+                ...day.shifts,
+                [shiftType]: { ...day.shifts[shiftType], [field]: value },
+              },
             }
           : day
       )
     );
   };
 
-  const removeBlock = (dayIndex: number, blockIndex: number) => {
+  const handleAddShift = (dayIndex: number) => {
+    setSchedule((prev) =>
+      prev.map((day) => {
+        if (day.dayOfWeek === dayIndex) {
+          const firstDisabledShift = shiftTypes.find(
+            (type) => !day.shifts[type].enabled
+          );
+          if (firstDisabledShift) {
+            return {
+              ...day,
+              shifts: {
+                ...day.shifts,
+                [firstDisabledShift]: {
+                  ...day.shifts[firstDisabledShift],
+                  enabled: true,
+                },
+              },
+            };
+          }
+        }
+        return day;
+      })
+    );
+  };
+
+  const handleRemoveShift = (dayIndex: number, shiftType: WorkShiftType) => {
     setSchedule((prev) =>
       prev.map((day) =>
         day.dayOfWeek === dayIndex
           ? {
               ...day,
-              blocks: day.blocks.filter((_, bIndex) => bIndex !== blockIndex),
+              shifts: {
+                ...day.shifts,
+                [shiftType]: { ...day.shifts[shiftType], enabled: false },
+              },
             }
           : day
       )
@@ -137,90 +193,113 @@ export default function ScheduleForm({
   };
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="max-w-6xl mx-auto">
       <Card>
-        <CardContent className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
-          {schedule.map((day, dayIndex) => (
-            <div
-              key={day.dayOfWeek}
-              className="p-4 space-y-4 border rounded-lg"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Switch
-                    id={`switch-${dayIndex}`}
-                    checked={day.isWorking}
-                    onCheckedChange={(checked) =>
-                      handleDayToggle(dayIndex, checked)
-                    }
-                    disabled={isReadOnly}
-                  />
-                  <Label
-                    htmlFor={`switch-${dayIndex}`}
-                    className="text-lg font-medium"
-                  >
-                    {daysOfWeek[day.dayOfWeek]}
-                  </Label>
+        <CardContent className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-2">
+          {schedule.map((day, dayIndex) => {
+            const enabledShifts = shiftTypes.filter(
+              (type) => day.shifts[type].enabled
+            );
+            const canAddMore = enabledShifts.length < 3;
+
+            return (
+              <div
+                key={day.dayOfWeek}
+                className="flex flex-col p-4 space-y-4 border rounded-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Switch
+                      id={`switch-${dayIndex}`}
+                      checked={day.isWorking}
+                      onCheckedChange={(checked) =>
+                        handleDayToggle(dayIndex, checked)
+                      }
+                      disabled={isReadOnly}
+                    />
+                    <Label
+                      htmlFor={`switch-${dayIndex}`}
+                      className="text-lg font-medium"
+                    >
+                      {daysOfWeek[day.dayOfWeek]}
+                    </Label>
+                  </div>
                 </div>
-                {!isReadOnly && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => addBlock(dayIndex)}
-                    disabled={!day.isWorking || isReadOnly}
-                  >
-                    <PlusCircle className="w-5 h-5" />
-                  </Button>
+
+                {day.isWorking && (
+                  <div className="flex-grow pl-2 space-y-4">
+                    {enabledShifts.map((shiftType, index) => (
+                      <div key={shiftType}>
+                        {index > 0 && <Separator className="mb-4" />}
+                        <div className="flex items-center justify-between">
+                          <Label>{shiftNames[shiftType]}</Label>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleRemoveShift(dayIndex, shiftType)
+                            }
+                            disabled={isReadOnly || enabledShifts.length <= 1}
+                            aria-label="Eliminar jornada"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2 mt-2">
+                          <Input
+                            type="time"
+                            value={day.shifts[shiftType].startTime}
+                            min={shiftConfig[shiftType].min}
+                            max={shiftConfig[shiftType].max}
+                            onChange={(e) =>
+                              handleShiftTimeChange(
+                                dayIndex,
+                                shiftType,
+                                "startTime",
+                                e.target.value
+                              )
+                            }
+                            disabled={isReadOnly}
+                          />
+                          <span className="text-center text-muted-foreground">
+                            -
+                          </span>
+                          <Input
+                            type="time"
+                            value={day.shifts[shiftType].endTime}
+                            min={day.shifts[shiftType].startTime}
+                            max={shiftConfig[shiftType].max}
+                            onChange={(e) =>
+                              handleShiftTimeChange(
+                                dayIndex,
+                                shiftType,
+                                "endTime",
+                                e.target.value
+                              )
+                            }
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {day.isWorking && !isReadOnly && canAddMore && (
+                  <div className="pt-2 mt-auto">
+                    <Separator className="mb-4" />
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleAddShift(dayIndex)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar jornada
+                    </Button>
+                  </div>
                 )}
               </div>
-
-              {day.isWorking && (
-                <div className="pl-2 space-y-3">
-                  {day.blocks.map((block, blockIndex) => (
-                    <div key={blockIndex} className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={block.startTime}
-                        onChange={(e) =>
-                          handleBlockChange(
-                            dayIndex,
-                            blockIndex,
-                            "startTime",
-                            e.target.value
-                          )
-                        }
-                        disabled={isReadOnly}
-                      />
-                      <span>-</span>
-                      <Input
-                        type="time"
-                        value={block.endTime}
-                        onChange={(e) =>
-                          handleBlockChange(
-                            dayIndex,
-                            blockIndex,
-                            "endTime",
-                            e.target.value
-                          )
-                        }
-                        disabled={isReadOnly}
-                      />
-                      {!isReadOnly && day.blocks.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeBlock(dayIndex, blockIndex)}
-                          disabled={isReadOnly}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
       {!isReadOnly && (
