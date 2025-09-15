@@ -112,21 +112,40 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
     const getFormatOptions = (p: Period): Intl.DateTimeFormatOptions => {
       switch (p) {
         case "day":
-          return { hour: "2-digit", minute: "2-digit", hour12: false };
+          return {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+            timeZone: "America/Argentina/Buenos_Aires",
+          };
         case "month":
-          return { day: "2-digit", month: "2-digit" };
+          return {
+            day: "2-digit",
+            month: "2-digit",
+            timeZone: "America/Argentina/Buenos_Aires",
+          };
         case "week":
-          return { weekday: "long" };
+          return {
+            weekday: "long",
+            timeZone: "America/Argentina/Buenos_Aires",
+          };
       }
     };
 
     const formatOptions = getFormatOptions(period);
     const formatter = new Intl.DateTimeFormat("es-AR", formatOptions);
 
-    intervalDays.forEach((day) => {
-      const dayKey = formatter.format(day);
-      dailyRevenue[dayKey] = 0;
-    });
+    if (period === "day") {
+      for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, "0");
+        dailyRevenue[`${hour}:00`] = 0;
+      }
+    } else {
+      intervalDays.forEach((day) => {
+        const dayKey = formatter.format(day);
+        dailyRevenue[dayKey] = 0;
+      });
+    }
 
     completedBookingsForPeriod.forEach((booking) => {
       const dayKey = formatter.format(booking.startTime);
@@ -134,12 +153,12 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
         (dailyRevenue[dayKey] || 0) + booking.service.price;
     });
 
-    const chartData: ChartDataPoint[] = Object.keys(dailyRevenue).map(
-      (key) => ({
+    const chartData: ChartDataPoint[] = Object.keys(dailyRevenue)
+      .map((key) => ({
         name: key.charAt(0).toUpperCase() + key.slice(1),
         total: dailyRevenue[key],
-      })
-    );
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       totalRevenue,
