@@ -2,11 +2,31 @@
 
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
+import {
+  getEndOfDay,
+  getStartOfDay,
+  isToday,
+  formatTime,
+} from "@/lib/date-helpers";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Role, WorkShiftType } from "@prisma/client";
 
-export async function getBarberAvailability(barberId: string, date: Date) {
+const shiftNames: Record<WorkShiftType, string> = {
+  MORNING: "Mañana",
+  AFTERNOON: "Tarde",
+  NIGHT: "Noche",
+};
+
+type TimeSlotGroup = {
+  shiftName: string;
+  slots: { time: string; available: boolean }[];
+};
+
+export async function getBarberAvailability(
+  barberId: string,
+  date: Date,
+  totalDuration: number
+) {
   const dayOfWeek = date.getDay();
 
   const barber = await prisma.user.findUnique({
@@ -21,7 +41,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
   });
 
   if (!barber) {
-    return { isWorking: false, shifts: [], bookings: [], timeBlocks: [] };
+    return [];
   }
 
   const scheduleOwnerId =
@@ -30,7 +50,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
       : barber.teamMembership?.barbershop.ownerId;
 
   if (!scheduleOwnerId) {
-    return { isWorking: false, shifts: [], bookings: [], timeBlocks: [] };
+    return [];
   }
 
   const [workingHours, bookings, timeBlocks] = await Promise.all([
@@ -79,12 +99,84 @@ export async function getBarberAvailability(barberId: string, date: Date) {
     }),
   ]);
 
-  return {
-    isWorking: workingHours?.isWorking ?? false,
-    shifts: workingHours?.blocks ?? [],
-    bookings,
-    timeBlocks,
-  };
+  const isWorkingDay = workingHours?.isWorking ?? false;
+  const shifts = workingHours?.blocks ?? [];
+
+  if (!isWorkingDay || shifts.length === 0) {
+    return [];
+  }
+
+  const slotGroups: TimeSlotGroup[] = [];
+  const now = new Date();
+
+  for (const shift of shifts) {
+    const shiftSlots: { time: string; available: boolean }[] = [];
+    const dayStartTime = new Date(date);
+    dayStartTime.setHours(
+      parseInt(shift.startTime.split(":")[0]),
+      parseInt(shift.startTime.split(":")[1]),
+      0,
+      0
+    );
+
+    const dayEndTime = new Date(date);
+    dayEndTime.setHours(
+      parseInt(shift.endTime.split(":")[0]),
+      parseInt(shift.endTime.split(":")[1]),
+      0,
+      0
+    );
+
+    let currentTime = isToday(date) && now > dayStartTime ? now : dayStartTime;
+
+    if (isToday(date)) {
+      const minutes = currentTime.getMinutes();
+      if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
+      else if (minutes > 15 && minutes < 30) currentTime.setMinutes(30, 0, 0);
+      else if (minutes > 30 && minutes < 45) currentTime.setMinutes(45, 0, 0);
+      else if (minutes > 45) {
+        currentTime.setHours(currentTime.getHours() + 1, 0, 0, 0);
+      }
+    }
+
+    while (currentTime < dayEndTime) {
+      const slotEndTime = new Date(
+        currentTime.getTime() + totalDuration * 60000
+      );
+      if (slotEndTime > dayEndTime) break;
+
+      const overlapsWithBooking = bookings.some((booking) => {
+        const bookingStart = new Date(booking.startTime);
+        const bookingEnd = new Date(
+          bookingStart.getTime() +
+            (booking.service.durationInMinutes || 30) * 60000
+        );
+        return currentTime < bookingEnd && slotEndTime > bookingStart;
+      });
+
+      const overlapsWithTimeBlock = timeBlocks.some(
+        (block) =>
+          currentTime < new Date(block.endTime) &&
+          slotEndTime > new Date(block.startTime)
+      );
+
+      shiftSlots.push({
+        time: formatTime(currentTime),
+        available: !overlapsWithBooking && !overlapsWithTimeBlock,
+      });
+
+      currentTime = new Date(currentTime.getTime() + 15 * 60000); // Avanzamos en intervalos fijos de 15 min
+    }
+
+    if (shiftSlots.length > 0) {
+      slotGroups.push({
+        shiftName: shiftNames[shift.type],
+        slots: shiftSlots,
+      });
+    }
+  }
+
+  return slotGroups;
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
