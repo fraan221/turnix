@@ -2,7 +2,7 @@
 
 import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { BookingStatus, Role } from "@prisma/client";
+import { BookingStatus, Role, Prisma } from "@prisma/client";
 import {
   getStartOfDay,
   getEndOfDay,
@@ -10,8 +10,8 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
-  getEachDayOfInterval,
 } from "@/lib/date-helpers";
+import { unstable_cache as cache } from "next/cache";
 
 export type Period = "day" | "week" | "month";
 
@@ -28,25 +28,162 @@ export type AnalyticsData = {
   error?: string;
 };
 
+const getBarbershopAnalytics = cache(
+  async (
+    barbershopId: string,
+    period: Period,
+    startDate: Date,
+    endDate: Date
+  ) => {
+    try {
+      const timeZone = "America/Argentina/Buenos_Aires";
+
+      const completedBookingsPromise = prisma.booking.findMany({
+        where: {
+          barbershopId,
+          startTime: { gte: startDate, lte: endDate },
+          status: BookingStatus.COMPLETED,
+        },
+        include: { service: { select: { price: true } } },
+      });
+
+      const cancelledBookingsCountPromise = prisma.booking.count({
+        where: {
+          barbershopId,
+          startTime: { gte: startDate, lte: endDate },
+          status: BookingStatus.CANCELLED,
+        },
+      });
+
+      let chartQuery: Prisma.Sql;
+
+      const baseCTE = Prisma.sql`
+        WITH "BookingsInLocalTime" AS (
+          SELECT
+            b."startTime" AT TIME ZONE ${timeZone} as local_time,
+            s.price
+          FROM "Booking" b
+          JOIN "Service" s ON b."serviceId" = s.id
+          WHERE b."barbershopId" = ${barbershopId}
+            AND b."startTime" BETWEEN ${startDate} AND ${endDate}
+            AND b.status = 'COMPLETED'
+        )
+      `;
+
+      if (period === "day") {
+        chartQuery = Prisma.sql`
+          ${baseCTE}
+          SELECT
+            TO_CHAR(local_time, 'HH24:00') AS name,
+            SUM(price)::float AS total
+          FROM "BookingsInLocalTime"
+          GROUP BY name
+          ORDER BY name ASC;
+        `;
+      } else if (period === "week") {
+        chartQuery = Prisma.sql`
+          ${baseCTE}
+          SELECT
+            EXTRACT(ISODOW FROM local_time)::text AS name,
+            SUM(price)::float AS total
+          FROM "BookingsInLocalTime"
+          GROUP BY name
+          ORDER BY name ASC;
+        `;
+      } else {
+        chartQuery = Prisma.sql`
+          ${baseCTE}
+          SELECT
+            TO_CHAR(local_time, 'DD/MM') AS name,
+            SUM(price)::float AS total
+          FROM "BookingsInLocalTime"
+          GROUP BY name
+          ORDER BY name ASC;
+        `;
+      }
+
+      const chartPromise = prisma.$queryRaw<ChartDataPoint[]>(chartQuery);
+
+      const [completedBookings, cancelledBookingsCount, rawChartData] =
+        await Promise.all([
+          completedBookingsPromise,
+          cancelledBookingsCountPromise,
+          chartPromise,
+        ]);
+
+      const totalRevenue = completedBookings.reduce(
+        (acc, booking) => acc + booking.service.price,
+        0
+      );
+      const completedBookingsCount = completedBookings.length;
+
+      const chartDataMap = new Map<string, number>(
+        rawChartData.map((item) => [String(item.name), item.total])
+      );
+      let chartData: ChartDataPoint[] = [];
+
+      if (period === "day") {
+        for (let i = 0; i < 24; i++) {
+          const name = `${i.toString().padStart(2, "0")}:00`;
+          chartData.push({ name, total: chartDataMap.get(name) || 0 });
+        }
+      } else if (period === "week") {
+        const weekDays = [
+          "Lunes",
+          "Martes",
+          "Miércoles",
+          "Jueves",
+          "Viernes",
+          "Sábado",
+          "Domingo",
+        ];
+        for (let i = 1; i <= 7; i++) {
+          const name = weekDays[i - 1];
+          chartData.push({ name, total: chartDataMap.get(String(i)) || 0 });
+        }
+      } else {
+        chartData = rawChartData.map((d) => ({ ...d, name: String(d.name) }));
+      }
+
+      return {
+        totalRevenue,
+        completedBookings: completedBookingsCount,
+        cancelledBookings: cancelledBookingsCount,
+        chartData,
+        error: undefined,
+      };
+    } catch (error) {
+      console.error("Error en la consulta de analíticas:", error);
+      return {
+        totalRevenue: 0,
+        completedBookings: 0,
+        cancelledBookings: 0,
+        chartData: [],
+        error: "No se pudieron cargar los datos de la base de datos.",
+      };
+    }
+  },
+  ["getBarbershopAnalytics"],
+  {
+    revalidate: 300,
+    tags: ["analytics"],
+  }
+);
+
 export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
   const user = await getUserForSettings();
 
-  if (!user) {
-    throw new Error("No autenticado");
-  }
-
-  if (user?.role !== Role.OWNER) {
+  if (!user || user.role !== Role.OWNER) {
     return {
       totalRevenue: 0,
       completedBookings: 0,
       cancelledBookings: 0,
       chartData: [],
-      error: "No autorizado para ver estadísticas.",
+      error: user ? "No autorizado para ver estadísticas." : "No autenticado",
     };
   }
 
-  const barbershopId =
-    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+  const barbershopId = user.ownedBarbershop?.id;
   if (!barbershopId) {
     return {
       totalRevenue: 0,
@@ -74,106 +211,7 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
       startDate = getStartOfMonth(now);
       endDate = getEndOfMonth(now);
       break;
-    default:
-      throw new Error("Período no válido");
   }
 
-  try {
-    const completedBookingsForPeriod = await prisma.booking.findMany({
-      where: {
-        barbershopId,
-        startTime: { gte: startDate, lte: endDate },
-        status: BookingStatus.COMPLETED,
-      },
-      include: {
-        service: {
-          select: { price: true },
-        },
-      },
-    });
-
-    const totalRevenue = completedBookingsForPeriod.reduce(
-      (acc, booking) => acc + booking.service.price,
-      0
-    );
-
-    const completedBookingsCount = completedBookingsForPeriod.length;
-
-    const cancelledBookingsCount = await prisma.booking.count({
-      where: {
-        barbershopId,
-        startTime: { gte: startDate, lte: endDate },
-        status: BookingStatus.CANCELLED,
-      },
-    });
-
-    const dailyRevenue: { [key: string]: number } = {};
-    const intervalDays = getEachDayOfInterval(startDate, endDate);
-    const getFormatOptions = (p: Period): Intl.DateTimeFormatOptions => {
-      switch (p) {
-        case "day":
-          return {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-            timeZone: "America/Argentina/Buenos_Aires",
-          };
-        case "month":
-          return {
-            day: "2-digit",
-            month: "2-digit",
-            timeZone: "America/Argentina/Buenos_Aires",
-          };
-        case "week":
-          return {
-            weekday: "long",
-            timeZone: "America/Argentina/Buenos_Aires",
-          };
-      }
-    };
-
-    const formatOptions = getFormatOptions(period);
-    const formatter = new Intl.DateTimeFormat("es-AR", formatOptions);
-
-    if (period === "day") {
-      for (let i = 0; i < 24; i++) {
-        const hour = i.toString().padStart(2, "0");
-        dailyRevenue[`${hour}:00`] = 0;
-      }
-    } else {
-      intervalDays.forEach((day) => {
-        const dayKey = formatter.format(day);
-        dailyRevenue[dayKey] = 0;
-      });
-    }
-
-    completedBookingsForPeriod.forEach((booking) => {
-      const dayKey = formatter.format(booking.startTime);
-      dailyRevenue[dayKey] =
-        (dailyRevenue[dayKey] || 0) + booking.service.price;
-    });
-
-    const chartData: ChartDataPoint[] = Object.keys(dailyRevenue)
-      .map((key) => ({
-        name: key.charAt(0).toUpperCase() + key.slice(1),
-        total: dailyRevenue[key],
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return {
-      totalRevenue,
-      completedBookings: completedBookingsCount,
-      cancelledBookings: cancelledBookingsCount,
-      chartData,
-    };
-  } catch (error) {
-    console.error("Error al obtener datos de analíticas:", error);
-    return {
-      totalRevenue: 0,
-      completedBookings: 0,
-      cancelledBookings: 0,
-      chartData: [],
-      error: "No se pudieron cargar las estadísticas.",
-    };
-  }
+  return getBarbershopAnalytics(barbershopId, period, startDate, endDate);
 }
