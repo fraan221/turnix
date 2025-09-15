@@ -165,7 +165,7 @@ export async function getBarberAvailability(
         available: !overlapsWithBooking && !overlapsWithTimeBlock,
       });
 
-      currentTime = new Date(currentTime.getTime() + 15 * 60000); // Avanzamos en intervalos fijos de 15 min
+      currentTime = new Date(currentTime.getTime() + totalDuration * 60000);
     }
 
     if (shiftSlots.length > 0) {
