@@ -3,7 +3,22 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { Prisma, User } from "@prisma/client";
-import { PublicProfileClient } from "@/components/public-profile/PublicProfileClient";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BookingWizardSkeleton } from "@/components/skeletons/BookingWizardSkeleton";
+
+const PublicProfileClient = dynamic(
+  () =>
+    import("@/components/public-profile/PublicProfileClient").then(
+      (mod) => mod.PublicProfileClient
+    ),
+  {
+    ssr: false,
+    loading: () => <ProfileSkeleton />,
+  }
+);
 
 const barbershopWithDetails = Prisma.validator<Prisma.BarbershopDefaultArgs>()({
   include: {
@@ -40,6 +55,51 @@ interface BarberPublicPageProps {
   params: {
     slug: string;
   };
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="w-full max-w-4xl space-y-8">
+      <Card>
+        <CardHeader className="flex flex-col items-center justify-center p-6 space-y-4 text-center bg-card">
+          <Skeleton className="w-24 h-24 rounded-full" />
+          <Skeleton className="w-48 h-8" />
+        </CardHeader>
+      </Card>
+      <BookingWizardSkeleton />
+    </div>
+  );
+}
+
+async function PublicProfileData({ slug }: { slug: string }) {
+  const barbershop = await prisma.barbershop.findUnique({
+    where: {
+      slug: decodeURIComponent(slug),
+    },
+    include: barbershopWithDetails.include,
+  });
+
+  if (!barbershop || !barbershop.owner) {
+    notFound();
+  }
+
+  const owner = barbershop.owner;
+  const whatsappUrl = owner.phone
+    ? `https://wa.me/${formatPhoneNumberForWhatsApp(owner.phone)}`
+    : null;
+
+  const allBarbers: User[] = [
+    owner,
+    ...barbershop.teamMembers.map((member) => member.user),
+  ];
+
+  return (
+    <PublicProfileClient
+      barbershop={barbershop}
+      allBarbers={allBarbers}
+      whatsappUrl={whatsappUrl}
+    />
+  );
 }
 
 export async function generateMetadata({
@@ -84,34 +144,11 @@ export async function generateMetadata({
 export default async function BarberPublicPage({
   params,
 }: BarberPublicPageProps) {
-  const barbershop = await prisma.barbershop.findUnique({
-    where: {
-      slug: decodeURIComponent(params.slug),
-    },
-    include: barbershopWithDetails.include,
-  });
-
-  if (!barbershop || !barbershop.owner) {
-    notFound();
-  }
-
-  const owner = barbershop.owner;
-  const whatsappUrl = owner.phone
-    ? `https://wa.me/${formatPhoneNumberForWhatsApp(owner.phone)}`
-    : null;
-
-  const allBarbers: User[] = [
-    owner,
-    ...barbershop.teamMembers.map((member) => member.user),
-  ];
-
   return (
     <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
-      <PublicProfileClient
-        barbershop={barbershop}
-        allBarbers={allBarbers}
-        whatsappUrl={whatsappUrl}
-      />
+      <Suspense fallback={<ProfileSkeleton />}>
+        <PublicProfileData slug={params.slug} />
+      </Suspense>
     </main>
   );
 }

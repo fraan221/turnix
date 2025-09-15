@@ -123,7 +123,25 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
   const barberId = user.id;
 
   try {
+    const userWorkingHours = await prisma.workingHours.findMany({
+      where: { barberId },
+      select: { id: true },
+    });
+    const workingHoursIds = userWorkingHours.map((wh) => wh.id);
+
     await prisma.$transaction(async (tx) => {
+      if (workingHoursIds.length > 0) {
+        await tx.workScheduleBlock.deleteMany({
+          where: {
+            workingHoursId: {
+              in: workingHoursIds,
+            },
+          },
+        });
+      }
+
+      const blocksToCreate = [];
+
       for (const day of validatedSchedule.data) {
         const workingHoursRecord = await tx.workingHours.upsert({
           where: { barberId_dayOfWeek: { barberId, dayOfWeek: day.dayOfWeek } },
@@ -135,39 +153,27 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
           },
         });
 
-        for (const type of Object.keys(
-          day.shifts
-        ) as (keyof typeof day.shifts)[]) {
-          const shift = day.shifts[type];
-
-          if (day.isWorking && shift.enabled) {
-            await tx.workScheduleBlock.upsert({
-              where: {
-                workingHoursId_type: {
-                  workingHoursId: workingHoursRecord.id,
-                  type: type,
-                },
-              },
-              update: {
-                startTime: shift.startTime,
-                endTime: shift.endTime,
-              },
-              create: {
+        if (day.isWorking) {
+          for (const type of Object.keys(
+            day.shifts
+          ) as (keyof typeof day.shifts)[]) {
+            const shift = day.shifts[type];
+            if (shift.enabled) {
+              blocksToCreate.push({
                 workingHoursId: workingHoursRecord.id,
                 type: type,
                 startTime: shift.startTime,
                 endTime: shift.endTime,
-              },
-            });
-          } else {
-            await tx.workScheduleBlock.deleteMany({
-              where: {
-                workingHoursId: workingHoursRecord.id,
-                type: type,
-              },
-            });
+              });
+            }
           }
         }
+      }
+
+      if (blocksToCreate.length > 0) {
+        await tx.workScheduleBlock.createMany({
+          data: blocksToCreate,
+        });
       }
     });
 

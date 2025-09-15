@@ -231,20 +231,22 @@ export default function ScheduleForm({
                     {enabledShifts.map((shiftType, index) => (
                       <div key={shiftType}>
                         {index > 0 && <Separator className="mb-4" />}
-                        <div className="flex items-center justify-between">
-                          <Label>{shiftNames[shiftType]}</Label>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleRemoveShift(dayIndex, shiftType)
-                            }
-                            disabled={isReadOnly || enabledShifts.length <= 1}
-                            aria-label="Eliminar jornada"
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
+                        {enabledShifts.length > 1 && (
+                          <div className="flex items-center justify-between gap-2">
+                            <Label>{shiftNames[shiftType]}</Label>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleRemoveShift(dayIndex, shiftType)
+                              }
+                              disabled={isReadOnly}
+                              aria-label="Eliminar jornada"
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2 mt-2">
                           <Input
                             type="time"

@@ -52,20 +52,28 @@ export function ReadOnlyScheduleView({
 
               {isWorking && sortedBlocks.length > 0 ? (
                 <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                  {sortedBlocks.map((block) => (
-                    <Badge
-                      key={block.id}
-                      variant="secondary"
-                      className="flex-shrink-0"
-                    >
-                      <span className="hidden font-semibold sm:inline-block mr-1.5">
-                        {shiftTypeTranslations[block.type]}:
-                      </span>
+                  {sortedBlocks.length === 1 ? (
+                    <Badge variant="secondary" className="flex-shrink-0">
                       <span>
-                        {block.startTime} - {block.endTime}
+                        {sortedBlocks[0].startTime} - {sortedBlocks[0].endTime}
                       </span>
                     </Badge>
-                  ))}
+                  ) : (
+                    sortedBlocks.map((block) => (
+                      <Badge
+                        key={block.id}
+                        variant="secondary"
+                        className="flex-shrink-0"
+                      >
+                        <span className="hidden font-semibold sm:inline-block mr-1.5">
+                          {shiftTypeTranslations[block.type]}:
+                        </span>
+                        <span>
+                          {block.startTime} - {block.endTime}
+                        </span>
+                      </Badge>
+                    ))
+                  )}
                 </div>
               ) : (
                 <Badge variant="outline" className="self-start sm:self-auto">
