@@ -7,9 +7,10 @@ import { Analytics } from "@vercel/analytics/react";
 import { cn } from "@/lib/utils";
 import { inter, montserrat } from "./fonts";
 import { LoaderProvider } from "@/context/LoaderContext";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://turnix.app"),
+  metadataBase: new URL(getBaseUrl()),
   title: "Turnix - Agenda Online y Sistema de Turnos para Barberías",
   description:
     "Simplifica la gestión de tu barbería con Turnix. Ofrece a tus clientes una agenda online para reservar turnos 24/7. Ideal para barberos y estilistas.",

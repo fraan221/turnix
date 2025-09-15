@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { revalidatePath } from "next/cache";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -61,7 +62,7 @@ export async function createSubscription(
           transaction_amount: 9900,
           currency_id: "ARS",
         },
-        back_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?subscription=success`,
+        back_url: `${getBaseUrl()}/dashboard?subscription=success`,
         payer_email: user.email,
         status: "pending",
         external_reference: user.id,
