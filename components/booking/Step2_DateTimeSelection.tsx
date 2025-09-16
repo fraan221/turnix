@@ -58,9 +58,10 @@ export function Step2_DateTimeSelection({
 
   const handleNextClick = () => {
     if (date && selectedSlot) {
-      const [hours, minutes] = selectedSlot.split(":").map(Number);
-      const finalDate = new Date(date);
-      finalDate.setHours(hours, minutes, 0, 0);
+      const dateString = date.toISOString().split("T")[0];
+      const isoString = `${dateString}T${selectedSlot}:00-03:00`;
+      const finalDate = new Date(isoString);
+
       onNext(finalDate);
     }
   };

@@ -53,6 +53,9 @@ export async function getBarberAvailability(
     return [];
   }
 
+  const startOfDayUTC = getStartOfDay(date);
+  const endOfDayUTC = getEndOfDay(date);
+
   const [workingHours, bookings, timeBlocks] = await Promise.all([
     prisma.workingHours.findUnique({
       where: {
@@ -73,8 +76,8 @@ export async function getBarberAvailability(
       where: {
         barberId: barberId,
         startTime: {
-          gte: getStartOfDay(date),
-          lt: getEndOfDay(date),
+          gte: startOfDayUTC,
+          lt: endOfDayUTC,
         },
         status: { not: "CANCELLED" },
       },
@@ -89,12 +92,8 @@ export async function getBarberAvailability(
     prisma.timeBlock.findMany({
       where: {
         barberId: barberId,
-        OR: [
-          {
-            startTime: { lte: getEndOfDay(date) },
-            endTime: { gte: getStartOfDay(date) },
-          },
-        ],
+        startTime: { lte: endOfDayUTC },
+        endTime: { gte: startOfDayUTC },
       },
     }),
   ]);
@@ -109,30 +108,22 @@ export async function getBarberAvailability(
   const slotGroups: TimeSlotGroup[] = [];
   const now = new Date();
 
-  const timeZone = "America/Argentina/Buenos_Aires";
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone,
-  });
+  const dateStringUTC = date.toISOString().split("T")[0];
 
-  const dateString = formatter.format(date);
-  const timeZoneOffset = "-03:00";
+  const createDateInArgentina = (timeString: string): Date => {
+    const isoString = `${dateStringUTC}T${timeString}:00-03:00`;
+    return new Date(isoString);
+  };
 
   for (const shift of shifts) {
     const shiftSlots: { time: string; available: boolean }[] = [];
 
-    const dayStartTime = new Date(
-      `${dateString}T${shift.startTime}:00${timeZoneOffset}`
-    );
-    const dayEndTime = new Date(
-      `${dateString}T${shift.endTime}:00${timeZoneOffset}`
-    );
+    const dayStartTime = createDateInArgentina(shift.startTime);
+    const dayEndTime = createDateInArgentina(shift.endTime);
 
     let currentTime = isToday(date) && now > dayStartTime ? now : dayStartTime;
 
-    if (isToday(date)) {
+    if (isToday(date) && currentTime.getTime() === now.getTime()) {
       const minutes = currentTime.getMinutes();
       if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
       else if (minutes > 15 && minutes < 30) currentTime.setMinutes(30, 0, 0);
