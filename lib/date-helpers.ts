@@ -1,3 +1,5 @@
+const timeZone = "America/Argentina/Buenos_Aires";
+
 /**
  * Devuelve el inicio del día para una fecha dada (00:00:00).
  */
@@ -68,7 +70,7 @@ export function getEachDayOfInterval(start: Date, end: Date): Date[] {
 }
 
 /**
- * Formatea una fecha a un string con formato 'DD/MM/YYYY'.
+ * Formatea una fecha a un string con formato 'DD/MM/YYYY' en la zona horaria de Argentina.
  * @param date - La fecha a formatear.
  * @returns La fecha formateada como string.
  */
@@ -77,11 +79,12 @@ export function formatDate(date: Date | string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone,
   }).format(new Date(date));
 }
 
 /**
- * Formatea una fecha a un string con formato de tiempo 'HH:mm'.
+ * Formatea una fecha a un string con formato de tiempo 'HH:mm' en la zona horaria de Argentina.
  * @param date - La fecha a formatear.
  * @returns La hora formateada como string.
  */
@@ -90,6 +93,7 @@ export function formatTime(date: Date | string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone,
   }).format(new Date(date));
 }
 
@@ -126,7 +130,7 @@ export function getDaysRemaining(endDate: Date | string): number {
 }
 
 /**
- * Formatea una fecha a un string largo y descriptivo.
+ * Formatea una fecha a un string largo y descriptivo, en la zona horaria de Argentina.
  * Ej: "domingo, 7 de septiembre, 22:57 hs"
  */
 export function formatLongDateTime(date: Date | string): string {
@@ -135,23 +139,20 @@ export function formatLongDateTime(date: Date | string): string {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone,
   }).format(d);
-  const timePart = formatTime(d); // Reutilizamos nuestra función existente
+  const timePart = formatTime(d);
   return `${datePart}, ${timePart} hs`;
 }
 
 /**
- * Formatea una fecha a un string corto.
+ * Formatea una fecha a un string corto, en la zona horaria de Argentina.
  * Ej: "7/9/2025 - 22:57 hs"
  */
 export function formatShortDateTime(date: Date | string): string {
   const d = new Date(date);
-  const datePart = new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-  }).format(d);
-  const timePart = formatTime(d); // Reutilizamos nuestra función existente
+  const datePart = formatDate(d); // Ya utiliza la zona horaria correcta
+  const timePart = formatTime(d); // Ya utiliza la zona horaria correcta
   return `${datePart} - ${timePart} hs`;
 }
 
@@ -208,7 +209,7 @@ export function formatDistanceFromNow(date: Date | string): string {
 }
 
 /**
- * Formatea una fecha a un string con formato de fecha largo.
+ * Formatea una fecha a un string con formato de fecha largo, en la zona horaria de Argentina.
  * Ej: "domingo, 7 de septiembre de 2025"
  */
 export function formatLongDate(date: Date | string): string {
@@ -217,6 +218,7 @@ export function formatLongDate(date: Date | string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone,
   }).format(new Date(date));
 }
 
@@ -233,7 +235,7 @@ export function formatToDateInput(date: Date | string): string {
 }
 
 /**
- * Formatea una fecha a un string con formato de texto largo.
+ * Formatea una fecha a un string con formato de texto largo, en la zona horaria de Argentina.
  * Ej: "7 de septiembre de 2025"
  */
 export function formatFullDate(date: Date | string): string {
@@ -241,6 +243,7 @@ export function formatFullDate(date: Date | string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone,
   }).format(new Date(date));
 }
 
@@ -257,7 +260,7 @@ export function isToday(date: Date): boolean {
 }
 
 /**
- * Formatea una fecha a un string con formato de confirmación largo.
+ * Formatea una fecha a un string con formato de confirmación largo, en la zona horaria de Argentina.
  * Ej: "domingo, 7 de septiembre de 2025 a las 23:57 hs"
  */
 export function formatConfirmationDateTime(date: Date | string): string {
@@ -267,6 +270,7 @@ export function formatConfirmationDateTime(date: Date | string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone,
   }).format(d);
   const timePart = formatTime(d);
   return `${datePart} a las ${timePart} hs`;
