@@ -109,7 +109,15 @@ export async function getBarberAvailability(
   const slotGroups: TimeSlotGroup[] = [];
   const now = new Date();
 
-  const dateString = date.toISOString().split("T")[0];
+  const timeZone = "America/Argentina/Buenos_Aires";
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone,
+  });
+
+  const dateString = formatter.format(date);
   const timeZoneOffset = "-03:00";
 
   for (const shift of shifts) {
