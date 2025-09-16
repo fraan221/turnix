@@ -109,22 +109,17 @@ export async function getBarberAvailability(
   const slotGroups: TimeSlotGroup[] = [];
   const now = new Date();
 
+  const dateString = date.toISOString().split("T")[0];
+  const timeZoneOffset = "-03:00";
+
   for (const shift of shifts) {
     const shiftSlots: { time: string; available: boolean }[] = [];
-    const dayStartTime = new Date(date);
-    dayStartTime.setHours(
-      parseInt(shift.startTime.split(":")[0]),
-      parseInt(shift.startTime.split(":")[1]),
-      0,
-      0
-    );
 
-    const dayEndTime = new Date(date);
-    dayEndTime.setHours(
-      parseInt(shift.endTime.split(":")[0]),
-      parseInt(shift.endTime.split(":")[1]),
-      0,
-      0
+    const dayStartTime = new Date(
+      `${dateString}T${shift.startTime}:00${timeZoneOffset}`
+    );
+    const dayEndTime = new Date(
+      `${dateString}T${shift.endTime}:00${timeZoneOffset}`
     );
 
     let currentTime = isToday(date) && now > dayStartTime ? now : dayStartTime;
