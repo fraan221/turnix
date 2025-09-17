@@ -2,11 +2,42 @@
 
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
+import {
+  getEndOfDay,
+  getStartOfDay,
+  isToday,
+  formatTime,
+} from "@/lib/date-helpers";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Role, WorkShiftType } from "@prisma/client";
 
-export async function getBarberAvailability(barberId: string, date: Date) {
+export type AvailabilityStatus =
+  | "AVAILABLE"
+  | "FULLY_BOOKED"
+  | "WORKDAY_OVER"
+  | "DAY_OFF";
+
+export type BarberAvailability = {
+  slotGroups: TimeSlotGroup[];
+  status: AvailabilityStatus;
+};
+
+const shiftNames: Record<WorkShiftType, string> = {
+  MORNING: "Mañana",
+  AFTERNOON: "Tarde",
+  NIGHT: "Noche",
+};
+
+type TimeSlotGroup = {
+  shiftName: string;
+  slots: { time: string; available: boolean }[];
+};
+
+export async function getBarberAvailability(
+  barberId: string,
+  date: Date,
+  totalDuration: number
+): Promise<BarberAvailability> {
   const dayOfWeek = date.getDay();
 
   const barber = await prisma.user.findUnique({
@@ -21,11 +52,7 @@ export async function getBarberAvailability(barberId: string, date: Date) {
   });
 
   if (!barber) {
-    return {
-      workingHours: null,
-      bookings: [],
-      timeBlocks: [],
-    };
+    return { slotGroups: [], status: "DAY_OFF" };
   }
 
   const scheduleOwnerId =
@@ -34,12 +61,11 @@ export async function getBarberAvailability(barberId: string, date: Date) {
       : barber.teamMembership?.barbershop.ownerId;
 
   if (!scheduleOwnerId) {
-    return {
-      workingHours: null,
-      bookings: [],
-      timeBlocks: [],
-    };
+    return { slotGroups: [], status: "DAY_OFF" };
   }
+
+  const startOfDayUTC = getStartOfDay(date);
+  const endOfDayUTC = getEndOfDay(date);
 
   const [workingHours, bookings, timeBlocks] = await Promise.all([
     prisma.workingHours.findUnique({
@@ -49,13 +75,20 @@ export async function getBarberAvailability(barberId: string, date: Date) {
           dayOfWeek: dayOfWeek,
         },
       },
+      include: {
+        blocks: {
+          orderBy: {
+            startTime: "asc",
+          },
+        },
+      },
     }),
     prisma.booking.findMany({
       where: {
         barberId: barberId,
         startTime: {
-          gte: getStartOfDay(date),
-          lt: getEndOfDay(date),
+          gte: startOfDayUTC,
+          lt: endOfDayUTC,
         },
         status: { not: "CANCELLED" },
       },
@@ -70,21 +103,115 @@ export async function getBarberAvailability(barberId: string, date: Date) {
     prisma.timeBlock.findMany({
       where: {
         barberId: barberId,
-        OR: [
-          {
-            startTime: { lte: getEndOfDay(date) },
-            endTime: { gte: getStartOfDay(date) },
-          },
-        ],
+        startTime: { lte: endOfDayUTC },
+        endTime: { gte: startOfDayUTC },
       },
     }),
   ]);
 
-  return {
-    workingHours,
-    bookings,
-    timeBlocks,
+  const isWorkingDay = workingHours?.isWorking ?? false;
+  const shifts = workingHours?.blocks ?? [];
+
+  if (!isWorkingDay || shifts.length === 0) {
+    return { slotGroups: [], status: "DAY_OFF" };
+  }
+
+  const timeZone = "America/Argentina/Buenos_Aires";
+  const nowInArgentina = new Date(
+    new Date().toLocaleString("en-US", { timeZone })
+  );
+  const selectedDateInArgentinaString = new Date(
+    date.toLocaleString("en-US", { timeZone })
+  ).toLocaleDateString("en-CA");
+  const isSelectedDateToday =
+    nowInArgentina.toLocaleDateString("en-CA") ===
+    selectedDateInArgentinaString;
+
+  const dateStringUTC = date.toISOString().split("T")[0];
+  const createDateInArgentina = (timeString: string): Date => {
+    const isoString = `${dateStringUTC}T${timeString}:00-03:00`;
+    return new Date(isoString);
   };
+
+  const lastShift = shifts[shifts.length - 1];
+  const finalEndTime = createDateInArgentina(lastShift.endTime);
+  if (isSelectedDateToday && nowInArgentina >= finalEndTime) {
+    return { slotGroups: [], status: "WORKDAY_OVER" };
+  }
+
+  const slotGroups: TimeSlotGroup[] = [];
+
+  for (const shift of shifts) {
+    const shiftSlots: { time: string; available: boolean }[] = [];
+    const dayStartTime = createDateInArgentina(shift.startTime);
+    const dayEndTime = createDateInArgentina(shift.endTime);
+
+    let currentTime =
+      isSelectedDateToday && nowInArgentina > dayStartTime
+        ? nowInArgentina
+        : dayStartTime;
+
+    if (
+      isSelectedDateToday &&
+      currentTime.getTime() === nowInArgentina.getTime()
+    ) {
+      const minutes = currentTime.getMinutes();
+      if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
+      else if (minutes > 15 && minutes < 30) currentTime.setMinutes(30, 0, 0);
+      else if (minutes > 30 && minutes < 45) currentTime.setMinutes(45, 0, 0);
+      else if (minutes > 45) {
+        currentTime.setHours(currentTime.getHours() + 1, 0, 0, 0);
+      }
+    }
+
+    while (currentTime < dayEndTime) {
+      const slotEndTime = new Date(
+        currentTime.getTime() + totalDuration * 60000
+      );
+      if (slotEndTime > dayEndTime) break;
+
+      const overlapsWithBooking = bookings.some((booking) => {
+        const bookingStart = new Date(booking.startTime);
+        const durationInMinutes =
+          booking.durationAtBooking ?? booking.service.durationInMinutes ?? 60;
+        const bookingEnd = new Date(
+          bookingStart.getTime() + durationInMinutes * 60000
+        );
+        return currentTime < bookingEnd && slotEndTime > bookingStart;
+      });
+
+      const overlapsWithTimeBlock = timeBlocks.some(
+        (block) =>
+          currentTime < new Date(block.endTime) &&
+          slotEndTime > new Date(block.startTime)
+      );
+
+      shiftSlots.push({
+        time: formatTime(currentTime),
+        available: !overlapsWithBooking && !overlapsWithTimeBlock,
+      });
+
+      currentTime = new Date(currentTime.getTime() + totalDuration * 60000);
+    }
+
+    if (shiftSlots.length > 0) {
+      slotGroups.push({
+        shiftName: shiftNames[shift.type],
+        slots: shiftSlots,
+      });
+    }
+  }
+
+  if (slotGroups.length > 0) {
+    const allSlots = slotGroups.flatMap((group) => group.slots);
+    if (allSlots.some((slot) => slot.available)) {
+      return { slotGroups, status: "AVAILABLE" };
+    } else {
+      return { slotGroups, status: "FULLY_BOOKED" };
+    }
+  }
+
+  return { slotGroups: [], status: "FULLY_BOOKED" };
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
@@ -178,7 +305,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
-        select: { name: true },
+        select: { name: true, price: true, durationInMinutes: true },
       }),
     ]);
 
@@ -189,6 +316,8 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     await prisma.booking.create({
       data: {
         startTime,
+        priceAtBooking: service.price,
+        durationAtBooking: service.durationInMinutes,
         barber: { connect: { id: barberId } },
         client: { connect: { id: client.id } },
         service: { connect: { id: serviceId } },

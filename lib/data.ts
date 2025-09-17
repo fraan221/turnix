@@ -43,7 +43,14 @@ export const getUserForSettings = cache(async () => {
     where: { id: session.user.id },
     include: {
       ownedBarbershop: {
-        select: { id: true, name: true, slug: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true,
+          address: true,
+          description: true,
+        },
       },
       teamMembership: {
         include: {

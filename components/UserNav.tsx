@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,16 +45,22 @@ export function UserNav() {
               size="lg"
               className="w-full data-[state=open]:bg-accent"
             >
-              <Avatar className="w-8 h-8 rounded-lg">
-                {user.image && (
-                  <AvatarImage src={user.image} alt={user.name ?? ""} />
+              <div className="relative flex-shrink-0 w-8 h-8 overflow-hidden rounded-lg">
+                {user.image ? (
+                  <Image
+                    src={user.image}
+                    alt={user.name ?? "Avatar"}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full rounded-md bg-muted">
+                    {user.name?.charAt(0).toUpperCase() || (
+                      <User className="size-4" />
+                    )}
+                  </div>
                 )}
-                <AvatarFallback className="rounded-md">
-                  {user.name?.charAt(0).toUpperCase() || (
-                    <User className="size-4" />
-                  )}
-                </AvatarFallback>
-              </Avatar>
+              </div>
               <div className="grid flex-1 text-sm leading-tight text-left">
                 <span className="font-medium truncate">{user.name}</span>
                 <span className="text-xs truncate text-muted-foreground">

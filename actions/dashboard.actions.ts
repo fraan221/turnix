@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
+import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
 
 export type FormState = {
   success: string | null;
@@ -68,36 +69,47 @@ const UserProfileSchema = z.object({
       "Formato de URL no válido. Usa solo minúsculas, números y guiones."
     )
     .optional(),
+  barbershopDescription: z.string().optional(),
+  barbershopAddress: z.string().optional(),
 });
 
-const DayScheduleSchema = z
-  .object({
-    dayOfWeek: z.number().min(0).max(6),
-    isWorking: z.boolean(),
-    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  })
-  .refine(
-    (data) => {
-      if (!data.isWorking) return true;
-      return data.endTime > data.startTime;
-    },
-    {
-      message: "La hora de fin debe ser posterior a la hora de inicio.",
-      path: ["endTime"],
+const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+const WorkShiftSchema = z.object({
+  enabled: z.boolean(),
+  startTime: z.string().regex(timeRegex),
+  endTime: z.string().regex(timeRegex),
+});
+
+const DayScheduleSchema = z.object({
+  dayOfWeek: z.number().min(0).max(6),
+  isWorking: z.boolean(),
+  shifts: z.object({
+    MORNING: WorkShiftSchema,
+    AFTERNOON: WorkShiftSchema,
+    NIGHT: WorkShiftSchema,
+  }),
+});
+
+const ScheduleSchema = z.array(DayScheduleSchema).refine(
+  (schedule) => {
+    for (const day of schedule) {
+      if (day.isWorking) {
+        for (const shift of Object.values(day.shifts)) {
+          if (shift.enabled && shift.startTime >= shift.endTime) {
+            return false;
+          }
+        }
+      }
     }
-  );
+    return true;
+  },
+  {
+    message: "La hora de inicio debe ser anterior a la hora de fin",
+  }
+);
 
-const ScheduleSchema = z.array(DayScheduleSchema);
-
-type DaySchedule = {
-  dayOfWeek: number;
-  isWorking: boolean;
-  startTime: string;
-  endTime: string;
-};
-
-export async function saveSchedule(schedule: DaySchedule[]) {
+export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
   const user = await getCurrentUser();
   if (!user || user.role !== Role.OWNER) {
     return { error: "Acción no autorizada." };
@@ -106,44 +118,65 @@ export async function saveSchedule(schedule: DaySchedule[]) {
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
 
   if (!validatedSchedule.success) {
-    const firstError = validatedSchedule.error.issues[0];
-    if (firstError.code === "custom" && firstError.path.length > 0) {
-      const dayIndex = firstError.path[0] as number;
-      const dayName = daysOfWeek[dayIndex];
-      return {
-        error: `${firstError.message} (en ${dayName})`,
-      };
-    }
-    return { error: "Hubo un error al validar los horarios." };
+    return { error: validatedSchedule.error.issues[0].message };
   }
 
   const barberId = user.id;
 
   try {
-    await prisma.$transaction(
-      validatedSchedule.data.map((day) =>
-        prisma.workingHours.upsert({
+    const userWorkingHours = await prisma.workingHours.findMany({
+      where: { barberId },
+      select: { id: true },
+    });
+    const workingHoursIds = userWorkingHours.map((wh) => wh.id);
+
+    await prisma.$transaction(async (tx) => {
+      if (workingHoursIds.length > 0) {
+        await tx.workScheduleBlock.deleteMany({
           where: {
-            barberId_dayOfWeek: {
-              barberId: barberId,
-              dayOfWeek: day.dayOfWeek,
+            workingHoursId: {
+              in: workingHoursIds,
             },
           },
-          update: {
-            isWorking: day.isWorking,
-            startTime: day.startTime,
-            endTime: day.endTime,
-          },
+        });
+      }
+
+      const blocksToCreate = [];
+
+      for (const day of validatedSchedule.data) {
+        const workingHoursRecord = await tx.workingHours.upsert({
+          where: { barberId_dayOfWeek: { barberId, dayOfWeek: day.dayOfWeek } },
+          update: { isWorking: day.isWorking },
           create: {
-            barberId: barberId,
+            barberId,
             dayOfWeek: day.dayOfWeek,
             isWorking: day.isWorking,
-            startTime: day.startTime,
-            endTime: day.endTime,
           },
-        })
-      )
-    );
+        });
+
+        if (day.isWorking) {
+          for (const type of Object.keys(
+            day.shifts
+          ) as (keyof typeof day.shifts)[]) {
+            const shift = day.shifts[type];
+            if (shift.enabled) {
+              blocksToCreate.push({
+                workingHoursId: workingHoursRecord.id,
+                type: type,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+              });
+            }
+          }
+        }
+      }
+
+      if (blocksToCreate.length > 0) {
+        await tx.workScheduleBlock.createMany({
+          data: blocksToCreate,
+        });
+      }
+    });
 
     revalidatePath("/dashboard/schedule");
     return { success: "¡Horario guardado con éxito!" };
@@ -152,16 +185,6 @@ export async function saveSchedule(schedule: DaySchedule[]) {
     return { error: "No se pudo guardar el horario." };
   }
 }
-
-const daysOfWeek = [
-  "Domingo",
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-];
 
 export async function updateUserProfile(
   prevState: any,
@@ -186,6 +209,17 @@ export async function updateUserProfile(
       avatarUrl = blob.url;
     }
 
+    const barbershopImageFile = formData.get("barbershopImage") as File | null;
+    let barbershopImageUrl: string | undefined = undefined;
+
+    if (barbershopImageFile && barbershopImageFile.size > 0) {
+      const blob = await put(barbershopImageFile.name, barbershopImageFile, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      barbershopImageUrl = blob.url;
+    }
+
     const fieldsToValidate: { [key: string]: FormDataEntryValue | null } = {
       name: formData.get("name"),
       phone: formData.get("phone"),
@@ -194,6 +228,10 @@ export async function updateUserProfile(
     if (userRole === Role.OWNER) {
       fieldsToValidate.barbershopName = formData.get("barbershopName");
       fieldsToValidate.slug = formData.get("slug");
+      fieldsToValidate.barbershopDescription = formData.get(
+        "barbershopDescription"
+      );
+      fieldsToValidate.barbershopAddress = formData.get("barbershopAddress");
     }
 
     const validatedFields = UserProfileSchema.safeParse(fieldsToValidate);
@@ -213,7 +251,8 @@ export async function updateUserProfile(
     };
 
     if (userRole === Role.OWNER) {
-      const { barbershopName, slug } = validatedFields.data;
+      const { barbershopName, slug, barbershopAddress, barbershopDescription } =
+        validatedFields.data;
       const existingBarbershop = await prisma.barbershop.findUnique({
         where: { ownerId: userId },
       });
@@ -241,10 +280,18 @@ export async function updateUserProfile(
         async (tx) => {
           const barbershop = await tx.barbershop.upsert({
             where: { ownerId: userId },
-            update: { name: barbershopName! },
+            update: {
+              name: barbershopName!,
+              description: barbershopDescription,
+              address: barbershopAddress,
+              ...(barbershopImageUrl && { image: barbershopImageUrl }),
+            },
             create: {
               name: barbershopName!,
               slug: slug!,
+              description: barbershopDescription,
+              address: barbershopAddress,
+              ...(barbershopImageUrl && { image: barbershopImageUrl }),
               owner: { connect: { id: userId } },
             },
           });
@@ -398,6 +445,11 @@ export async function completeOnboarding() {
   }
 }
 
+const timeToMinutes = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 export async function createBooking(
   prevState: any,
   formData: FormData
@@ -453,14 +505,20 @@ export async function createBooking(
   try {
     const dayOfWeek = startTime.getDay();
 
-    const workingHours = await prisma.workingHours.findUnique({
-      where: {
-        barberId_dayOfWeek: {
-          barberId: user!.id,
-          dayOfWeek: dayOfWeek,
+    const [workingHours, serviceForBooking] = await Promise.all([
+      prisma.workingHours.findUnique({
+        where: {
+          barberId_dayOfWeek: { barberId: user.id, dayOfWeek },
         },
-      },
-    });
+      }),
+      prisma.service.findUnique({
+        where: { id: serviceId },
+      }),
+    ]);
+
+    if (!serviceForBooking) {
+      return { success: null, error: "El servicio seleccionado no existe." };
+    }
 
     if (
       !workingHours ||
@@ -470,25 +528,74 @@ export async function createBooking(
     ) {
       const dayName = new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
+        timeZone: "America/Argentina/Buenos_Aires",
       }).format(startTime);
       return {
         success: null,
-        error: `No es posible agendar un turno porque no trabajas los ${dayName} o no se han configurado los horarios para ese día.`,
+        error: `No trabajas los ${dayName} o no has configurado tus horarios.`,
       };
     }
 
-    const bookingTime =
-      startTime.getHours().toString().padStart(2, "0") +
-      ":" +
-      startTime.getMinutes().toString().padStart(2, "0");
+    const bookingTimeStr = startTime.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+
+    const bookingTimeInMinutes = timeToMinutes(bookingTimeStr);
+    const startTimeInMinutes = timeToMinutes(workingHours.startTime);
+    const endTimeInMinutes = timeToMinutes(workingHours.endTime);
 
     if (
-      bookingTime < workingHours.startTime ||
-      bookingTime >= workingHours.endTime
+      bookingTimeInMinutes < startTimeInMinutes ||
+      bookingTimeInMinutes >= endTimeInMinutes
     ) {
       return {
         success: null,
         error: `El turno está fuera del horario laboral (${workingHours.startTime} - ${workingHours.endTime}).`,
+      };
+    }
+
+    const newBookingEndTime = new Date(
+      startTime.getTime() + (serviceForBooking.durationInMinutes ?? 60) * 60000
+    );
+
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        barberId: user.id,
+        status: { not: "CANCELLED" },
+        startTime: {
+          gte: getStartOfDay(startTime),
+          lt: getEndOfDay(startTime),
+        },
+      },
+      include: {
+        service: {
+          select: {
+            durationInMinutes: true,
+          },
+        },
+      },
+    });
+
+    const overlappingBooking = existingBookings.find((existing) => {
+      const existingStartTime = existing.startTime;
+      const existingEndTime = new Date(
+        existingStartTime.getTime() +
+          (existing.service.durationInMinutes ?? 60) * 60000
+      );
+
+      return (
+        startTime < existingEndTime && existingStartTime < newBookingEndTime
+      );
+    });
+
+    if (overlappingBooking) {
+      return {
+        success: null,
+        error:
+          "El horario seleccionado se solapa con otro turno. Por favor, elige otro horario.",
       };
     }
 
@@ -506,7 +613,9 @@ export async function createBooking(
       await tx.booking.create({
         data: {
           startTime,
-          barberId: user!.id,
+          priceAtBooking: serviceForBooking.price,
+          durationAtBooking: serviceForBooking.durationInMinutes,
+          barberId: user.id,
           clientId: client.id,
           serviceId: serviceId,
           barbershopId: barbershopId!,

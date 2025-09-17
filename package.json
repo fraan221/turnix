@@ -8,7 +8,7 @@
   "homepage": "https://next-auth-example.vercel.app",
   "scripts": {
     "dev": "next",
-    "build": "prisma migrate deploy && prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/scripts/migrate-schedules.ts && next build",
     "start": "next start"
   },
   "prisma": {
@@ -41,13 +41,14 @@
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-navigation-menu": "^1.1.3",
     "@radix-ui/react-popover": "^1.1.14",
-    "@radix-ui/react-radio-group": "^1.3.7",
+    "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-scroll-area": "^1.2.9",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slider": "^1.3.5",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.5",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@simplewebauthn/server": "^9.0.3",
     "@vercel/analytics": "^1.5.0",
@@ -91,6 +92,7 @@
     "supabase": "^2.34.3",
     "tailwindcss": "^3.3.3",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.2.2"
   },
   "engines": {

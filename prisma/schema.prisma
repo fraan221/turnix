@@ -44,6 +44,9 @@ model Barbershop {
   name         String
   slug         String  @unique
   teamsEnabled Boolean @default(false)
+  image        String?
+  address      String?
+  description  String?
 
   owner   User   @relation("BarbershopOwner", fields: [ownerId], references: [id])
   ownerId String @unique
@@ -89,11 +92,13 @@ model Service {
 }
 
 model Booking {
-  id        String        @id @default(cuid())
-  startTime DateTime
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  status    BookingStatus @default(SCHEDULED)
+  id                String        @id @default(cuid())
+  startTime         DateTime
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  status            BookingStatus @default(SCHEDULED)
+  priceAtBooking    Float?
+  durationAtBooking Int?
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
@@ -146,12 +151,14 @@ model VerificationToken {
 model WorkingHours {
   id        String  @id @default(cuid())
   dayOfWeek Int
-  startTime String
-  endTime   String
+  startTime String?
+  endTime   String?
   isWorking Boolean @default(true)
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
+
+  blocks WorkScheduleBlock[]
 
   @@unique([barberId, dayOfWeek])
 }
@@ -215,4 +222,22 @@ model Team {
   updatedAt    DateTime   @updatedAt
 
   @@index([barbershopId])
+}
+
+enum WorkShiftType {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+model WorkScheduleBlock {
+  id        String        @id @default(cuid())
+  type      WorkShiftType @default(MORNING)
+  startTime String
+  endTime   String
+
+  workingHours   WorkingHours @relation(fields: [workingHoursId], references: [id], onDelete: Cascade)
+  workingHoursId String
+
+  @@unique([workingHoursId, type])
 }

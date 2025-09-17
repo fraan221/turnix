@@ -6,7 +6,7 @@ import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
 import AddTimeBlockModal from "@/components/AddTimeBlockModal";
 import { Separator } from "@/components/ui/separator";
-import { Role, WorkingHours } from "@prisma/client";
+import { Role, WorkingHours, WorkScheduleBlock } from "@prisma/client";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -36,13 +36,16 @@ export default async function SchedulePage() {
   const user = await getUserForDashboard();
   if (!user) return <p>No autorizado</p>;
 
-  let barbershopWorkingHours: WorkingHours[] = [];
+  let barbershopWorkingHours: (WorkingHours & {
+    blocks: WorkScheduleBlock[];
+  })[] = [];
   const isOwner = user.role === Role.OWNER;
 
   if (isOwner) {
     barbershopWorkingHours = await prisma.workingHours.findMany({
       where: { barberId: user.id },
       orderBy: { dayOfWeek: "asc" },
+      include: { blocks: true },
     });
   } else {
     const teamMembership = user.teamMembership;
@@ -57,6 +60,7 @@ export default async function SchedulePage() {
         barbershopWorkingHours = await prisma.workingHours.findMany({
           where: { barberId: barbershop.ownerId },
           orderBy: { dayOfWeek: "asc" },
+          include: { blocks: true },
         });
       }
     }

@@ -16,7 +16,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Textarea } from "./ui/textarea";
+import { Separator } from "./ui/separator";
+import Image from "next/image";
 import { AvatarCropper } from "./AvatarCropper";
 import { useRouter } from "next/navigation";
 import { Role } from "@prisma/client";
@@ -42,9 +44,13 @@ function SubmitButton() {
 
 interface SettingsFormProps {
   user: User & {
-    barbershop: {
+    ownedBarbershop: {
+      id: string;
       name: string;
       slug: string;
+      image: string | null;
+      address: string | null;
+      description: string | null;
     } | null;
   };
 }
@@ -54,7 +60,7 @@ const initialState: FormState = { success: null, error: null };
 export default function SettingsForm({ user }: SettingsFormProps) {
   const [state, formAction] = useFormState(updateUserProfile, initialState);
   const { data: session, update } = useSession();
-  const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
+  const [slugValue, setSlugValue] = useState(user.ownedBarbershop?.slug || "");
   const [isCopied, setIsCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
@@ -62,6 +68,14 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
   const formStateRef = useRef<FormState>(initialState);
   const router = useRouter();
+  const barbershopFileInputRef = useRef<HTMLInputElement>(null);
+  const [barbershopImageToCrop, setBarbershopImageToCrop] = useState<
+    string | null
+  >(null);
+  const croppedBarbershopImageRef = useRef<File | null>(null);
+  const [barbershopImagePreview, setBarbershopImagePreview] = useState<
+    string | null
+  >(user.ownedBarbershop?.image || null);
 
   useEffect(() => {
     const handleStateChange = async () => {
@@ -117,7 +131,10 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    imageType: "avatar" | "barbershop"
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -138,21 +155,41 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     }
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImageToCrop(reader.result as string);
+      if (imageType === "avatar") {
+        setImageToCrop(reader.result as string);
+      } else {
+        setBarbershopImageToCrop(reader.result as string);
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleCropComplete = (imageBlob: Blob | null) => {
+  const handleCropComplete = (
+    imageBlob: Blob | null,
+    imageType: "avatar" | "barbershop"
+  ) => {
     if (imageBlob) {
-      const croppedFile = new File([imageBlob], "avatar.png", {
+      const fileName = imageType === "avatar" ? "avatar.png" : "barbershop.png";
+      const croppedFile = new File([imageBlob], fileName, {
         type: "image/png",
       });
-      croppedImageRef.current = croppedFile;
-      setAvatarPreview(URL.createObjectURL(croppedFile));
+      if (imageType === "avatar") {
+        croppedImageRef.current = croppedFile;
+        setAvatarPreview(URL.createObjectURL(croppedFile));
+      } else {
+        croppedBarbershopImageRef.current = croppedFile;
+        setBarbershopImagePreview(URL.createObjectURL(croppedFile));
+      }
     }
-    setImageToCrop(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (imageType === "avatar") {
+      setImageToCrop(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } else {
+      setBarbershopImageToCrop(null);
+      if (barbershopFileInputRef.current)
+        barbershopFileInputRef.current.value = "";
+    }
   };
 
   const handleFormAction = (formData: FormData) => {
@@ -161,6 +198,11 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     } else {
       formData.delete("avatar");
     }
+    if (croppedBarbershopImageRef.current) {
+      formData.set("barbershopImage", croppedBarbershopImageRef.current);
+    } else {
+      formData.delete("barbershopImage");
+    }
     formAction(formData);
   };
 
@@ -168,68 +210,126 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     <TooltipProvider delayDuration={100}>
       <AvatarCropper
         imageSrc={imageToCrop}
-        onCropComplete={handleCropComplete}
+        onCropComplete={(blob) => handleCropComplete(blob, "avatar")}
         onClose={() => {
           setImageToCrop(null);
           if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+      />
+      <AvatarCropper
+        imageSrc={barbershopImageToCrop}
+        onCropComplete={(blob) => handleCropComplete(blob, "barbershop")}
+        onClose={() => {
+          setBarbershopImageToCrop(null);
+          if (barbershopFileInputRef.current)
+            barbershopFileInputRef.current.value = "";
         }}
       />
       <form
         action={handleFormAction}
         className="flex flex-col items-center justify-center mx-auto space-y-4 max-w-7xl"
       >
-        <div className="flex items-center w-full gap-4">
-          <Avatar className="w-20 h-20">
-            <AvatarImage
-              src={avatarPreview || ""}
-              alt={user.name || "Avatar"}
-            />
-            <AvatarFallback>
-              {user.name?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="grid w-full items-center gap-1.5">
-            <Label htmlFor="avatar">Foto de Perfil</Label>
+        <div className="w-full space-y-4">
+          <div className="flex items-center w-full gap-4">
+            <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-full">
+              <Image
+                src={avatarPreview || "/images/hero-background.jpg"}
+                alt={user.name || "Avatar"}
+                fill
+                className="object-cover bg-muted"
+              />
+            </div>
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="avatar">Foto de Perfil</Label>
+              <Input
+                id="avatar"
+                name="avatar"
+                type="file"
+                accept="image/png, image/jpeg"
+                ref={fileInputRef}
+                onChange={(e) => handleFileChange(e, "avatar")}
+                className="file:text-primary file:font-semibold"
+              />
+            </div>
+          </div>
+          <div className="grid w-full gap-2">
+            <Label htmlFor="name">Mi nombre</Label>
             <Input
-              id="avatar"
-              name="avatar"
-              type="file"
-              accept="image/png, image/jpeg"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="file:text-primary file:font-semibold"
+              id="name"
+              name="name"
+              defaultValue={user.name || ""}
+              required
+            />
+          </div>
+          <div className="grid w-full gap-2">
+            <Label htmlFor="phone">Mi número de celular</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              defaultValue={user.phone || ""}
             />
           </div>
         </div>
-        <div className="grid w-full gap-2">
-          <Label htmlFor="name">Mi nombre</Label>
-          <Input
-            id="name"
-            name="name"
-            defaultValue={user.name || ""}
-            required
-          />
-        </div>
-        <div className="grid w-full gap-2">
-          <Label htmlFor="phone">Mi número de celular</Label>
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            defaultValue={user.phone || ""}
-          />
-        </div>
         {user.role === Role.OWNER ? (
           <>
+            <div className="w-full pt-4">
+              <Separator />
+            </div>
+            <div className="flex items-center w-full gap-4">
+              <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-full">
+                <Image
+                  src={barbershopImagePreview || "/images/cta-background.jpg"}
+                  alt={user.ownedBarbershop?.name || "Logo Barbería"}
+                  fill
+                  className="object-cover bg-muted"
+                />
+              </div>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="barbershopImage">Foto de la Barbería</Label>
+                <Input
+                  id="barbershopImage"
+                  name="barbershopImage"
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  ref={barbershopFileInputRef}
+                  onChange={(e) => handleFileChange(e, "barbershop")}
+                  className="file:text-primary file:font-semibold"
+                />
+              </div>
+            </div>
+
             <div className="grid w-full gap-2">
               <Label htmlFor="barbershopName">El nombre de mi Barbería</Label>
               <Input
                 id="barbershopName"
                 name="barbershopName"
-                defaultValue={user.barbershop?.name || ""}
+                defaultValue={user.ownedBarbershop?.name || ""}
                 required
               />
             </div>
+
+            <div className="grid w-full gap-2">
+              <Label htmlFor="barbershopAddress">
+                Dirección de mi Barbería
+              </Label>
+              <Input
+                id="barbershopAddress"
+                name="barbershopAddress"
+                defaultValue={user.ownedBarbershop?.address || ""}
+              />
+            </div>
+
+            <div className="grid w-full gap-2">
+              <Label htmlFor="barbershopDescription">Descripción</Label>
+              <Textarea
+                id="barbershopDescription"
+                name="barbershopDescription"
+                defaultValue={user.ownedBarbershop?.description || ""}
+                placeholder="Ej: La mejor barbería de la ciudad, especializada en cortes clásicos y modernos."
+              />
+            </div>
+
             <div className="grid w-full gap-2">
               <Label htmlFor="slug">Mi URL personalizada</Label>
               <div className="flex items-center">
@@ -246,8 +346,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                     )
                   }
                   className="rounded-none focus-visible:ring-ring focus-visible:ring-offset-0 read-only:bg-muted/50 read-only:cursor-not-allowed"
-                  required={!user.barbershop?.slug}
-                  readOnly={!!user.barbershop?.slug}
+                  required={!user.ownedBarbershop?.slug}
+                  readOnly={!!user.ownedBarbershop?.slug}
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -258,7 +358,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                       onClick={handleCopy}
                       className="border-l-0 rounded-l-none"
                       aria-label="Copiar URL"
-                      disabled={!user.barbershop?.slug}
+                      disabled={!user.ownedBarbershop?.slug}
                     >
                       {isCopied ? (
                         <Check className="w-5 h-5 mx-3 text-green-500" />
@@ -274,7 +374,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               </div>
               <div className="text-xs text-muted-foreground">
                 <p>
-                  {user.barbershop?.slug
+                  {user.ownedBarbershop?.slug
                     ? "Tu URL pública ya no se puede cambiar. Esta acción se completa una única vez."
                     : "Usa minúsculas y guiones medios (-). ¡Esta acción es permanente!"}
                 </p>
@@ -283,7 +383,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           </>
         ) : (
           user.role === Role.BARBER &&
-          user.barbershop?.slug && (
+          user.ownedBarbershop?.slug && (
             <div className="grid w-full gap-2">
               <Label htmlFor="slug">URL de la Barbería</Label>
               <div className="flex items-center">
@@ -293,7 +393,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                 <Input
                   id="slug"
                   name="slug"
-                  value={user.barbershop.slug}
+                  value={user.ownedBarbershop.slug}
                   className="rounded-none read-only:bg-muted/50 read-only:cursor-not-allowed"
                   readOnly
                 />

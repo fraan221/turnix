@@ -1,16 +1,39 @@
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookingWizard } from "@/components/booking/BookingWizard";
 import type { Metadata } from "next";
-import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { Prisma, User } from "@prisma/client";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BookingWizardSkeleton } from "@/components/skeletons/BookingWizardSkeleton";
+
+const PublicProfileClient = dynamic(
+  () =>
+    import("@/components/public-profile/PublicProfileClient").then(
+      (mod) => mod.PublicProfileClient
+    ),
+  {
+    ssr: false,
+    loading: () => <ProfileSkeleton />,
+  }
+);
 
 const barbershopWithDetails = Prisma.validator<Prisma.BarbershopDefaultArgs>()({
   include: {
-    owner: true,
+    owner: {
+      include: {
+        workingHours: {
+          include: {
+            blocks: true,
+          },
+          orderBy: {
+            dayOfWeek: "asc",
+          },
+        },
+      },
+    },
     teamMembers: {
       include: {
         user: true,
@@ -24,7 +47,7 @@ const barbershopWithDetails = Prisma.validator<Prisma.BarbershopDefaultArgs>()({
   },
 });
 
-type BarbershopWithDetails = Prisma.BarbershopGetPayload<
+export type BarbershopWithDetails = Prisma.BarbershopGetPayload<
   typeof barbershopWithDetails
 >;
 
@@ -34,54 +57,27 @@ interface BarberPublicPageProps {
   };
 }
 
-export async function generateMetadata({
-  params,
-}: BarberPublicPageProps): Promise<Metadata> {
-  const slug = decodeURIComponent(params.slug);
-
-  const barbershop = await prisma.barbershop.findUnique({
-    where: { slug },
-    include: { owner: { select: { name: true, image: true } } },
-  });
-
-  if (!barbershop) {
-    return {
-      title: "Barbería no encontrada",
-      description: "Esta página no existe o fue eliminada.",
-    };
-  }
-
-  const pageTitle = barbershop.name;
-  const description = `Agenda tu turno online en ${pageTitle}. Consulta nuestros servicios y horarios, y reserva tu cita fácilmente a través de Turnix.`;
-
-  return {
-    title: `${pageTitle} - Turnos Online | Turnix`,
-    description: description,
-    openGraph: {
-      title: pageTitle,
-      description: description,
-      images: [
-        {
-          url: barbershop.owner.image || "/logo.png",
-          width: 800,
-          height: 600,
-          alt: `Logo de ${pageTitle}`,
-        },
-      ],
-    },
-  };
+function ProfileSkeleton() {
+  return (
+    <div className="w-full max-w-4xl space-y-8">
+      <Card>
+        <CardHeader className="flex flex-col items-center justify-center p-6 space-y-4 text-center bg-card">
+          <Skeleton className="w-24 h-24 rounded-full" />
+          <Skeleton className="w-48 h-8" />
+        </CardHeader>
+      </Card>
+      <BookingWizardSkeleton />
+    </div>
+  );
 }
 
-export default async function BarberPublicPage({
-  params,
-}: BarberPublicPageProps) {
-  const barbershop: BarbershopWithDetails | null =
-    await prisma.barbershop.findUnique({
-      where: {
-        slug: decodeURIComponent(params.slug),
-      },
-      include: barbershopWithDetails.include,
-    });
+async function PublicProfileData({ slug }: { slug: string }) {
+  const barbershop = await prisma.barbershop.findUnique({
+    where: {
+      slug: decodeURIComponent(slug),
+    },
+    include: barbershopWithDetails.include,
+  });
 
   if (!barbershop || !barbershop.owner) {
     notFound();
@@ -98,37 +94,61 @@ export default async function BarberPublicPage({
   ];
 
   return (
+    <PublicProfileClient
+      barbershop={barbershop}
+      allBarbers={allBarbers}
+      whatsappUrl={whatsappUrl}
+    />
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: BarberPublicPageProps): Promise<Metadata> {
+  const slug = decodeURIComponent(params.slug);
+
+  const barbershop = await prisma.barbershop.findUnique({
+    where: { slug },
+    select: { name: true, image: true, owner: { select: { image: true } } },
+  });
+
+  if (!barbershop) {
+    return {
+      title: "Barbería no encontrada",
+      description: "Esta página no existe o fue eliminada.",
+    };
+  }
+
+  const pageTitle = barbershop.name;
+  const description = `Agenda tu turno online en ${pageTitle}. Consulta nuestros servicios y horarios, y reserva tu cita fácilmente a través de Turnix.`;
+  const imageUrl = barbershop.image || barbershop.owner.image || "/logo.png";
+
+  return {
+    title: `${pageTitle} - Turnos Online | Turnix`,
+    description: description,
+    openGraph: {
+      title: pageTitle,
+      description: description,
+      images: [
+        {
+          url: imageUrl,
+          width: 800,
+          height: 600,
+          alt: `Logo de ${pageTitle}`,
+        },
+      ],
+    },
+  };
+}
+
+export default async function BarberPublicPage({
+  params,
+}: BarberPublicPageProps) {
+  return (
     <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
-      <div className="w-full max-w-3xl space-y-8">
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-col items-center justify-center p-6 text-center bg-card">
-            <Avatar className="w-24 h-24 mb-4 border-4 border-background">
-              <AvatarImage
-                src={owner.image || ""}
-                alt={owner.name || "Avatar del barbero"}
-              />
-              <AvatarFallback>
-                {owner.name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <CardTitle className="text-3xl font-bold">
-              {barbershop.name}
-            </CardTitle>
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 transition-colors rounded-full hover:bg-muted"
-                aria-label="Contactar por WhatsApp"
-              >
-                <WhatsAppIcon className="w-6 h-6 text-green-500" />
-              </a>
-            )}
-          </CardHeader>
-        </Card>
-        <BookingWizard allServices={barbershop.services} barbers={allBarbers} />
-      </div>
+      <Suspense fallback={<ProfileSkeleton />}>
+        <PublicProfileData slug={params.slug} />
+      </Suspense>
     </main>
   );
 }

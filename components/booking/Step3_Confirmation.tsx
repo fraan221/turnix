@@ -5,15 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Service } from "@prisma/client";
-import { formatConfirmationDateTime } from "@/lib/date-helpers";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { formatShortDateTime } from "@/lib/date-helpers";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { createPublicBooking } from "@/actions/public.actions";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, CalendarPlus } from "lucide-react";
 
 type CreateBookingState = {
   success?: string | null;
@@ -46,6 +38,7 @@ interface Step3ConfirmationProps {
   selectedServices: Service[];
   selectedDateTime: Date;
   onBack: () => void;
+  hasMultipleBarbers: boolean;
 }
 
 function SubmitButton() {
@@ -70,6 +63,7 @@ export function Step3_Confirmation({
   selectedServices,
   selectedDateTime,
   onBack,
+  hasMultipleBarbers,
 }: Step3ConfirmationProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
@@ -79,10 +73,8 @@ export function Step3_Confirmation({
     null
   );
 
-  const { totalPrice, serviceIds } = useMemo(() => {
-    const total = selectedServices.reduce((acc, s) => acc + s.price, 0);
-    const ids = selectedServices.map((s) => s.id);
-    return { totalPrice: total, serviceIds: ids };
+  const serviceIds = useMemo(() => {
+    return selectedServices.map((s) => s.id);
   }, [selectedServices]);
 
   useEffect(() => {
@@ -102,16 +94,16 @@ export function Step3_Confirmation({
   }, [state, router]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Paso 3: Confirma tu turno</CardTitle>
-        <CardDescription>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold">Paso 3: Confirma tu turno</h3>
+        <p className="text-muted-foreground">
           Revisa los detalles de tu turno y completa tus datos para finalizar.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </div>
+      <div className="p-4 space-y-4 border rounded-lg">
         <div>
-          <h3 className="mb-2 font-semibold">Servicios</h3>
+          <h3 className="mb-2 font-semibold">Servicio</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {selectedServices.map((service) => (
               <li key={service.id} className="flex justify-between">
@@ -123,32 +115,34 @@ export function Step3_Confirmation({
             ))}
           </ul>
         </div>
-        <Separator />
-        <div>
-          <h3 className="font-semibold">Barbero</h3>
-          <p className="text-sm text-muted-foreground">{barberName}</p>
-        </div>
+        {hasMultipleBarbers && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="font-semibold">Barbero</h3>
+              <p className="text-sm text-muted-foreground">{barberName}</p>
+            </div>
+          </>
+        )}
         <Separator />
         <div>
           <h3 className="font-semibold">Día y Hora</h3>
           <p className="text-sm text-muted-foreground">
-            {formatConfirmationDateTime(selectedDateTime)}
+            {formatShortDateTime(selectedDateTime)}
           </p>
         </div>
-        <Separator />
-        <div className="flex items-center justify-between text-lg font-bold">
-          <span>Total</span>
-          <span>{formatPrice(totalPrice)}</span>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between gap-2">
+      </div>
+      <div className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Completar reserva</Button>
+            <Button>
+              <CalendarPlus className="w-4 h-4" />
+              Completar reserva
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -186,7 +180,7 @@ export function Step3_Confirmation({
             </form>
           </DialogContent>
         </Dialog>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
