@@ -64,7 +64,7 @@ export default function LoginForm() {
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Inicia Sesión</CardTitle>
-          {/* <CardDescription>Ingresa con tu cuenta de Google</CardDescription> */}
+          <CardDescription>Ingresa con tu cuenta de Google</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -77,7 +77,7 @@ export default function LoginForm() {
                 </Alert>
               )}
 
-              {/* <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
                 <GoogleSignInButton />
               </div>
 
@@ -85,7 +85,7 @@ export default function LoginForm() {
                 <span className="relative z-10 px-2 bg-card text-muted-foreground">
                   O continúa con
                 </span>
-              </div> */}
+              </div>
 
               <div className="grid gap-4">
                 <div className="grid gap-2">
