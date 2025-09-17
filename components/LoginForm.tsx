@@ -64,7 +64,7 @@ export default function LoginForm() {
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Inicia Sesión</CardTitle>
-          {/* <CardDescription>Ingresa con tu cuenta de Google</CardDescription> */}
+          <CardDescription>Ingresa con tu cuenta de Google</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
