@@ -11,6 +11,23 @@ import {
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
 
+// --- INICIO DE NUEVOS TIPOS ---
+
+// Definimos los posibles estados de disponibilidad.
+export type AvailabilityStatus =
+  | "AVAILABLE" // Hay turnos disponibles.
+  | "FULLY_BOOKED" // No quedan turnos libres en el día.
+  | "WORKDAY_OVER" // La jornada laboral del día de hoy ya terminó.
+  | "DAY_OFF"; // El barbero no trabaja en el día seleccionado.
+
+// Definimos la nueva estructura de la respuesta de la función.
+export type BarberAvailability = {
+  slotGroups: TimeSlotGroup[];
+  status: AvailabilityStatus;
+};
+
+// --- FIN DE NUEVOS TIPOS ---
+
 const shiftNames: Record<WorkShiftType, string> = {
   MORNING: "Mañana",
   AFTERNOON: "Tarde",
@@ -26,7 +43,7 @@ export async function getBarberAvailability(
   barberId: string,
   date: Date,
   totalDuration: number
-) {
+): Promise<BarberAvailability> {
   const dayOfWeek = date.getDay();
 
   const barber = await prisma.user.findUnique({
@@ -41,7 +58,8 @@ export async function getBarberAvailability(
   });
 
   if (!barber) {
-    return [];
+    // Si el barbero no existe, técnicamente es un día no laboral.
+    return { slotGroups: [], status: "DAY_OFF" };
   }
 
   const scheduleOwnerId =
@@ -50,7 +68,7 @@ export async function getBarberAvailability(
       : barber.teamMembership?.barbershop.ownerId;
 
   if (!scheduleOwnerId) {
-    return [];
+    return { slotGroups: [], status: "DAY_OFF" };
   }
 
   const startOfDayUTC = getStartOfDay(date);
@@ -72,7 +90,6 @@ export async function getBarberAvailability(
         },
       },
     }),
-
     prisma.booking.findMany({
       where: {
         barberId: barberId,
@@ -102,29 +119,51 @@ export async function getBarberAvailability(
   const isWorkingDay = workingHours?.isWorking ?? false;
   const shifts = workingHours?.blocks ?? [];
 
+  // Diagnóstico 1: El barbero no trabaja este día.
   if (!isWorkingDay || shifts.length === 0) {
-    return [];
+    return { slotGroups: [], status: "DAY_OFF" };
   }
 
-  const slotGroups: TimeSlotGroup[] = [];
-  const now = new Date();
+  const timeZone = "America/Argentina/Buenos_Aires";
+  const nowInArgentina = new Date(
+    new Date().toLocaleString("en-US", { timeZone })
+  );
+  const selectedDateInArgentinaString = new Date(
+    date.toLocaleString("en-US", { timeZone })
+  ).toLocaleDateString("en-CA");
+  const isSelectedDateToday =
+    nowInArgentina.toLocaleDateString("en-CA") ===
+    selectedDateInArgentinaString;
 
   const dateStringUTC = date.toISOString().split("T")[0];
-
   const createDateInArgentina = (timeString: string): Date => {
     const isoString = `${dateStringUTC}T${timeString}:00-03:00`;
     return new Date(isoString);
   };
 
+  // Diagnóstico 2: La jornada laboral de hoy ya terminó.
+  const lastShift = shifts[shifts.length - 1];
+  const finalEndTime = createDateInArgentina(lastShift.endTime);
+  if (isSelectedDateToday && nowInArgentina >= finalEndTime) {
+    return { slotGroups: [], status: "WORKDAY_OVER" };
+  }
+
+  const slotGroups: TimeSlotGroup[] = [];
+
   for (const shift of shifts) {
     const shiftSlots: { time: string; available: boolean }[] = [];
-
     const dayStartTime = createDateInArgentina(shift.startTime);
     const dayEndTime = createDateInArgentina(shift.endTime);
 
-    let currentTime = isToday(date) && now > dayStartTime ? now : dayStartTime;
+    let currentTime =
+      isSelectedDateToday && nowInArgentina > dayStartTime
+        ? nowInArgentina
+        : dayStartTime;
 
-    if (isToday(date) && currentTime.getTime() === now.getTime()) {
+    if (
+      isSelectedDateToday &&
+      currentTime.getTime() === nowInArgentina.getTime()
+    ) {
       const minutes = currentTime.getMinutes();
       if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
       else if (minutes > 15 && minutes < 30) currentTime.setMinutes(30, 0, 0);
@@ -142,14 +181,11 @@ export async function getBarberAvailability(
 
       const overlapsWithBooking = bookings.some((booking) => {
         const bookingStart = new Date(booking.startTime);
-
         const durationInMinutes =
           booking.durationAtBooking ?? booking.service.durationInMinutes ?? 60;
-
         const bookingEnd = new Date(
           bookingStart.getTime() + durationInMinutes * 60000
         );
-
         return currentTime < bookingEnd && slotEndTime > bookingStart;
       });
 
@@ -175,7 +211,18 @@ export async function getBarberAvailability(
     }
   }
 
-  return slotGroups;
+  // Diagnóstico Final: ¿Hay turnos disponibles o está todo ocupado?
+  if (slotGroups.length > 0) {
+    const allSlots = slotGroups.flatMap((group) => group.slots);
+    if (allSlots.some((slot) => slot.available)) {
+      return { slotGroups, status: "AVAILABLE" };
+    } else {
+      return { slotGroups, status: "FULLY_BOOKED" };
+    }
+  }
+
+  // Fallback: Si no se generó ningún slot, es porque está todo ocupado.
+  return { slotGroups: [], status: "FULLY_BOOKED" };
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
