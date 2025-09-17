@@ -445,11 +445,6 @@ export async function completeOnboarding() {
   }
 }
 
-/**
- * Convierte un string de tiempo "HH:mm" a un total de minutos desde la medianoche.
- * @param timeStr - El tiempo en formato "HH:mm".
- * @returns El número total de minutos.
- */
 const timeToMinutes = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;

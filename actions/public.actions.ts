@@ -11,22 +11,16 @@ import {
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
 
-// --- INICIO DE NUEVOS TIPOS ---
-
-// Definimos los posibles estados de disponibilidad.
 export type AvailabilityStatus =
-  | "AVAILABLE" // Hay turnos disponibles.
-  | "FULLY_BOOKED" // No quedan turnos libres en el día.
-  | "WORKDAY_OVER" // La jornada laboral del día de hoy ya terminó.
-  | "DAY_OFF"; // El barbero no trabaja en el día seleccionado.
+  | "AVAILABLE"
+  | "FULLY_BOOKED"
+  | "WORKDAY_OVER"
+  | "DAY_OFF";
 
-// Definimos la nueva estructura de la respuesta de la función.
 export type BarberAvailability = {
   slotGroups: TimeSlotGroup[];
   status: AvailabilityStatus;
 };
-
-// --- FIN DE NUEVOS TIPOS ---
 
 const shiftNames: Record<WorkShiftType, string> = {
   MORNING: "Mañana",
@@ -58,7 +52,6 @@ export async function getBarberAvailability(
   });
 
   if (!barber) {
-    // Si el barbero no existe, técnicamente es un día no laboral.
     return { slotGroups: [], status: "DAY_OFF" };
   }
 
@@ -119,7 +112,6 @@ export async function getBarberAvailability(
   const isWorkingDay = workingHours?.isWorking ?? false;
   const shifts = workingHours?.blocks ?? [];
 
-  // Diagnóstico 1: El barbero no trabaja este día.
   if (!isWorkingDay || shifts.length === 0) {
     return { slotGroups: [], status: "DAY_OFF" };
   }
@@ -141,7 +133,6 @@ export async function getBarberAvailability(
     return new Date(isoString);
   };
 
-  // Diagnóstico 2: La jornada laboral de hoy ya terminó.
   const lastShift = shifts[shifts.length - 1];
   const finalEndTime = createDateInArgentina(lastShift.endTime);
   if (isSelectedDateToday && nowInArgentina >= finalEndTime) {
@@ -211,7 +202,6 @@ export async function getBarberAvailability(
     }
   }
 
-  // Diagnóstico Final: ¿Hay turnos disponibles o está todo ocupado?
   if (slotGroups.length > 0) {
     const allSlots = slotGroups.flatMap((group) => group.slots);
     if (allSlots.some((slot) => slot.available)) {
@@ -221,7 +211,6 @@ export async function getBarberAvailability(
     }
   }
 
-  // Fallback: Si no se generó ningún slot, es porque está todo ocupado.
   return { slotGroups: [], status: "FULLY_BOOKED" };
 }
 

@@ -27,7 +27,6 @@ export function Step2_DateTimeSelection({
   onBack,
 }: Step2DateTimeSelectionProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  // --- 2. El estado ahora almacena el objeto de respuesta completo ---
   const [availability, setAvailability] = useState<BarberAvailability | null>(
     null
   );

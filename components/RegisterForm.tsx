@@ -312,7 +312,7 @@ export default function RegisterForm() {
                   )}
                 </Button>
 
-                {/* <div className="relative">
+                <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
@@ -323,7 +323,7 @@ export default function RegisterForm() {
                   </div>
                 </div>
 
-                <GoogleSignInButton /> */}
+                <GoogleSignInButton />
 
                 <div className="text-sm text-center">
                   ¿Ya tenés una cuenta?{" "}
