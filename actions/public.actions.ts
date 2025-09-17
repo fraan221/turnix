@@ -72,6 +72,7 @@ export async function getBarberAvailability(
         },
       },
     }),
+
     prisma.booking.findMany({
       where: {
         barberId: barberId,
@@ -141,10 +142,14 @@ export async function getBarberAvailability(
 
       const overlapsWithBooking = bookings.some((booking) => {
         const bookingStart = new Date(booking.startTime);
+
+        const durationInMinutes =
+          booking.durationAtBooking ?? booking.service.durationInMinutes ?? 60;
+
         const bookingEnd = new Date(
-          bookingStart.getTime() +
-            (booking.service.durationInMinutes || 30) * 60000
+          bookingStart.getTime() + durationInMinutes * 60000
         );
+
         return currentTime < bookingEnd && slotEndTime > bookingStart;
       });
 
@@ -264,7 +269,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
-        select: { name: true },
+        select: { name: true, price: true, durationInMinutes: true },
       }),
     ]);
 
@@ -275,6 +280,8 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     await prisma.booking.create({
       data: {
         startTime,
+        priceAtBooking: service.price,
+        durationAtBooking: service.durationInMinutes,
         barber: { connect: { id: barberId } },
         client: { connect: { id: client.id } },
         service: { connect: { id: serviceId } },

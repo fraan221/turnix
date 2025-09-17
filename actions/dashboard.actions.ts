@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
+import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
 
 export type FormState = {
   success: string | null;
@@ -444,6 +445,16 @@ export async function completeOnboarding() {
   }
 }
 
+/**
+ * Convierte un string de tiempo "HH:mm" a un total de minutos desde la medianoche.
+ * @param timeStr - El tiempo en formato "HH:mm".
+ * @returns El número total de minutos.
+ */
+const timeToMinutes = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 export async function createBooking(
   prevState: any,
   formData: FormData
@@ -499,14 +510,20 @@ export async function createBooking(
   try {
     const dayOfWeek = startTime.getDay();
 
-    const workingHours = await prisma.workingHours.findUnique({
-      where: {
-        barberId_dayOfWeek: {
-          barberId: user!.id,
-          dayOfWeek: dayOfWeek,
+    const [workingHours, serviceForBooking] = await Promise.all([
+      prisma.workingHours.findUnique({
+        where: {
+          barberId_dayOfWeek: { barberId: user.id, dayOfWeek },
         },
-      },
-    });
+      }),
+      prisma.service.findUnique({
+        where: { id: serviceId },
+      }),
+    ]);
+
+    if (!serviceForBooking) {
+      return { success: null, error: "El servicio seleccionado no existe." };
+    }
 
     if (
       !workingHours ||
@@ -516,25 +533,74 @@ export async function createBooking(
     ) {
       const dayName = new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
+        timeZone: "America/Argentina/Buenos_Aires",
       }).format(startTime);
       return {
         success: null,
-        error: `No es posible agendar un turno porque no trabajas los ${dayName} o no se han configurado los horarios para ese día.`,
+        error: `No trabajas los ${dayName} o no has configurado tus horarios.`,
       };
     }
 
-    const bookingTime =
-      startTime.getHours().toString().padStart(2, "0") +
-      ":" +
-      startTime.getMinutes().toString().padStart(2, "0");
+    const bookingTimeStr = startTime.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+
+    const bookingTimeInMinutes = timeToMinutes(bookingTimeStr);
+    const startTimeInMinutes = timeToMinutes(workingHours.startTime);
+    const endTimeInMinutes = timeToMinutes(workingHours.endTime);
 
     if (
-      bookingTime < workingHours.startTime ||
-      bookingTime >= workingHours.endTime
+      bookingTimeInMinutes < startTimeInMinutes ||
+      bookingTimeInMinutes >= endTimeInMinutes
     ) {
       return {
         success: null,
         error: `El turno está fuera del horario laboral (${workingHours.startTime} - ${workingHours.endTime}).`,
+      };
+    }
+
+    const newBookingEndTime = new Date(
+      startTime.getTime() + (serviceForBooking.durationInMinutes ?? 60) * 60000
+    );
+
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        barberId: user.id,
+        status: { not: "CANCELLED" },
+        startTime: {
+          gte: getStartOfDay(startTime),
+          lt: getEndOfDay(startTime),
+        },
+      },
+      include: {
+        service: {
+          select: {
+            durationInMinutes: true,
+          },
+        },
+      },
+    });
+
+    const overlappingBooking = existingBookings.find((existing) => {
+      const existingStartTime = existing.startTime;
+      const existingEndTime = new Date(
+        existingStartTime.getTime() +
+          (existing.service.durationInMinutes ?? 60) * 60000
+      );
+
+      return (
+        startTime < existingEndTime && existingStartTime < newBookingEndTime
+      );
+    });
+
+    if (overlappingBooking) {
+      return {
+        success: null,
+        error:
+          "El horario seleccionado se solapa con otro turno. Por favor, elige otro horario.",
       };
     }
 
@@ -552,7 +618,9 @@ export async function createBooking(
       await tx.booking.create({
         data: {
           startTime,
-          barberId: user!.id,
+          priceAtBooking: serviceForBooking.price,
+          durationAtBooking: serviceForBooking.durationInMinutes,
+          barberId: user.id,
           clientId: client.id,
           serviceId: serviceId,
           barbershopId: barbershopId!,

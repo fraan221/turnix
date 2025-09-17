@@ -92,11 +92,13 @@ model Service {
 }
 
 model Booking {
-  id        String        @id @default(cuid())
-  startTime DateTime
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  status    BookingStatus @default(SCHEDULED)
+  id                String        @id @default(cuid())
+  startTime         DateTime
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  status            BookingStatus @default(SCHEDULED)
+  priceAtBooking    Float?
+  durationAtBooking Int?
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
