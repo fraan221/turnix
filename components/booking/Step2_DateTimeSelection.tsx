@@ -77,63 +77,52 @@ export function Step2_DateTimeSelection({
       return <TimeSlotsSkeleton />;
     }
 
-    if (!availability) {
-      return null;
+    if (!availability || availability.status !== "AVAILABLE") {
+      let message = "No hay horarios disponibles para este día.";
+      if (availability) {
+        switch (availability.status) {
+          case "WORKDAY_OVER":
+            message = "La jornada laboral de hoy ha terminado.";
+            break;
+          case "FULLY_BOOKED":
+            message = "No quedan turnos disponibles para este día.";
+            break;
+          case "DAY_OFF":
+            message = "El barbero no trabaja este día.";
+            break;
+        }
+      }
+      return (
+        <p className="pt-8 text-sm text-center text-muted-foreground">
+          {message}
+        </p>
+      );
     }
 
-    switch (availability.status) {
-      case "AVAILABLE":
-        return availability.slotGroups.map((group) => (
-          <div key={group.shiftName}>
-            {availability.slotGroups.length > 1 && (
-              <h5 className="mb-2 text-sm font-semibold text-center text-muted-foreground">
-                {group.shiftName}
-              </h5>
-            )}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
-              {group.slots.map((slot) => (
-                <Button
-                  key={slot.time}
-                  variant={selectedSlot === slot.time ? "default" : "outline"}
-                  onClick={() => slot.available && setSelectedSlot(slot.time)}
-                  disabled={!slot.available}
-                  className={cn(
-                    !slot.available && "line-through text-muted-foreground"
-                  )}
-                >
-                  {slot.time}
-                </Button>
-              ))}
-            </div>
-          </div>
-        ));
-      case "WORKDAY_OVER":
-        return (
-          <p className="pt-8 text-sm text-center text-muted-foreground">
-            La jornada laboral de hoy ha terminado. Por favor, elige un día
-            futuro.
-          </p>
-        );
-      case "FULLY_BOOKED":
-        return (
-          <p className="pt-8 text-sm text-center text-muted-foreground">
-            No quedan turnos disponibles para este día. Por favor, elige otra
-            fecha.
-          </p>
-        );
-      case "DAY_OFF":
-        return (
-          <p className="pt-8 text-sm text-center text-muted-foreground">
-            El barbero no trabaja este día. Por favor, elige otra fecha.
-          </p>
-        );
-      default:
-        return (
-          <p className="pt-8 text-sm text-center text-muted-foreground">
-            No hay horarios disponibles.
-          </p>
-        );
-    }
+    return availability.slotGroups.map((group) => (
+      <div key={group.shiftName}>
+        {availability.slotGroups.length > 1 && (
+          <h5 className="mb-2 text-sm font-semibold text-center text-muted-foreground">
+            {group.shiftName}
+          </h5>
+        )}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
+          {group.slots.map((slot) => (
+            <Button
+              key={slot.time}
+              variant={selectedSlot === slot.time ? "default" : "outline"}
+              onClick={() => slot.available && setSelectedSlot(slot.time)}
+              disabled={!slot.available}
+              className={cn(
+                !slot.available && "line-through text-muted-foreground"
+              )}
+            >
+              {slot.time}
+            </Button>
+          ))}
+        </div>
+      </div>
+    ));
   };
 
   return (

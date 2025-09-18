@@ -42,13 +42,7 @@ export async function getBarberAvailability(
 
   const barber = await prisma.user.findUnique({
     where: { id: barberId },
-    include: {
-      teamMembership: {
-        include: {
-          barbershop: true,
-        },
-      },
-    },
+    include: { teamMembership: { include: { barbershop: true } } },
   });
 
   if (!barber) {
@@ -69,36 +63,16 @@ export async function getBarberAvailability(
 
   const [workingHours, bookings, timeBlocks] = await Promise.all([
     prisma.workingHours.findUnique({
-      where: {
-        barberId_dayOfWeek: {
-          barberId: scheduleOwnerId,
-          dayOfWeek: dayOfWeek,
-        },
-      },
-      include: {
-        blocks: {
-          orderBy: {
-            startTime: "asc",
-          },
-        },
-      },
+      where: { barberId_dayOfWeek: { barberId: scheduleOwnerId, dayOfWeek } },
+      include: { blocks: { orderBy: { startTime: "asc" } } },
     }),
     prisma.booking.findMany({
       where: {
         barberId: barberId,
-        startTime: {
-          gte: startOfDayUTC,
-          lt: endOfDayUTC,
-        },
+        startTime: { gte: startOfDayUTC, lt: endOfDayUTC },
         status: { not: "CANCELLED" },
       },
-      include: {
-        service: {
-          select: {
-            durationInMinutes: true,
-          },
-        },
-      },
+      include: { service: { select: { durationInMinutes: true } } },
     }),
     prisma.timeBlock.findMany({
       where: {
@@ -117,15 +91,15 @@ export async function getBarberAvailability(
   }
 
   const timeZone = "America/Argentina/Buenos_Aires";
-  const nowInArgentina = new Date(
-    new Date().toLocaleString("en-US", { timeZone })
-  );
-  const selectedDateInArgentinaString = new Date(
-    date.toLocaleString("en-US", { timeZone })
-  ).toLocaleDateString("en-CA");
+
+  const now = new Date();
+
+  const todayInArgentinaString = now.toLocaleDateString("en-CA", { timeZone });
+  const selectedDateInArgentinaString = date.toLocaleDateString("en-CA", {
+    timeZone,
+  });
   const isSelectedDateToday =
-    nowInArgentina.toLocaleDateString("en-CA") ===
-    selectedDateInArgentinaString;
+    todayInArgentinaString === selectedDateInArgentinaString;
 
   const dateStringUTC = date.toISOString().split("T")[0];
   const createDateInArgentina = (timeString: string): Date => {
@@ -135,7 +109,8 @@ export async function getBarberAvailability(
 
   const lastShift = shifts[shifts.length - 1];
   const finalEndTime = createDateInArgentina(lastShift.endTime);
-  if (isSelectedDateToday && nowInArgentina >= finalEndTime) {
+
+  if (isSelectedDateToday && now >= finalEndTime) {
     return { slotGroups: [], status: "WORKDAY_OVER" };
   }
 
@@ -147,14 +122,9 @@ export async function getBarberAvailability(
     const dayEndTime = createDateInArgentina(shift.endTime);
 
     let currentTime =
-      isSelectedDateToday && nowInArgentina > dayStartTime
-        ? nowInArgentina
-        : dayStartTime;
+      isSelectedDateToday && now > dayStartTime ? now : dayStartTime;
 
-    if (
-      isSelectedDateToday &&
-      currentTime.getTime() === nowInArgentina.getTime()
-    ) {
+    if (isSelectedDateToday && currentTime.getTime() === now.getTime()) {
       const minutes = currentTime.getMinutes();
       if (minutes > 0 && minutes < 15) currentTime.setMinutes(15, 0, 0);
       else if (minutes > 15 && minutes < 30) currentTime.setMinutes(30, 0, 0);
@@ -195,10 +165,7 @@ export async function getBarberAvailability(
     }
 
     if (shiftSlots.length > 0) {
-      slotGroups.push({
-        shiftName: shiftNames[shift.type],
-        slots: shiftSlots,
-      });
+      slotGroups.push({ shiftName: shiftNames[shift.type], slots: shiftSlots });
     }
   }
 
