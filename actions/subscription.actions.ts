@@ -25,6 +25,22 @@ export async function createSubscription(
   }
 
   try {
+    console.log(`Verificando suscripción activa para el usuario: ${user.id}`);
+    const activeSubscription = await prisma.subscription.findFirst({
+      where: {
+        userId: user.id,
+        status: "authorized",
+      },
+    });
+
+    if (activeSubscription) {
+      console.log("Error: El usuario ya tiene una suscripción activa.");
+      return {
+        error:
+          "Ya tienes una suscripción activa. Puedes gestionarla en tu panel de facturación.",
+      };
+    }
+
     const preapproval = new PreApproval(client);
 
     console.log(

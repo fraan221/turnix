@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -80,6 +81,12 @@ export async function POST(req: NextRequest) {
               currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
             },
           });
+
+          revalidatePath("/dashboard");
+          revalidatePath("/subscribe");
+          console.log(
+            "ÉXITO: Revalidación de caché para /dashboard y /subscribe iniciada."
+          );
 
           console.log(
             `ÉXITO: Base de datos actualizada para el usuario: ${userId}, Estado: ${subscriptionData.status}`
