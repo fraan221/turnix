@@ -20,39 +20,57 @@ export async function createSubscription(
   formData: FormData
 ): Promise<FormState> {
   const user = await getCurrentUser();
-  if (!user) {
-    return { error: "No autorizado. Por favor, inicia sesión de nuevo." };
-  }
-
-  if (!user.email) {
-    return { error: "Usuario no encontrado o sin email configurado." };
+  if (!user || !user.email) {
+    return { error: "No autorizado o email no configurado." };
   }
 
   try {
     const preapproval = new PreApproval(client);
 
-    console.log(`Buscando suscripción pendiente para el usuario: ${user.id}`);
-    const searchResult = await preapproval.search({
-      options: {
-        external_reference: user.id,
+    console.log(
+      `Buscando suscripción pendiente en la DB para el usuario: ${user.id}`
+    );
+    const existingPendingSubscription = await prisma.subscription.findFirst({
+      where: {
+        userId: user.id,
         status: "pending",
       },
     });
 
-    if (searchResult.results && searchResult.results.length > 0) {
-      const existingSubscription = searchResult.results[0];
-      const initPoint = existingSubscription.init_point;
+    if (existingPendingSubscription) {
+      console.log(
+        "Suscripción pendiente encontrada en DB. Verificando con Mercado Pago."
+      );
+      try {
+        const mpSubscription = await preapproval.get({
+          id: existingPendingSubscription.mercadopagoSubscriptionId,
+        });
 
-      if (initPoint) {
+        if (mpSubscription?.init_point && mpSubscription.status === "pending") {
+          console.log("Link de pago existente y válido. Redirigiendo.");
+          return { init_point: mpSubscription.init_point };
+        }
+
+        await prisma.subscription.delete({
+          where: { id: existingPendingSubscription.id },
+        });
         console.log(
-          "Suscripción pendiente encontrada. Redirigiendo a link existente."
+          "Suscripción en DB era inválida en MP. Registro local eliminado."
         );
-        return { init_point: initPoint };
+      } catch (error) {
+        console.error(
+          "Error al verificar suscripción en MP. Eliminando registro local.",
+          error
+        );
+        await prisma.subscription.delete({
+          where: { id: existingPendingSubscription.id },
+        });
       }
     }
 
-    console.log("No se encontró suscripción pendiente. Creando una nueva.");
-
+    console.log(
+      "No se encontró suscripción pendiente válida. Creando una nueva."
+    );
     const response = await preapproval.create({
       body: {
         reason: "Suscripción Plan PRO Turnix",
@@ -69,7 +87,22 @@ export async function createSubscription(
       },
     });
 
-    if (response.init_point) {
+    if (response.id && response.init_point) {
+      console.log(
+        `Nueva suscripción creada en MP con ID: ${response.id}. Guardando en DB.`
+      );
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      await prisma.subscription.create({
+        data: {
+          userId: user.id,
+          mercadopagoSubscriptionId: response.id,
+          status: "pending",
+          currentPeriodEnd: tomorrow,
+        },
+      });
+
       return { init_point: response.init_point };
     } else {
       console.error("Respuesta inesperada de Mercado Pago:", response);
