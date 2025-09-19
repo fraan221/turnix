@@ -80,10 +80,12 @@ const config: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user?.id) {
+    async jwt({ token, user, trigger }) {
+      if (user || trigger === "update") {
+        const userId = user?.id || token.id;
+
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { id: userId },
           include: {
             ownedBarbershop: { select: { id: true, name: true, slug: true } },
             teamMembership: {
@@ -94,43 +96,9 @@ const config: NextAuthConfig = {
             subscription: true,
           },
         });
+
         if (dbUser) {
           token.id = dbUser.id;
-          token.role = dbUser.role;
-          token.picture = dbUser.image;
-          token.trialEndsAt = dbUser.trialEndsAt;
-          token.subscription = dbUser.subscription
-            ? {
-                status: dbUser.subscription.status,
-                currentPeriodEnd: dbUser.subscription.currentPeriodEnd,
-              }
-            : null;
-
-          token.teamMembership = dbUser.teamMembership;
-          if (dbUser.ownedBarbershop) {
-            token.barbershop = dbUser.ownedBarbershop;
-          } else if (dbUser.teamMembership?.barbershop) {
-            token.barbershop = dbUser.teamMembership.barbershop;
-          } else {
-            token.barbershop = null;
-          }
-        }
-      }
-
-      if (trigger === "update") {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id },
-          include: {
-            ownedBarbershop: { select: { id: true, name: true, slug: true } },
-            teamMembership: {
-              include: {
-                barbershop: { select: { id: true, name: true, slug: true } },
-              },
-            },
-            subscription: true,
-          },
-        });
-        if (dbUser) {
           token.role = dbUser.role;
           token.name = dbUser.name;
           token.picture = dbUser.image;

@@ -16,22 +16,25 @@ export default function SubscriptionStatusHandler() {
   useEffect(() => {
     const subscriptionStatus = searchParams.get("subscription");
 
-    const handleSuccess = async () => {
-      if (processedRef.current) return;
-      processedRef.current = true;
+    if (subscriptionStatus !== "success" || processedRef.current) {
+      return;
+    }
 
+    processedRef.current = true;
+
+    const handleSuccess = async () => {
+      const loadingToast = toast.loading("Aplicando tu suscripción...");
+      await update();
+      router.refresh();
+
+      router.replace(pathname, { scroll: false });
+      toast.dismiss(loadingToast);
       toast.success("¡Suscripción exitosa!", {
         description: "Tu plan PRO ha sido activado.",
       });
-
-      await update();
-      router.refresh();
-      router.replace(pathname, { scroll: false });
     };
 
-    if (subscriptionStatus === "success") {
-      handleSuccess();
-    }
+    handleSuccess();
   }, [searchParams, update, router, pathname]);
 
   return null;

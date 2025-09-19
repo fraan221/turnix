@@ -1,12 +1,10 @@
-"use client";
-
-import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { getUserForLayout } from "@/lib/data";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
+// Esta función ahora se ejecuta en el servidor.
+const calculateTimeLeft = (endDate: Date | null | undefined) => {
   if (!endDate) return "";
   const distance = new Date(endDate).getTime() - new Date().getTime();
 
@@ -18,44 +16,44 @@ const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
   const hours = Math.floor(
     (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
   );
-  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-  return `${days} días ${hours}:${minutes}:${seconds}`;
+  if (days > 0) {
+    return `${days} día${days > 1 ? "s" : ""} y ${hours} hora${
+      hours > 1 ? "s" : ""
+    }`;
+  }
+  if (hours > 0) {
+    return `${hours} hora${hours > 1 ? "s" : ""}`;
+  }
+  return "Menos de una hora";
 };
 
-export default function TrialStatusBanner() {
-  const { data: session } = useSession();
-  const user = session?.user;
-  const trialEndsAt = user?.trialEndsAt;
+// El componente ahora es un Server Component asíncrono.
+export default async function TrialStatusBanner() {
+  // 1. Obtenemos los datos más frescos directamente de la base de datos.
+  const user = await getUserForLayout();
 
-  const [timeLeft, setTimeLeft] = useState(() =>
-    calculateTimeLeft(trialEndsAt)
-  );
+  // Si no hay usuario, no hay banner.
+  if (!user) {
+    return null;
+  }
 
-  const isOwner = user?.role === "OWNER";
-  const isSubscribed = user?.subscription?.status === "authorized";
+  const { trialEndsAt, role, subscription } = user;
+  const isOwner = role === "OWNER";
+  const isSubscribed = subscription?.status === "authorized";
+
+  // 2. La lógica para mostrar el banner ahora usa datos 100% actualizados.
   const showTrialBanner =
     isOwner &&
     !isSubscribed &&
     trialEndsAt &&
     new Date(trialEndsAt) > new Date();
 
-  useEffect(() => {
-    if (!trialEndsAt || !showTrialBanner) return;
-
-    setTimeLeft(calculateTimeLeft(trialEndsAt));
-
-    const intervalId = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(trialEndsAt));
-    }, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [trialEndsAt, showTrialBanner]);
-
   if (!showTrialBanner) {
     return null;
   }
+
+  const timeLeft = calculateTimeLeft(trialEndsAt);
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">
