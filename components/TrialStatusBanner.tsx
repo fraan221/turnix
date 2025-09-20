@@ -3,7 +3,6 @@ import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-// Esta función ahora se ejecuta en el servidor.
 const calculateTimeLeft = (endDate: Date | null | undefined) => {
   if (!endDate) return "";
   const distance = new Date(endDate).getTime() - new Date().getTime();
@@ -28,12 +27,9 @@ const calculateTimeLeft = (endDate: Date | null | undefined) => {
   return "Menos de una hora";
 };
 
-// El componente ahora es un Server Component asíncrono.
 export default async function TrialStatusBanner() {
-  // 1. Obtenemos los datos más frescos directamente de la base de datos.
   const user = await getUserForLayout();
 
-  // Si no hay usuario, no hay banner.
   if (!user) {
     return null;
   }
@@ -42,7 +38,6 @@ export default async function TrialStatusBanner() {
   const isOwner = role === "OWNER";
   const isSubscribed = subscription?.status === "authorized";
 
-  // 2. La lógica para mostrar el banner ahora usa datos 100% actualizados.
   const showTrialBanner =
     isOwner &&
     !isSubscribed &&

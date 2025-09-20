@@ -7,6 +7,7 @@ import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
 import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
+import { Client } from "@prisma/client";
 
 export type FormState = {
   success: string | null;
@@ -14,6 +15,7 @@ export type FormState = {
   newName?: string | null;
   newImageUrl?: string | null;
   newSlug?: string | null;
+  data?: Record<string, any> | null;
 };
 
 const TimeBlockSchema = z
@@ -599,16 +601,27 @@ export async function createBooking(
       };
     }
 
+    let client: Client;
+    let finalClientName: string;
+
     await prisma.$transaction(async (tx) => {
-      const client = await tx.client.upsert({
+      const existingClient = await tx.client.findUnique({
         where: { phone: clientPhone },
-        update: { name: clientName },
-        create: {
-          name: clientName,
-          phone: clientPhone,
-          barbershopId: barbershopId!,
-        },
       });
+
+      if (existingClient) {
+        client = existingClient;
+        finalClientName = existingClient.name;
+      } else {
+        client = await tx.client.create({
+          data: {
+            name: clientName,
+            phone: clientPhone,
+            barbershopId: barbershopId!,
+          },
+        });
+        finalClientName = client.name;
+      }
 
       await tx.booking.create({
         data: {
@@ -624,7 +637,13 @@ export async function createBooking(
     });
 
     revalidatePath("/dashboard");
-    return { success: "Turno creado con éxito.", error: null };
+    return {
+      success: `Turno creado con éxito para ${finalClientName!}.`,
+      error: null,
+      data: {
+        bookedClientName: finalClientName!,
+      },
+    };
   } catch (error) {
     console.error("Error al crear el turno:", error);
     return {

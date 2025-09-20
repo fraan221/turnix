@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -65,6 +65,7 @@ export default function BarberCalendar({
   services,
 }: BarberCalendarProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { width } = useWindowSize();
   const isMobile = width < 768;
 
@@ -81,12 +82,15 @@ export default function BarberCalendar({
 
   const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<CalendarView>(
-    isMobile ? "timeGridDay" : "timeGridWeek"
+    (searchParams.get("view") as CalendarView) ||
+      (isMobile ? "timeGridDay" : "timeGridWeek")
   );
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const [calendarTitle, setCalendarTitle] = useState("");
+
+  const [optimisticBookings, setOptimisticBookings] = useState(bookings);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
@@ -108,6 +112,20 @@ export default function BarberCalendar({
       setTouchStartX(null);
     }
   };
+
+  const handleNavigate = useCallback(
+    (date: Date, newView: CalendarView) => {
+      const formattedDate = date.toISOString().split("T")[0];
+      const params = new URLSearchParams(searchParams);
+      params.set("date", formattedDate);
+      params.set("view", newView);
+
+      router.replace(`${window.location.pathname}?${params.toString()}`, {
+        scroll: false,
+      });
+    },
+    [router, searchParams]
+  );
 
   useEffect(() => {
     const handleNewBooking = () => {
@@ -142,19 +160,38 @@ export default function BarberCalendar({
     }
   }, [state]);
 
+  useEffect(() => {
+    setOptimisticBookings(bookings);
+  }, [bookings]);
+
+  const handleOptimisticUpdate = (
+    bookingId: string,
+    newStatus: BookingStatus
+  ) => {
+    setOptimisticBookings((currentBookings) =>
+      currentBookings.map((booking) =>
+        booking.id === bookingId ? { ...booking, status: newStatus } : booking
+      )
+    );
+  };
+
   const handlePrev = () => calendarRef.current?.getApi().prev();
   const handleNext = () => calendarRef.current?.getApi().next();
   const handleToday = () => calendarRef.current?.getApi().today();
 
   const handleDatesSet = (dateInfo: any) => {
     const newView = dateInfo.view.type as CalendarView;
+    const newDate = dateInfo.view.currentStart;
+
     if (view !== newView) {
       setView(newView);
     }
     setCalendarTitle(dateInfo.view.title);
+
+    handleNavigate(newDate, newView);
   };
 
-  const events = bookings
+  const events = optimisticBookings
     .filter((booking) => booking.status !== "CANCELLED")
     .map((booking) => {
       const endTime = new Date(
@@ -288,8 +325,9 @@ export default function BarberCalendar({
 
         <FullCalendar
           ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={view}
+          initialDate={searchParams.get("date") || new Date().toISOString()}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           {...calendarOptions}
           datesSet={handleDatesSet}
           events={events}
@@ -318,6 +356,7 @@ export default function BarberCalendar({
         booking={selectedBooking}
         isOpen={isDetailsModalOpen}
         onOpenChange={setDetailsModalOpen}
+        onOptimisticUpdate={handleOptimisticUpdate}
       />
 
       <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>

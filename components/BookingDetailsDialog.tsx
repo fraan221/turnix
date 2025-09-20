@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Booking, Client, Service, BookingStatus } from "@prisma/client";
 import {
   Dialog,
@@ -44,6 +43,7 @@ interface BookingDetailsDialogProps {
   booking: BookingWithDetails | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
 }
 
 type DialogView = "details" | "addNote" | "confirmDeleteClient";
@@ -58,8 +58,8 @@ export default function BookingDetailsDialog({
   booking,
   isOpen,
   onOpenChange,
+  onOptimisticUpdate,
 }: BookingDetailsDialogProps) {
-  const router = useRouter();
   const [isCompleting, startCompleting] = useTransition();
   const [isCancelling, startCancelling] = useTransition();
   const [isNoteSaving, startNoteSaving] = useTransition();
@@ -81,7 +81,6 @@ export default function BookingDetailsDialog({
       setTimeout(() => {
         setView("details");
         setNote("");
-        router.refresh();
       }, 200);
     }
   };
@@ -89,6 +88,9 @@ export default function BookingDetailsDialog({
   if (!booking) return null;
 
   const handleStatusChange = (newStatus: BookingStatus) => {
+    if (booking) {
+      onOptimisticUpdate(booking.id, newStatus);
+    }
     const transition =
       newStatus === "COMPLETED" ? startCompleting : startCancelling;
     transition(async () => {
@@ -248,9 +250,9 @@ export default function BookingDetailsDialog({
   );
 
   const renderAddNoteView = () => (
-    <div className="pt-4 space-y-4">
+    <div className="space-y-4">
       <Label htmlFor="quickNote" className="font-semibold">
-        Añadir Nota Rápida al Cliente
+        Nota rápida
       </Label>
       <Textarea
         id="quickNote"
@@ -264,14 +266,14 @@ export default function BookingDetailsDialog({
         </Button>
         <Button onClick={handleAddNote} disabled={isNoteSaving}>
           {isNoteSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Guardar Nota
+          Guardar nota
         </Button>
       </DialogFooter>
     </div>
   );
 
   const renderConfirmDeleteClientView = () => (
-    <div className="pt-4 space-y-4 text-center">
+    <div className="space-y-4 text-center">
       <p className="font-semibold">El turno ha sido cancelado.</p>
       <p className="text-sm text-muted-foreground">
         ¿Deseas también eliminar la ficha de este cliente?

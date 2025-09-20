@@ -1,16 +1,6 @@
 export const getBaseUrl = () => {
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.NEXT_PUBLIC_APP_URL
-  ) {
-    return process.env.NEXT_PUBLIC_APP_URL;
-  }
-
-  if (
-    process.env.NEXT_PUBLIC_BASE_URL &&
-    process.env.VERCEL_ENV === "production"
-  ) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
+  if (typeof window !== "undefined") {
+    return window.location.origin;
   }
 
   if (process.env.VERCEL_URL) {
