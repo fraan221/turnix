@@ -1,30 +1,41 @@
 import Link from "next/link";
 import { getAllPosts, PostMeta } from "@/lib/posts";
+import Image from "next/image";
 
 function PostCard({ post }: { post: PostMeta }) {
   return (
-    <article className="p-6 transition-colors border border-gray-200 rounded-lg dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
-      <h2 className="mb-2 text-2xl font-bold font-heading">
-        <Link
-          href={`/blog/${post.slug}`}
-          className="transition-colors hover:text-primary"
-        >
-          {post.title}
-        </Link>
-      </h2>
-      <p className="mb-4 text-muted-foreground">{post.excerpt}</p>
-      <div className="text-sm text-muted-foreground">
-        <span>
-          {new Date(post.date).toLocaleDateString("es-AR", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </span>
-        <span className="mx-2">•</span>
-        <span>{post.author}</span>
-      </div>
-    </article>
+    <Link href={`/blog/${post.slug}`}>
+      <article className="grid gap-6 p-5 transition-all border border-gray-200 rounded-lg group md:grid-cols-3 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
+        <div className="relative h-48 overflow-hidden rounded-md md:col-span-1">
+          <Image
+            src={post.image}
+            alt={post.title}
+            layout="fill"
+            objectFit="cover"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="flex flex-col items-center justify-center">
+            <h2 className="mb-2 text-2xl font-bold transition-colors font-heading group-hover:text-primary">
+              {post.title}
+            </h2>
+            <p className="mb-4 text-muted-foreground">{post.excerpt}</p>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <span>
+              {new Date(post.date).toLocaleString("es-AR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+            <span className="mx-2">•</span>
+            <span>{post.author}</span>
+          </div>
+        </div>
+      </article>
+    </Link>
   );
 }
 
