@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
 import { getCachedBarberProfile } from "@/lib/data";
-import Image from "next/image";
 
 export const runtime = "edge";
 export const alt = "Turnix - Agenda de Turnos Online";
@@ -43,12 +42,16 @@ export default async function OgImage({
     );
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : "http://localhost:3000";
+
   const fontHeadingData = await fetch(
-    new URL("../../../assets/Montserrat-Bold.ttf", import.meta.url)
+    new URL("/assets/Montserrat-Bold.ttf", baseUrl)
   ).then((res) => res.arrayBuffer());
 
   const fontSansData = await fetch(
-    new URL("../../../assets/Inter-Regular.ttf", import.meta.url)
+    new URL("/assets/Inter-Regular.ttf", baseUrl)
   ).then((res) => res.arrayBuffer());
 
   const imageUrl = barbershop.image || barbershop.owner.image;
