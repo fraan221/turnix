@@ -6,7 +6,7 @@ import { BookingWizard } from "@/components/booking/BookingWizard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InformationTab } from "./InformationTab";
 import Image from "next/image";
-import type { BarbershopWithDetails } from "@/app/[slug]/page";
+import type { BarbershopWithDetails } from "@/lib/data";
 import type { User } from "@prisma/client";
 import { motion } from "framer-motion";
 import type { WorkingHoursWithBlocks } from "@/components/schedule/ReadOnlyScheduleView";
