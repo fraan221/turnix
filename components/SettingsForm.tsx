@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { type FormState, updateUserProfile } from "@/actions/dashboard.actions";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { useEffect, useState, useRef, useTransition } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { Clipboard, Check, Save, Loader2Icon } from "lucide-react";
 import {
@@ -19,9 +19,45 @@ import {
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
 import Image from "next/image";
-import { AvatarCropper } from "./AvatarCropper";
 import { useRouter } from "next/navigation";
 import { Role } from "@prisma/client";
+import dynamic from "next/dynamic";
+import { Skeleton } from "./ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
+
+const AvatarCropperContentSkeleton = () => (
+  <>
+    <DialogHeader>
+      <DialogTitle>
+        <Skeleton className="w-48 h-6" />
+      </DialogTitle>
+    </DialogHeader>
+    <Skeleton className="w-full h-64" />
+    <div className="flex items-center gap-4 py-4">
+      <Skeleton className="w-6 h-6 rounded-full" />
+      <Skeleton className="w-full h-2" />
+      <Skeleton className="w-6 h-6 rounded-full" />
+    </div>
+    <DialogFooter>
+      <Skeleton className="w-24 h-10" />
+      <Skeleton className="w-24 h-10" />
+    </DialogFooter>
+  </>
+);
+
+const AvatarCropperContent = dynamic(
+  () => import("./AvatarCropper").then((mod) => mod.AvatarCropperContent),
+  {
+    ssr: false,
+  }
+);
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -208,23 +244,59 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <AvatarCropper
-        imageSrc={imageToCrop}
-        onCropComplete={(blob) => handleCropComplete(blob, "avatar")}
-        onClose={() => {
-          setImageToCrop(null);
-          if (fileInputRef.current) fileInputRef.current.value = "";
+      <Dialog
+        open={!!imageToCrop}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setImageToCrop(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }
         }}
-      />
-      <AvatarCropper
-        imageSrc={barbershopImageToCrop}
-        onCropComplete={(blob) => handleCropComplete(blob, "barbershop")}
-        onClose={() => {
-          setBarbershopImageToCrop(null);
-          if (barbershopFileInputRef.current)
-            barbershopFileInputRef.current.value = "";
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          {imageToCrop && (
+            <Suspense fallback={<AvatarCropperContentSkeleton />}>
+              <AvatarCropperContent
+                imageSrc={imageToCrop}
+                onCropComplete={(blob) => handleCropComplete(blob, "avatar")}
+                onClose={() => {
+                  setImageToCrop(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+            </Suspense>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!barbershopImageToCrop}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setBarbershopImageToCrop(null);
+            if (barbershopFileInputRef.current)
+              barbershopFileInputRef.current.value = "";
+          }
         }}
-      />
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          {barbershopImageToCrop && (
+            <Suspense fallback={<AvatarCropperContentSkeleton />}>
+              <AvatarCropperContent
+                imageSrc={barbershopImageToCrop}
+                onCropComplete={(blob) =>
+                  handleCropComplete(blob, "barbershop")
+                }
+                onClose={() => {
+                  setBarbershopImageToCrop(null);
+                  if (barbershopFileInputRef.current)
+                    barbershopFileInputRef.current.value = "";
+                }}
+              />
+            </Suspense>
+          )}
+        </DialogContent>
+      </Dialog>
       <form
         action={handleFormAction}
         className="flex flex-col items-center justify-center mx-auto space-y-4 max-w-7xl"

@@ -3,8 +3,6 @@
 import { useState, useTransition, useEffect } from "react";
 import { Booking, Client, Service, BookingStatus } from "@prisma/client";
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -34,15 +32,14 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Loader2 } from "lucide-react";
 
-type BookingWithDetails = Booking & {
+export type BookingWithDetails = Booking & {
   service: Service;
   client: Client;
 };
 
-interface BookingDetailsDialogProps {
-  booking: BookingWithDetails | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+interface BookingDetailsDialogContentProps {
+  booking: BookingWithDetails;
+  onClose: () => void;
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
 }
 
@@ -54,12 +51,11 @@ const statusMap = {
   [BookingStatus.CANCELLED]: { text: "Cancelado", color: "text-red-600" },
 };
 
-export default function BookingDetailsDialog({
+export function BookingDetailsDialogContent({
   booking,
-  isOpen,
-  onOpenChange,
+  onClose,
   onOptimisticUpdate,
-}: BookingDetailsDialogProps) {
+}: BookingDetailsDialogContentProps) {
   const [isCompleting, startCompleting] = useTransition();
   const [isCancelling, startCancelling] = useTransition();
   const [isNoteSaving, startNoteSaving] = useTransition();
@@ -69,28 +65,12 @@ export default function BookingDetailsDialog({
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (booking) {
-      setView("details");
-      setNote(booking.client.notes || "");
-    }
-  }, [booking?.id]);
-
-  const handleOpenChange = (open: boolean) => {
-    onOpenChange(open);
-    if (!open) {
-      setTimeout(() => {
-        setView("details");
-        setNote("");
-      }, 200);
-    }
-  };
-
-  if (!booking) return null;
+    setView("details");
+    setNote(booking.client.notes || "");
+  }, [booking.id, booking.client.notes]);
 
   const handleStatusChange = (newStatus: BookingStatus) => {
-    if (booking) {
-      onOptimisticUpdate(booking.id, newStatus);
-    }
+    onOptimisticUpdate(booking.id, newStatus);
     const transition =
       newStatus === "COMPLETED" ? startCompleting : startCancelling;
     transition(async () => {
@@ -124,7 +104,7 @@ export default function BookingDetailsDialog({
       );
       if (result.success) {
         toast.success("¡Éxito!", { description: result.success });
-        handleOpenChange(false);
+        onClose();
       }
       if (result.error) {
         toast.error("Error", { description: result.error as string });
@@ -141,7 +121,7 @@ export default function BookingDetailsDialog({
       if (result?.error) {
         toast.error("Error", { description: result.error });
       }
-      handleOpenChange(false);
+      onClose();
     });
   };
 
@@ -261,7 +241,7 @@ export default function BookingDetailsDialog({
         placeholder="Ej: Le gustó el corte con la 1 a los costados..."
       />
       <DialogFooter className="gap-2">
-        <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+        <Button variant="ghost" onClick={onClose}>
           Omitir
         </Button>
         <Button onClick={handleAddNote} disabled={isNoteSaving}>
@@ -307,7 +287,7 @@ export default function BookingDetailsDialog({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button variant="secondary" onClick={() => handleOpenChange(false)}>
+        <Button variant="secondary" onClick={onClose}>
           No, solo cerrar
         </Button>
       </DialogFooter>
@@ -327,22 +307,20 @@ export default function BookingDetailsDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Detalles del Turno</DialogTitle>
-          <DialogDescription>
-            Gestiona el turno de{" "}
-            <span className="font-semibold">{booking.client.name}</span>.
-          </DialogDescription>
-        </DialogHeader>
-        {isFutureBooking && view === "details" && (
-          <div className="p-3 text-xs text-center border rounded-md text-primary">
-            Este es un turno futuro y aún no puede ser marcado como completado.
-          </div>
-        )}
-        {renderContent()}
-      </DialogContent>
-    </Dialog>
+    <>
+      <DialogHeader>
+        <DialogTitle>Detalles del Turno</DialogTitle>
+        <DialogDescription>
+          Gestiona el turno de{" "}
+          <span className="font-semibold">{booking.client.name}</span>.
+        </DialogDescription>
+      </DialogHeader>
+      {isFutureBooking && view === "details" && (
+        <div className="p-3 text-xs text-center border rounded-md text-primary">
+          Este es un turno futuro y aún no puede ser marcado como completado.
+        </div>
+      )}
+      {renderContent()}
+    </>
   );
 }

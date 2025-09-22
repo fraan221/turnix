@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useTransition } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  Suspense,
+  lazy,
+} from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,8 +19,13 @@ import type { DateSelectArg, EventClickArg } from "@fullcalendar/core";
 import { CalendarViewSwitcher } from "./CalendarViewSwitcher";
 import { Booking, Service, Client, BookingStatus } from "@prisma/client";
 import { useWindowSize } from "@/lib/hooks";
-import BookingDetailsDialog from "./BookingDetailsDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import { createBooking, type FormState } from "@/actions/dashboard.actions";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -26,15 +38,44 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
+import { BookingWithDetails } from "./BookingDetailsDialog";
+
+const BookingDetailsDialogContent = lazy(() =>
+  import("./BookingDetailsDialog").then((mod) => ({
+    default: mod.BookingDetailsDialogContent,
+  }))
+);
+
+const BookingDetailsSkeleton = () => (
+  <>
+    <DialogHeader>
+      <DialogTitle>
+        <Skeleton className="w-40 h-6" />
+      </DialogTitle>
+      <DialogDescription>
+        <Skeleton className="w-56 h-4" />
+      </DialogDescription>
+    </DialogHeader>
+    <div className="py-4 space-y-4">
+      <div className="space-y-2 text-sm">
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-10/12 h-4" />
+        <Skeleton className="w-full h-4" />
+        <Skeleton className="w-11/12 h-4" />
+        <Skeleton className="w-full h-4" />
+      </div>
+      <div className="flex justify-between gap-2 pt-4">
+        <Skeleton className="w-32 h-10" />
+        <Skeleton className="w-48 h-10" />
+      </div>
+    </div>
+  </>
+);
 
 const initialState: FormState = {
   error: null,
   success: null,
-};
-
-type BookingWithDetails = Booking & {
-  service: Service;
-  client: Client;
 };
 
 type CalendarView = "timeGridDay" | "timeGridWeek" | "dayGridMonth";
@@ -68,28 +109,20 @@ export default function BarberCalendar({
   const searchParams = useSearchParams();
   const { width } = useWindowSize();
   const isMobile = width < 768;
-
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [selectedDateInfo, setSelectedDateInfo] =
     useState<DateSelectArg | null>(null);
-
-  const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] =
     useState<BookingWithDetails | null>(null);
-
   const [state, formAction] = useFormState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
-
   const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<CalendarView>(
     (searchParams.get("view") as CalendarView) ||
       (isMobile ? "timeGridDay" : "timeGridWeek")
   );
-
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-
   const [calendarTitle, setCalendarTitle] = useState("");
-
   const [optimisticBookings, setOptimisticBookings] = useState(bookings);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -187,7 +220,6 @@ export default function BarberCalendar({
       setView(newView);
     }
     setCalendarTitle(dateInfo.view.title);
-
     handleNavigate(newDate, newView);
   };
 
@@ -226,7 +258,6 @@ export default function BarberCalendar({
   const handleEventClick = (clickInfo: EventClickArg) => {
     const bookingData = clickInfo.event.extendedProps as BookingWithDetails;
     setSelectedBooking(bookingData);
-    setDetailsModalOpen(true);
   };
 
   const calendarOptions = {
@@ -352,12 +383,22 @@ export default function BarberCalendar({
         />
       </div>
 
-      <BookingDetailsDialog
-        booking={selectedBooking}
-        isOpen={isDetailsModalOpen}
-        onOpenChange={setDetailsModalOpen}
-        onOptimisticUpdate={handleOptimisticUpdate}
-      />
+      <Dialog
+        open={!!selectedBooking}
+        onOpenChange={(isOpen) => !isOpen && setSelectedBooking(null)}
+      >
+        <DialogContent>
+          {selectedBooking && (
+            <Suspense fallback={<BookingDetailsSkeleton />}>
+              <BookingDetailsDialogContent
+                booking={selectedBooking}
+                onClose={() => setSelectedBooking(null)}
+                onOptimisticUpdate={handleOptimisticUpdate}
+              />
+            </Suspense>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
         <DialogContent>
