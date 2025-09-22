@@ -1,9 +1,9 @@
 "use server";
 
-import { getCurrentUser, getCurrentUserWithBarbershop } from "@/lib/data";
+import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { pusherServer } from "@/lib/pusher";
 
@@ -29,7 +29,7 @@ export async function linkBarberToShop(
   prevState: LinkBarberState,
   formData: FormData
 ): Promise<LinkBarberState> {
-  const user = await getCurrentUserWithBarbershop();
+  const user = await getUserForSettings();
 
   if (!user || user.role !== Role.OWNER) {
     return { error: "Acción no autorizada. Debes ser dueño de una barbería." };
@@ -37,8 +37,8 @@ export async function linkBarberToShop(
 
   const barbershop = user.ownedBarbershop;
 
-  if (!barbershop) {
-    return { error: "No se encontró la barbería asociada a tu cuenta." };
+  if (!barbershop || !barbershop.slug) {
+    return { error: "No se encontró la barbería o su URL asociada." };
   }
 
   const validatedFields = LinkBarberSchema.safeParse({
@@ -93,6 +93,11 @@ export async function linkBarberToShop(
     });
 
     revalidatePath("/dashboard/team");
+    revalidateTag(`barber-profile:${barbershop.slug}`);
+    console.log(
+      `[Cache Invalidation] Revalidando tag por nuevo miembro: barber-profile:${barbershop.slug}`
+    );
+
     return { success: `¡${barberToLink.name} ha sido añadido a tu equipo!` };
   } catch (error) {
     console.error("Error al vincular el barbero:", error);
@@ -111,10 +116,17 @@ export async function enableTeamFeature(): Promise<TeamActionState> {
   const ownerId = user.id;
 
   try {
-    await prisma.barbershop.update({
+    const updatedBarbershop = await prisma.barbershop.update({
       where: { ownerId },
       data: { teamsEnabled: true },
     });
+
+    if (updatedBarbershop.slug) {
+      revalidateTag(`barber-profile:${updatedBarbershop.slug}`);
+      console.log(
+        `[Cache Invalidation] Revalidando tag por activar equipos: barber-profile:${updatedBarbershop.slug}`
+      );
+    }
 
     revalidatePath("/dashboard/team");
     return { success: "¡La gestión de equipos ha sido activada!" };

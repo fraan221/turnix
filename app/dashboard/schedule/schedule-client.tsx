@@ -21,7 +21,6 @@ import TimeBlockList from "@/components/TimeBlockList";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
 import { WorkingHoursWithBlocks } from "./page";
 
-// 1. Cargamos dinámicamente el CONTENIDO del modal de bloqueo
 const AddTimeBlockModalContent = dynamic(
   () =>
     import("@/components/AddTimeBlockModal").then(
@@ -30,7 +29,6 @@ const AddTimeBlockModalContent = dynamic(
   { ssr: false }
 );
 
-// 2. Creamos un esqueleto de carga para el CONTENIDO del modal
 const ModalContentSkeleton = () => (
   <>
     <DialogHeader>

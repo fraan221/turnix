@@ -2,6 +2,7 @@ import { cache } from "react";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { unstable_cache as nextCache } from "next/cache";
 
 /**
  * Obtiene solo los datos básicos del usuario actual.
@@ -138,3 +139,106 @@ export const getTeamPageData = cache(async () => {
 
   return barbershop;
 });
+
+/**
+ * Obtiene los datos estáticos y cacheados del perfil público de una barbería.
+ * Esta consulta es consciente de los roles y equipos.
+ * Incluye datos de la barbería, del owner (con sus horarios base), la lista de servicios y los miembros del equipo.
+ */
+export const getCachedBarberProfile = (slug: string) =>
+  nextCache(
+    async () => {
+      console.log(`[Cache MISS] Obteniendo perfil completo para: ${slug}`);
+      const barbershop = await prisma.barbershop.findUnique({
+        where: { slug },
+        include: {
+          services: {
+            orderBy: {
+              name: "asc",
+            },
+          },
+          owner: {
+            include: {
+              workingHours: {
+                include: {
+                  blocks: true,
+                },
+                orderBy: {
+                  dayOfWeek: "asc",
+                },
+              },
+            },
+          },
+          teamMembers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      return barbershop;
+    },
+    [`barber-profile-${slug}`],
+    {
+      tags: [`barber-profile:${slug}`],
+      revalidate: 3600,
+    }
+  )();
+
+/**
+ * Obtiene la disponibilidad dinámica (turnos y bloqueos) de un barbero para un rango de fechas.
+ * NO SE CACHEA, para asegurar que la disponibilidad siempre esté actualizada en tiempo real.
+ */
+export const getBarberAvailability = async (
+  barberId: string,
+  startDate: Date,
+  endDate: Date
+) => {
+  console.log(
+    `[Real-Time] Obteniendo disponibilidad para barbero: ${barberId}`
+  );
+  const bookings = await prisma.booking.findMany({
+    where: {
+      barberId: barberId,
+      status: {
+        in: ["SCHEDULED", "COMPLETED"],
+      },
+      startTime: {
+        gte: startDate,
+        lt: endDate,
+      },
+    },
+    select: {
+      startTime: true,
+      service: {
+        select: {
+          durationInMinutes: true,
+        },
+      },
+    },
+  });
+
+  const timeBlocks = await prisma.timeBlock.findMany({
+    where: {
+      barberId: barberId,
+      startTime: {
+        lt: endDate,
+      },
+      endTime: {
+        gte: startDate,
+      },
+    },
+    select: {
+      startTime: true,
+      endTime: true,
+    },
+  });
+
+  return { bookings, timeBlocks };
+};

@@ -2,7 +2,7 @@
 
 import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { put } from "@vercel/blob";
@@ -307,6 +307,13 @@ export async function updateUserProfile(
         }
       );
 
+      if (finalBarbershop.slug) {
+        console.log(
+          `[Cache Invalidation] Revalidando tag: barber-profile:${finalBarbershop.slug}`
+        );
+        revalidateTag(`barber-profile:${finalBarbershop.slug}`);
+      }
+
       return {
         success: "¡Perfil actualizado con éxito!",
         error: null,
@@ -318,7 +325,24 @@ export async function updateUserProfile(
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: dataToUpdate,
+        include: {
+          teamMembership: {
+            include: {
+              barbershop: {
+                select: { slug: true },
+              },
+            },
+          },
+        },
       });
+
+      const barbershopSlug = updatedUser.teamMembership?.barbershop.slug;
+      if (barbershopSlug) {
+        console.log(
+          `[Cache Invalidation] Revalidando tag para miembro de equipo: barber-profile:${barbershopSlug}`
+        );
+        revalidateTag(`barber-profile:${barbershopSlug}`);
+      }
 
       return {
         success: "¡Perfil actualizado con éxito!",

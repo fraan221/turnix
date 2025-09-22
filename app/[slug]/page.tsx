@@ -1,13 +1,13 @@
-import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
-import { Prisma, User } from "@prisma/client";
+import { User } from "@prisma/client";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookingWizardSkeleton } from "@/components/skeletons/BookingWizardSkeleton";
+import { getCachedBarberProfile } from "@/lib/data";
 
 const PublicProfileClient = dynamic(
   () =>
@@ -19,37 +19,6 @@ const PublicProfileClient = dynamic(
     loading: () => <ProfileSkeleton />,
   }
 );
-
-const barbershopWithDetails = Prisma.validator<Prisma.BarbershopDefaultArgs>()({
-  include: {
-    owner: {
-      include: {
-        workingHours: {
-          include: {
-            blocks: true,
-          },
-          orderBy: {
-            dayOfWeek: "asc",
-          },
-        },
-      },
-    },
-    teamMembers: {
-      include: {
-        user: true,
-      },
-    },
-    services: {
-      orderBy: {
-        name: "asc",
-      },
-    },
-  },
-});
-
-export type BarbershopWithDetails = Prisma.BarbershopGetPayload<
-  typeof barbershopWithDetails
->;
 
 interface BarberPublicPageProps {
   params: {
@@ -72,12 +41,7 @@ function ProfileSkeleton() {
 }
 
 async function PublicProfileData({ slug }: { slug: string }) {
-  const barbershop = await prisma.barbershop.findUnique({
-    where: {
-      slug: decodeURIComponent(slug),
-    },
-    include: barbershopWithDetails.include,
-  });
+  const barbershop = await getCachedBarberProfile(decodeURIComponent(slug));
 
   if (!barbershop || !barbershop.owner) {
     notFound();
@@ -90,7 +54,7 @@ async function PublicProfileData({ slug }: { slug: string }) {
 
   const allBarbers: User[] = [
     owner,
-    ...barbershop.teamMembers.map((member) => member.user),
+    ...barbershop.teamMembers.map((member) => member.user as User),
   ];
 
   return (
@@ -107,10 +71,7 @@ export async function generateMetadata({
 }: BarberPublicPageProps): Promise<Metadata> {
   const slug = decodeURIComponent(params.slug);
 
-  const barbershop = await prisma.barbershop.findUnique({
-    where: { slug },
-    select: { name: true, image: true, owner: { select: { image: true } } },
-  });
+  const barbershop = await getCachedBarberProfile(slug);
 
   if (!barbershop) {
     return {

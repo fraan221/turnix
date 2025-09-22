@@ -1,8 +1,8 @@
 "use server";
 
-import { getCurrentUser, getUserForSettings } from "@/lib/data";
+import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { ServiceSchema } from "@/lib/schemas";
 import { Role } from "@prisma/client";
@@ -18,7 +18,10 @@ export async function createService(data: ServiceInput) {
   const barbershopId =
     user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
 
-  if (!barbershopId) {
+  const barbershopSlug =
+    user.ownedBarbershop?.slug || user.teamMembership?.barbershop.slug;
+
+  if (!barbershopId || !barbershopSlug) {
     return { error: "Usuario no asociado a una barbería." };
   }
 
@@ -31,11 +34,17 @@ export async function createService(data: ServiceInput) {
         price,
         durationInMinutes,
         description,
-        barberId: user!.id,
+        barberId: user.id,
         barbershopId: barbershopId,
       },
     });
+
     revalidatePath("/dashboard/services");
+    revalidateTag(`barber-profile:${barbershopSlug}`);
+    console.log(
+      `[Cache Invalidation] Revalidando tag por nuevo servicio: barber-profile:${barbershopSlug}`
+    );
+
     return { success: `Servicio "${name}" creado con éxito.` };
   } catch (error) {
     console.error("Error al crear el servicio:", error);
@@ -58,6 +67,11 @@ export async function updateService(serviceId: string, data: ServiceInput) {
 
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
+    include: {
+      barbershop: {
+        select: { slug: true },
+      },
+    },
   });
 
   if (!serviceToUpdate) {
@@ -82,7 +96,17 @@ export async function updateService(serviceId: string, data: ServiceInput) {
       where: { id: serviceId },
       data: { name, price, durationInMinutes, description },
     });
+
     revalidatePath("/dashboard/services");
+    // 2. Invalidamos el caché del perfil público
+    const barbershopSlug = serviceToUpdate.barbershop.slug;
+    if (barbershopSlug) {
+      revalidateTag(`barber-profile:${barbershopSlug}`);
+      console.log(
+        `[Cache Invalidation] Revalidando tag por actualización de servicio: barber-profile:${barbershopSlug}`
+      );
+    }
+
     return { success: `Servicio "${name}" actualizado con éxito.` };
   } catch (error) {
     console.error("Error al actualizar el servicio:", error);
@@ -91,7 +115,7 @@ export async function updateService(serviceId: string, data: ServiceInput) {
 }
 
 export async function deleteService(serviceId: string) {
-  const user = await getCurrentUser();
+  const user = await getUserForSettings();
   if (!user) {
     return { error: "No autorizado" };
   }
@@ -99,12 +123,35 @@ export async function deleteService(serviceId: string) {
   try {
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
+      include: {
+        barbershop: {
+          select: { slug: true, ownerId: true },
+        },
+      },
     });
-    if (service?.barberId !== user!.id) {
+
+    if (!service) {
+      return { error: "Servicio no encontrado." };
+    }
+    const isOwnerOfBarbershop =
+      user.role === Role.OWNER && user.id === service.barbershop.ownerId;
+    const isOwnerOfService = service.barberId === user.id;
+
+    if (!isOwnerOfBarbershop && !isOwnerOfService) {
       return { error: "No tienes permiso para borrar este servicio." };
     }
+
     await prisma.service.delete({ where: { id: serviceId } });
+
     revalidatePath("/dashboard/services");
+    const barbershopSlug = service.barbershop.slug;
+    if (barbershopSlug) {
+      revalidateTag(`barber-profile:${barbershopSlug}`);
+      console.log(
+        `[Cache Invalidation] Revalidando tag por eliminación de servicio: barber-profile:${barbershopSlug}`
+      );
+    }
+
     return { success: "Servicio eliminado con éxito." };
   } catch (error) {
     console.error("Error al eliminar el servicio:", error);
