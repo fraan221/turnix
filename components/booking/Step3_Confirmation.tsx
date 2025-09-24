@@ -29,6 +29,9 @@ type CreateBookingState = {
     clientName: string;
     barberPhone: string;
     barberName: string;
+    serviceName: string;
+    startTime: string;
+    teamsEnabled: boolean;
   } | null;
 } | null;
 
@@ -78,14 +81,16 @@ export function Step3_Confirmation({
   }, [selectedServices]);
 
   useEffect(() => {
-    if (state?.success) {
-      toast.success("¡Reserva Exitosa!", { description: state.success });
-
+    if (state?.success && state.bookingDetails) {
       const queryParams = new URLSearchParams({
-        client: state.bookingDetails?.clientName || "",
-        phone: state.bookingDetails?.barberPhone || "",
-        barberName: state.bookingDetails?.barberName || "",
+        client: state.bookingDetails.clientName,
+        phone: state.bookingDetails.barberPhone,
+        barberName: state.bookingDetails.barberName,
+        serviceName: state.bookingDetails.serviceName,
+        startTime: state.bookingDetails.startTime,
+        teamsEnabled: String(state.bookingDetails.teamsEnabled),
       });
+
       router.push(`/booking-confirmed?${queryParams.toString()}`);
     }
     if (state?.error) {

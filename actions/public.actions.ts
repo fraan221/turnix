@@ -2,12 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import {
-  getEndOfDay,
-  getStartOfDay,
-  isToday,
-  formatTime,
-} from "@/lib/date-helpers";
+import { getEndOfDay, getStartOfDay, formatTime } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
 
@@ -329,6 +324,9 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         clientName: client.name,
         barberPhone: barber.phone || "",
         barberName: barber.name || "",
+        serviceName: service.name,
+        startTime: startTime.toISOString(),
+        teamsEnabled: barbershop.teamsEnabled,
       },
     };
   } catch (error: any) {
