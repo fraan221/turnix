@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import { headers } from "next/headers";
+import { Role } from "@prisma/client";
 
 const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
 const MAX_ATTEMPTS = 5;
@@ -117,6 +118,28 @@ const config: NextAuthConfig = {
             token.barbershop = dbUser.teamMembership.barbershop;
           } else {
             token.barbershop = null;
+          }
+          if (token.role === Role.BARBER && token.teamMembership) {
+            const barbershop = await prisma.barbershop.findUnique({
+              where: { id: token.teamMembership.barbershopId },
+              select: {
+                owner: {
+                  select: {
+                    subscription: true,
+                  },
+                },
+              },
+            });
+
+            if (barbershop?.owner?.subscription) {
+              token.subscription = {
+                status: barbershop.owner.subscription.status,
+                currentPeriodEnd:
+                  barbershop.owner.subscription.currentPeriodEnd,
+              };
+            } else {
+              token.subscription = null;
+            }
           }
         }
       }

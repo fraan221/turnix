@@ -10,6 +10,9 @@ export default auth(async (req) => {
 
   const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
   const isOnSubscribePage = nextUrl.pathname.startsWith("/subscribe");
+  const isOnSubscriptionInactivePage = nextUrl.pathname.startsWith(
+    "/subscription-inactive"
+  );
   const isOnCompleteProfile = nextUrl.pathname.startsWith("/complete-profile");
   const isOnConnectPage = nextUrl.pathname.startsWith("/dashboard/connect");
   const isOnAuthRoute =
@@ -37,15 +40,25 @@ export default auth(async (req) => {
       return NextResponse.redirect(new URL("/dashboard", nextUrl));
     }
 
-    const isOwner = session.user.role === Role.OWNER;
-    if (isOwner && isOnDashboard && !isOnSubscribePage) {
+    if (isOnDashboard && !isOnSubscribePage) {
       const hasAccess = hasActiveSubscription(session);
       if (!hasAccess) {
-        return NextResponse.redirect(new URL("/subscribe", nextUrl));
+        if (session.user.role === Role.OWNER) {
+          return NextResponse.redirect(new URL("/subscribe", nextUrl));
+        }
+        return NextResponse.redirect(
+          new URL("/subscription-inactive", nextUrl)
+        );
       }
     }
   } else {
-    if (isOnDashboard || isOnCompleteProfile || isOnSubscribePage) {
+    const protectedRoutes = [
+      isOnDashboard,
+      isOnCompleteProfile,
+      isOnSubscribePage,
+      isOnSubscriptionInactivePage,
+    ];
+    if (protectedRoutes.some(Boolean)) {
       return NextResponse.redirect(new URL("/login", nextUrl));
     }
   }
@@ -62,7 +75,7 @@ export const config = {
     "/dashboard/:path*",
     "/subscribe",
     "/complete-profile",
-
+    "/subscription-inactive",
     "/login",
     "/register",
   ],
