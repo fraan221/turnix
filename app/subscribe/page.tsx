@@ -1,5 +1,7 @@
 "use client";
 
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,6 +13,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
 import SubscriptionButton from "@/components/billing/SubscriptionButton";
+import { signOut } from "@/auth";
 
 export default function SubscribePage() {
   const searchParams = useSearchParams();
@@ -38,6 +41,20 @@ export default function SubscribePage() {
             <SubscriptionButton isTrial={isProactiveSubscription} />
           </div>
         </CardContent>
+        <CardFooter>
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
+            className="w-full"
+          >
+            <Button variant="outline" className="w-full">
+              <LogOut className="w-4 h-4 mr-2" />
+              Cerrar Sesión
+            </Button>
+          </form>
+        </CardFooter>
       </Card>
     </main>
   );
