@@ -14,20 +14,16 @@ import {
 import * as React from "react";
 import { getBaseUrl } from "@/lib/get-base-url";
 
-interface ResetPasswordEmailProps {
-  userName?: string | null;
-  resetLink?: string;
+interface WelcomeEmailProps {
+  name?: string | null;
 }
 
 const baseUrl = getBaseUrl();
 
-export const ResetPasswordEmail = ({
-  userName,
-  resetLink,
-}: ResetPasswordEmailProps) => (
+export const WelcomeEmail = ({ name }: WelcomeEmailProps) => (
   <Html>
     <Head />
-    <Preview>Restablece tu contraseña de Turnix</Preview>
+    <Preview>¡Bienvenido a Turnix! Gestiona tu barbería como un PRO.</Preview>
     <Body style={main}>
       <Container style={container}>
         <Img
@@ -37,21 +33,27 @@ export const ResetPasswordEmail = ({
           alt="Logo de Turnix"
           style={logo}
         />
-        <Heading style={heading}>Hola, {userName}</Heading>
+        <Heading style={heading}>¡Bienvenido a Turnix, {name}!</Heading>
         <Section>
           <Text style={paragraph}>
-            Recibimos una solicitud para restablecer tu contraseña en Turnix.
-            Haz clic en el siguiente botón para establecer una nueva:
+            ¡Estamos felices de tenerte a bordo! Has tomado el primer paso para
+            optimizar la gestión de tu barbería, ahorrar tiempo y reducir las
+            ausencias de clientes.
+          </Text>
+          <Text style={paragraph}>
+            Ahora podés empezar a configurar tu perfil, cargar tus servicios y
+            definir tus horarios para que tus clientes puedan empezar a agendar
+            turnos online.
           </Text>
         </Section>
         <Section style={buttonContainer}>
-          <Button style={button} href={resetLink}>
-            Restablecer Contraseña
+          <Button style={button} href={`${baseUrl}/dashboard`}>
+            Ir a mi Panel
           </Button>
         </Section>
         <Text style={paragraph}>
-          Si no solicitaste un cambio de contraseña, puedes ignorar este correo
-          de forma segura. El enlace expirará en 1 hora.
+          Si tenés alguna pregunta o necesitás ayuda para empezar, no dudes en
+          visitar nuestro Centro de Ayuda o contactar a soporte desde tu panel.
         </Text>
         <Text style={footer}>
           El equipo de Turnix
@@ -65,7 +67,7 @@ export const ResetPasswordEmail = ({
   </Html>
 );
 
-export default ResetPasswordEmail;
+export default WelcomeEmail;
 
 const main = {
   backgroundColor: "#f6f9fc",

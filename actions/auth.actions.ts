@@ -8,6 +8,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
+import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { signOut } from "@/auth";
 
 export async function logoutAction() {
@@ -208,6 +209,17 @@ export async function registerBarber(prevState: any, formData: FormData) {
           connectionCode,
         },
       });
+    }
+
+    try {
+      await resend.emails.send({
+        from: "Turnix <contacto@turnix.app>",
+        to: email,
+        subject: "¡Bienvenido a Turnix!",
+        react: WelcomeEmail({ name }),
+      });
+    } catch (emailError) {
+      console.error("Error al enviar el email de bienvenida:", emailError);
     }
 
     return { success: "¡Cuenta creada con éxito! Serás redirigido al login." };
