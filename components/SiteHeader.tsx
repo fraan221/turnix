@@ -17,6 +17,7 @@ const pageTitles: { [key: string]: string } = {
   "/dashboard/analytics": "Estadísticas",
   "/dashboard/connect": "Conectar",
   "/dashboard": "Agenda",
+  "/dashboard/help": "Ayuda",
 };
 
 interface SiteHeaderProps {

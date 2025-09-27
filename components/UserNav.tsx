@@ -77,7 +77,7 @@ export function UserNav() {
             align="end"
             sideOffset={12}
           >
-            <DropdownMenuItem asChild className="cursor-pointer">
+            <DropdownMenuItem asChild className="p-2 cursor-pointer">
               <Link href={`/${barbershopSlug}`} target="_blank">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 <span>Ver perfil público</span>
@@ -85,7 +85,7 @@ export function UserNav() {
             </DropdownMenuItem>
 
             {userRole === "OWNER" && (
-              <DropdownMenuItem asChild className="cursor-pointer">
+              <DropdownMenuItem asChild className="p-2 cursor-pointer">
                 <Link href="/dashboard/billing">
                   <Crown className="w-4 h-4 mr-2 stroke-primary" />
                   <span className="text-primary">Suscripción</span>
@@ -93,7 +93,7 @@ export function UserNav() {
               </DropdownMenuItem>
             )}
 
-            <DropdownMenuItem asChild className="cursor-pointer">
+            <DropdownMenuItem asChild className="p-2 cursor-pointer">
               <Link href="/dashboard/settings">
                 <Settings2 className="w-4 h-4 mr-2" />
                 <span>Ajustes</span>
@@ -104,7 +104,7 @@ export function UserNav() {
 
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-red-500 cursor-pointer focus:bg-red-50 focus:text-red-600"
+              className="p-2 text-red-500 cursor-pointer focus:bg-red-50 focus:text-red-600"
             >
               <LogOut className="w-4 h-4 mr-2" />
               <span>Cerrar sesión</span>

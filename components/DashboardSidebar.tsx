@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { Role } from "@prisma/client";
 
 import {
@@ -23,6 +23,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { UserNav } from "./UserNav";
 
@@ -33,7 +43,11 @@ import {
   Users,
   BarChart2,
   User,
+  Info,
+  Bug,
+  Siren,
 } from "lucide-react";
+import { WhatsAppIcon } from "./icons/WhatsAppIcon";
 
 const mainNavLinks = [
   { href: "/dashboard", label: "Agenda", icon: Calendar },
@@ -48,6 +62,12 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
+  const [isSupportModalOpen, setIsSupportModalOpen] = React.useState(false);
+
+  const supportPhoneNumber = "+5491160542164";
+  const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(
+    supportPhoneNumber
+  )}`;
 
   const isLinkActive = (href: string) => {
     if (href === "/dashboard") {
@@ -63,62 +83,136 @@ export function DashboardSidebar() {
     return true;
   });
 
-  return (
-    <Sidebar>
-      <SidebarHeader className="p-3">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          {session?.user?.barbershop?.name && (
-            <>
-              <Image
-                src="/logo.png"
-                alt="Logo de Turnix"
-                width={30}
-                height={30}
-              />
-              <span className="text-lg font-semibold truncate">
-                {session.user.barbershop.name}
-              </span>
-            </>
-          )}
-        </Link>
-      </SidebarHeader>
+  const handleSupportClick = () => {
+    setIsSupportModalOpen(true);
+  };
 
-      <SidebarContent className="p-3">
-        <TooltipProvider delayDuration={0}>
-          <SidebarMenu>
-            {navLinks.map((link) => (
-              <SidebarMenuItem key={link.label}>
+  const handleConfirmSupport = () => {
+    window.open(whatsappUrl, "_blank");
+  };
+
+  return (
+    <>
+      <Sidebar>
+        <SidebarHeader className="p-3">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            {session?.user?.barbershop?.name && (
+              <>
+                <Image
+                  src="/logo.png"
+                  alt="Logo de Turnix"
+                  width={30}
+                  height={30}
+                />
+                <span className="text-lg font-semibold truncate">
+                  {session.user.barbershop.name}
+                </span>
+              </>
+            )}
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent className="p-2">
+          <TooltipProvider delayDuration={0}>
+            <SidebarMenu>
+              {navLinks.map((link) => (
+                <SidebarMenuItem key={link.label}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isLinkActive(link.href)}
+                        className="px-2 rounded-md"
+                      >
+                        <Link
+                          href={link.href}
+                          className={cn(
+                            (link as any).disabled &&
+                              "pointer-events-none opacity-50"
+                          )}
+                        >
+                          <link.icon className="size-6" />
+                          <span>{link.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={12}>
+                      {link.label}
+                    </TooltipContent>
+                  </Tooltip>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+
+            <SidebarMenu className="px-2 mt-auto">
+              <SidebarMenuItem>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SidebarMenuButton
                       asChild
-                      isActive={isLinkActive(link.href)}
+                      isActive={isLinkActive("/dashboard/help")}
+                      className="px-2 rounded-md"
                     >
-                      <Link
-                        href={link.href}
-                        className={cn(
-                          (link as any).disabled &&
-                            "pointer-events-none opacity-50"
-                        )}
-                      >
-                        <link.icon className="size-5" />
-                        <span>{link.label}</span>
+                      <Link href="/dashboard/help">
+                        <Info className="size-6" />
+                        <span>Ayuda</span>
                       </Link>
                     </SidebarMenuButton>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={12}>
-                    {link.label}
+                    Ayuda
                   </TooltipContent>
                 </Tooltip>
               </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </TooltipProvider>
-      </SidebarContent>
 
-      <SidebarFooter className="flex-col items-stretch gap-2 p-3">
-        <UserNav />
-      </SidebarFooter>
-    </Sidebar>
+              <SidebarMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton
+                      onClick={handleSupportClick}
+                      className="px-2 rounded-md"
+                    >
+                      <Bug className="size-6" />
+                      <span>Soporte</span>
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={12}>
+                    Soporte
+                  </TooltipContent>
+                </Tooltip>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </TooltipProvider>
+        </SidebarContent>
+
+        <SidebarFooter className="flex-col items-stretch gap-2 p-3">
+          <UserNav />
+        </SidebarFooter>
+      </Sidebar>
+
+      <AlertDialog
+        open={isSupportModalOpen}
+        onOpenChange={setIsSupportModalOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-red-500">
+              <Siren className="w-6 h-6 mr-2" /> VAS A SER REDIRIGIDO!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-4">
+              Estás a punto de ser redirigido a <strong>WhatsApp</strong> para
+              contactar con soporte. ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSupport}>
+              <WhatsAppIcon className="w-4 h-4 mr-2" />
+              Sí, continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
