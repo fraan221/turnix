@@ -8,6 +8,12 @@ import { z } from "zod";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
+import { signOut } from "@/auth";
+
+export async function logoutAction() {
+  "use server";
+  await signOut({ redirectTo: "/login" });
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

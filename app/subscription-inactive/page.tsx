@@ -1,7 +1,30 @@
-import { Pause, LogOut } from "lucide-react";
+"use client";
+
+import { Pause, LogOut, Loader2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { signOut } from "@/auth";
+import { logoutAction } from "@/actions/auth.actions";
+
+function LogoutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button variant="outline" size="lg" className="w-full" disabled={pending}>
+      {pending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Cerrando sesión...
+        </>
+      ) : (
+        <>
+          <LogOut className="w-4 h-4 mr-2" />
+          Cerrar Sesión
+        </>
+      )}
+    </Button>
+  );
+}
 
 export default function SubscriptionInactivePage() {
   return (
@@ -28,17 +51,8 @@ export default function SubscriptionInactivePage() {
             Mientras tanto, podés cerrar esta ventana y volver más tarde cuando
             esté todo solucionado.
           </p>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-            className="w-full mt-6"
-          >
-            <Button variant="outline" className="w-full">
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
+          <form action={logoutAction} className="mx-auto">
+            <LogoutButton />
           </form>
         </CardContent>
       </Card>

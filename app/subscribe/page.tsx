@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +14,27 @@ import {
 import { useSearchParams } from "next/navigation";
 import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
 import SubscriptionButton from "@/components/billing/SubscriptionButton";
-import { signOut } from "@/auth";
+import { logoutAction } from "@/actions/auth.actions";
+
+function LogoutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button variant="outline" size="lg" className="w-full" disabled={pending}>
+      {pending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Cerrando sesión...
+        </>
+      ) : (
+        <>
+          <LogOut className="w-4 h-4 mr-2" />
+          Cerrar Sesión
+        </>
+      )}
+    </Button>
+  );
+}
 
 export default function SubscribePage() {
   const searchParams = useSearchParams();
@@ -42,17 +63,8 @@ export default function SubscribePage() {
           </div>
         </CardContent>
         <CardFooter>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-            className="w-full"
-          >
-            <Button variant="outline" className="w-full">
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
+          <form action={logoutAction} className="mx-auto">
+            <LogoutButton />
           </form>
         </CardFooter>
       </Card>
