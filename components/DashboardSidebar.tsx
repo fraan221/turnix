@@ -49,15 +49,6 @@ import {
 } from "lucide-react";
 import { WhatsAppIcon } from "./icons/WhatsAppIcon";
 
-const mainNavLinks = [
-  { href: "/dashboard", label: "Agenda", icon: Calendar },
-  { href: "/dashboard/services", label: "Servicios", icon: Scissors },
-  { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
-  { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  { href: "/dashboard/team", label: "Equipo", icon: User },
-  { href: "/dashboard/analytics", label: "Estadísticas", icon: BarChart2 },
-];
-
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -76,12 +67,39 @@ export function DashboardSidebar() {
     return pathname.startsWith(href);
   };
 
-  const navLinks = mainNavLinks.filter((link) => {
-    if (userRole === Role.BARBER) {
-      return !["/dashboard/team", "/dashboard/analytics"].includes(link.href);
+  const navLinks = React.useMemo(() => {
+    const baseLinks = [
+      { href: "/dashboard", label: "Agenda", icon: Calendar },
+      { href: "/dashboard/services", label: "Servicios", icon: Scissors },
+      { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
+      { href: "/dashboard/clients", label: "Clientes", icon: Users },
+    ];
+
+    if (userRole === Role.OWNER) {
+      return [
+        ...baseLinks,
+        { href: "/dashboard/team", label: "Equipo", icon: User },
+        {
+          href: "/dashboard/analytics",
+          label: "Estadísticas",
+          icon: BarChart2,
+        },
+      ];
     }
-    return true;
-  });
+
+    if (userRole === Role.BARBER) {
+      return [
+        ...baseLinks,
+        {
+          href: "/dashboard/my-stats",
+          label: "Mis Estadísticas",
+          icon: BarChart2,
+        },
+      ];
+    }
+
+    return baseLinks;
+  }, [userRole]);
 
   const handleSupportClick = () => {
     setIsSupportModalOpen(true);

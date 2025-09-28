@@ -126,19 +126,24 @@ const config: NextAuthConfig = {
                 owner: {
                   select: {
                     subscription: true,
+                    trialEndsAt: true,
                   },
                 },
               },
             });
 
-            if (barbershop?.owner?.subscription) {
-              token.subscription = {
-                status: barbershop.owner.subscription.status,
-                currentPeriodEnd:
-                  barbershop.owner.subscription.currentPeriodEnd,
-              };
+            if (barbershop?.owner) {
+              token.subscription = barbershop.owner.subscription
+                ? {
+                    status: barbershop.owner.subscription.status,
+                    currentPeriodEnd:
+                      barbershop.owner.subscription.currentPeriodEnd,
+                  }
+                : null;
+              token.trialEndsAt = barbershop.owner.trialEndsAt;
             } else {
               token.subscription = null;
+              token.trialEndsAt = null;
             }
           }
         }

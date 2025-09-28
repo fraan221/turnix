@@ -215,3 +215,115 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
 
   return getBarbershopAnalytics(barbershopId, period, startDate, endDate);
 }
+
+export type PersonalStatsData = {
+  totalRevenue: number;
+  completedBookings: number;
+  uniqueClients: number;
+  topServices: {
+    name: string | null;
+    count: number;
+  }[];
+  error?: string;
+};
+
+export async function getPersonalBarberStats(): Promise<PersonalStatsData> {
+  const user = await getUserForSettings();
+
+  if (!user || user.role !== Role.BARBER) {
+    return {
+      totalRevenue: 0,
+      completedBookings: 0,
+      uniqueClients: 0,
+      topServices: [],
+      error: "No autorizado.",
+    };
+  }
+
+  const barberId = user.id;
+
+  try {
+    const [completedBookings, topServices] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          barberId: barberId,
+          status: BookingStatus.COMPLETED,
+        },
+        include: {
+          service: {
+            select: {
+              price: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      }),
+
+      prisma.booking.groupBy({
+        by: ["serviceId"],
+        where: {
+          barberId: barberId,
+          status: BookingStatus.COMPLETED,
+        },
+        _count: {
+          serviceId: true,
+        },
+        orderBy: {
+          _count: {
+            serviceId: "desc",
+          },
+        },
+        take: 5, // Top 5
+      }),
+    ]);
+
+    const totalRevenue = completedBookings.reduce(
+      (acc, booking) => acc + booking.service.price,
+      0
+    );
+    const completedBookingsCount = completedBookings.length;
+    const uniqueClients = new Set(
+      completedBookings.map((booking) => booking.client.id)
+    ).size;
+
+    const serviceIds = topServices
+      .map((item) => item.serviceId)
+      .filter(Boolean) as string[];
+    const serviceDetails = await prisma.service.findMany({
+      where: {
+        id: { in: serviceIds },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const serviceMap = new Map(serviceDetails.map((s) => [s.id, s.name]));
+
+    const formattedTopServices = topServices.map((item) => ({
+      name: serviceMap.get(item.serviceId!) || "Servicio eliminado",
+      count: item._count.serviceId,
+    }));
+
+    return {
+      totalRevenue,
+      completedBookings: completedBookingsCount,
+      uniqueClients,
+      topServices: formattedTopServices,
+    };
+  } catch (error) {
+    console.error("Error al calcular estadísticas personales:", error);
+    return {
+      totalRevenue: 0,
+      completedBookings: 0,
+      uniqueClients: 0,
+      topServices: [],
+      error: "No se pudieron cargar las estadísticas.",
+    };
+  }
+}
