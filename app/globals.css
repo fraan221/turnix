@@ -168,3 +168,17 @@
 .fc .fc-day-header-vertical .fc-col-header-cell-cushion {
   @apply flex flex-col items-center py-1;
 }
+
+/* ======================================================================== */
+/* 5. ANIMACIONES PERSONALIZADAS                                            */
+/* ======================================================================== */
+@layer utilities {
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
