@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-muted/40">
+    <footer className="w-full mx-auto max-w-7xl bg-muted/40">
       <div className="container py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="flex flex-col items-center text-center md:items-start md:text-left">

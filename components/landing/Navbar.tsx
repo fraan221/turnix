@@ -47,7 +47,9 @@ export function Navbar() {
             height={32}
             className="rounded-md"
           />
-          <span className="hidden text-black sm:inline-block">Turnix</span>
+          <span className="hidden text-black sm:inline-block font-heading">
+            Turnix
+          </span>
         </Link>
 
         <nav className="items-center hidden gap-2 text-xs font-medium md:flex sm:gap-4 sm:text-sm">
@@ -56,7 +58,7 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               className={cn(
-                "transition-colors hover:text-primary",
+                "transition-colors hover:text-primary font-heading",
                 scrolled
                   ? "text-black/80 hover:text-black"
                   : "text-black/80 hover:text-black"
@@ -68,7 +70,9 @@ export function Navbar() {
         </nav>
 
         <Button asChild>
-          <Link href="/register">Empezar Gratis</Link>
+          <Link href="/register" className="font-heading">
+            Empezar Gratis
+          </Link>
         </Button>
       </div>
     </header>

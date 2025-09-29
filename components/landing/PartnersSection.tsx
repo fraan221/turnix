@@ -12,10 +12,10 @@ export function PartnersSection() {
     <section className="w-full py-12 md:py-16">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <p className="text-lg font-semibold tracking-wide text-muted-foreground">
+          <h1 className="text-lg font-semibold tracking-wide text-muted-foreground font-heading">
             Barberías reales, resultados reales
-          </p>
-          <div className="relative w-full max-w-5xl mt-4 overflow-hidden">
+          </h1>
+          <div className="relative w-full max-w-5xl mt-6 overflow-hidden">
             <div className="flex w-max animate-marquee">
               {[...partners, ...partners].map((partner, index) => (
                 <div key={index} className="flex-shrink-0 w-48 mx-6">

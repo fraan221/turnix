@@ -125,10 +125,8 @@ export function DashboardSidebar() {
         </SidebarHeader>
 
         <SidebarContent className="p-2">
-          {/* 1. --- ELIMINADO TooltipProvider --- */}
           <SidebarMenu>
             {navLinks.map((link) => (
-              // 2. --- SIMPLIFICADO: Eliminado Tooltip y TooltipTrigger ---
               <SidebarMenuItem key={link.href}>
                 <SidebarMenuButton
                   asChild
