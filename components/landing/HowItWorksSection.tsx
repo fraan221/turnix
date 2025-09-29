@@ -1,24 +1,23 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListChecks, Share2, CalendarPlus } from "lucide-react";
 
 const steps = [
   {
     icon: <ListChecks className="w-8 h-8 text-primary" />,
-    title: "1. Configura tu perfil",
+    title: "1. Armá tu perfil",
     description:
-      "Añade tus servicios, precios y define tus horarios de trabajo en minutos. Tu perfil, tus reglas.",
+      "Cargá tus servicios, precios y horarios. En 5 minutos tenés todo listo.",
   },
   {
     icon: <Share2 className="w-8 h-8 text-primary" />,
-    title: "2. Comparte tu link",
+    title: "2. Compartí tu link",
     description:
-      "Te damos un enlace único a tu página de Turnix. Ponelo en tu Instagram, WhatsApp o donde quieras.",
+      "Te damos tu página personal. La compartís en Instagram, WhatsApp o donde quieras.",
   },
   {
     icon: <CalendarPlus className="w-8 h-8 text-primary" />,
-    title: "3. Recibe turnos 24/7",
+    title: "3. Recibí turnos automáticamente",
     description:
-      "Tus clientes reservan solos, a cualquier hora. Vos solo ves cómo se llena tu agenda, sin mover un dedo.",
+      "Tus clientes reservan solos, a cualquier hora. Tu agenda se llena sin que hagas nada.",
   },
 ];
 
@@ -29,7 +28,7 @@ export function HowItWorksSection() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter font-heading sm:text-5xl">
-              Empezá a recibir turnos en 3 simples pasos
+              Empezá a recibir turnos hoy mismo
             </h2>
           </div>
         </div>

@@ -37,7 +37,7 @@ const SocialProof = () => (
       </Avatar>
     </div>
     <span className="pr-2 text-sm font-medium text-muted-foreground">
-      +4 barberías activas confían en nosotros
+      +4 barberías usan Turnix diariamente
     </span>
   </div>
 );
@@ -53,8 +53,7 @@ export function HeroSection() {
               ¿Cuántos clientes perdiste hoy?
             </h1>
             <p className="max-w-xl text-muted-foreground md:text-xl text-balance">
-              Con Turnix, cada cliente que te busca, reserva. Sin vueltas, sin
-              pérdidas.
+              Con Turnix, cada cliente que te busca, reserva.
             </p>
             <div className="flex flex-col items-center gap-4 mt-2 sm:flex-row">
               <Button asChild size="lg">

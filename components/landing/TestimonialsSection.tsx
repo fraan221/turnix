@@ -4,32 +4,30 @@ import { Card, CardContent } from "@/components/ui/card";
 const testimonials = [
   {
     quote:
-      "Turnix me devolvió las noches. Antes contestaba WhatsApps hasta la madrugada, ahora la agenda se llena sola y yo descanso. Es un antes y un después para mi negocio.",
-    name: "Carlos",
-    barbershop: "La Barbería de Carlos, Palermo",
-    avatar: "/images/avatars/avatar-1.png", // Placeholder path
+      "La página súper compleja y rápida, fácil para mis clientes e amigos de agendar muchísimos de mis clientes me lo agradecieron y Turnix fue una antes y después para poder estar más organizado además que tiene todo para poder estar bien.",
+    name: "Santiago",
+    barbershop: "Overcoming, Berazategui",
+    avatar: "/images/partners/barberia_1.png",
+  },
+  // {
+  //   quote: "[Falta testimonio...]",
+  //   name: "Mariano",
+  //   barbershop: "Yankee Barber, Isidro Casanova",
+  //   avatar: "/images/partners/barberia_2.png",
+  // },
+  {
+    quote:
+      "Me aporto claridad y control del dinero que voy a tener dia a dia. Los clientes dicen que es súper fácil de usar. Y le aporta profesionalismo a mi trabajo",
+    name: "Erik",
+    barbershop: "Break Barber, Azul",
+    avatar: "/images/partners/barberia_3.png",
   },
   {
     quote:
-      "Lo mejor son las estadísticas. Ahora sé qué servicios me dan más plata y qué clientes son los más fieles. Dejé de adivinar y empecé a tomar decisiones con datos reales.",
-    name: "Javier",
-    barbershop: "Javi's Cuts, Villa Crespo",
-    avatar: "/images/avatars/avatar-2.png", // Placeholder path
-  },
-  {
-    quote:
-      "Tener a todo el equipo en la misma app nos cambió el día a día. Cero desorden con los turnos y las comisiones salen solas. Mis barberos están más contentos y yo también.",
-    name: "Sofía",
-    barbershop: "The Modern Shave, Recoleta",
-    avatar: "/images/avatars/avatar-3.png", // Placeholder path
-  },
-  // Podemos añadir más testimonios para hacer el carrusel más largo
-  {
-    quote:
-      "La página para que los clientes reserven es súper simple y funciona de diez. Me llegan los turnos directo al celu, increíble.",
-    name: "Lucas",
-    barbershop: "Barbería Clásica, San Telmo",
-    avatar: "/images/avatars/avatar-4.png", // Placeholder path
+      "Turnix es una agenda que simplificó y agilizó mi trabajo, muy sencilla y fácil de acceder tanto para mí como para mis clientes, muy completa y eficaz",
+    name: "Lupa",
+    barbershop: "Lupa Estudio, Berazategui",
+    avatar: "/images/partners/barberia_4.png",
   },
 ];
 
@@ -40,7 +38,7 @@ export function TestimonialsSection() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter font-heading sm:text-5xl">
-              Amado por barberos en toda Argentina
+              Barberos que confían en Turnix
             </h2>
           </div>
         </div>

@@ -12,30 +12,30 @@ import { cn } from "@/lib/utils";
 const features = [
   {
     icon: <WhatsAppIcon className="w-8 h-8 text-primary" />,
-    title: "Libérate del Caos de WhatsApp",
+    title: "Dejá de vivir en WhatsApp",
     description:
-      "Tu agenda se llena sola mientras duermes. Los clientes reservan 24/7 sin interrumpirte, y los recordatorios automáticos reducen las ausencias.",
+      "Tu agenda se llena sola 24/7. Los clientes reservan sin molestarte y los mensajes por WhatsApp llegan solos.",
     className: "lg:col-span-2",
   },
   {
     icon: <Users className="w-8 h-8 text-primary" />,
-    title: "Organiza a tu Equipo",
+    title: "Tu equipo sincronizado",
     description:
-      "Cada barbero con su agenda, sus servicios y sus clientes. Todo sincronizado en un solo lugar. Menos confusiones, más productividad.",
+      "Cada barbero con su propia agenda y servicios. Todo organizado en un solo lugar, sin confusiones ni superposiciones.",
     className: "lg:row-span-2",
   },
   {
     icon: <LineChart className="w-8 h-8 text-primary" />,
-    title: "Entiende tu Negocio",
+    title: "Datos que generan valor",
     description:
-      "Descubre qué servicios te dan más plata, qué clientes vuelven más y en qué horarios facturas mejor. Decisiones con datos, no con intuición.",
+      "Qué servicios generan más, qué clientes vuelven y cuándo facturás mejor. Decisiones inteligentes con información real.",
     className: "",
   },
   {
     icon: <CalendarClock className="w-8 h-8 text-primary" />,
-    title: "Una Agenda Inteligente",
+    title: "Agenda visual y clara",
     description:
-      "Adiós a los cuadernos y las notas en el celular. Ten una visión clara de tu día, semana y mes. Simple, visual y siempre a mano.",
+      "Olvidate de cuadernos y notas en el celu. Tu día, semana y mes en una sola vista. Simple y siempre disponible.",
     className: "",
   },
 ];

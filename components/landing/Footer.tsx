@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { Instagram, Facebook, Twitter } from "lucide-react";
+import { Instagram } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export function Footer() {
@@ -21,13 +21,13 @@ export function Footer() {
               <span className="text-lg font-bold font-heading">Turnix</span>
             </Link>
             <p className="max-w-xs text-sm text-muted-foreground">
-              La agenda inteligente que llena tu barbería y organiza tu negocio.
+              Gestión simple para barberos ocupados.
             </p>
           </div>
 
           <div className="text-center md:text-left">
             <h3 className="mb-4 font-semibold">Menú</h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               <li>
                 <Link
                   href="#beneficios"
@@ -57,7 +57,7 @@ export function Footer() {
 
           <div className="text-center md:text-left">
             <h3 className="mb-4 font-semibold">Legal</h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               <li>
                 <Link
                   href="/privacy-policy"
@@ -80,7 +80,7 @@ export function Footer() {
           <div className="text-center md:text-left">
             <h3 className="mb-4 font-semibold">Newsletter</h3>
             <p className="text-sm text-muted-foreground">
-              Enterate de nuevas funcionalidades y consejos para tu barbería.
+              Tips y novedades para hacer crecer tu barbería.
             </p>
             <div className="flex items-center justify-center mt-4 md:justify-start">
               <Badge variant="secondary">Próximamente</Badge>
@@ -92,7 +92,8 @@ export function Footer() {
 
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Turnix. Todos los derechos reservados.
+            © {new Date().getFullYear()} Turnix. Construido con ❤️ para
+            barberos argentinos.
           </p>
           <div className="flex items-center gap-4">
             <Link

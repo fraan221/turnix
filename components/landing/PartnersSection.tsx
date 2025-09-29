@@ -13,7 +13,7 @@ export function PartnersSection() {
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <p className="text-lg font-semibold tracking-wide text-muted-foreground">
-            Con la confianza de las mejores barberías
+            Barberías reales, resultados reales
           </p>
           <div className="relative w-full max-w-5xl mt-4 overflow-hidden">
             <div className="flex w-max animate-marquee">
