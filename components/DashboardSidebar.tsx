@@ -18,12 +18,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -131,76 +125,48 @@ export function DashboardSidebar() {
         </SidebarHeader>
 
         <SidebarContent className="p-2">
-          <TooltipProvider delayDuration={0}>
-            <SidebarMenu>
-              {navLinks.map((link) => (
-                <SidebarMenuItem key={link.label}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isLinkActive(link.href)}
-                        className="px-2 rounded-md"
-                      >
-                        <Link
-                          href={link.href}
-                          className={cn(
-                            (link as any).disabled &&
-                              "pointer-events-none opacity-50"
-                          )}
-                        >
-                          <link.icon className="size-6" />
-                          <span>{link.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={12}>
-                      {link.label}
-                    </TooltipContent>
-                  </Tooltip>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-
-            <SidebarMenu className="px-2 mt-auto">
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isLinkActive("/dashboard/help")}
-                      className="px-2 rounded-md"
-                    >
-                      <Link href="/dashboard/help">
-                        <Info className="size-6" />
-                        <span>Ayuda</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={12}>
-                    Ayuda
-                  </TooltipContent>
-                </Tooltip>
+          {/* 1. --- ELIMINADO TooltipProvider --- */}
+          <SidebarMenu>
+            {navLinks.map((link) => (
+              // 2. --- SIMPLIFICADO: Eliminado Tooltip y TooltipTrigger ---
+              <SidebarMenuItem key={link.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isLinkActive(link.href)}
+                  className="px-2 rounded-md"
+                >
+                  <Link href={link.href}>
+                    <link.icon className="size-6" />
+                    <span>{link.label}</span>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
 
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton
-                      onClick={handleSupportClick}
-                      className="px-2 rounded-md"
-                    >
-                      <Bug className="size-6" />
-                      <span>Soporte</span>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={12}>
-                    Soporte
-                  </TooltipContent>
-                </Tooltip>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </TooltipProvider>
+          <SidebarMenu className="mt-auto">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isLinkActive("/dashboard/help")}
+                className="px-2 rounded-md"
+              >
+                <Link href="/dashboard/help">
+                  <Info className="size-6" />
+                  <span>Ayuda</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleSupportClick}
+                className="px-2 rounded-md"
+              >
+                <Bug className="size-6" />
+                <span>Soporte</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarContent>
 
         <SidebarFooter className="flex-col items-stretch gap-2 p-3">
