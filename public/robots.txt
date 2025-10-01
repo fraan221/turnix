@@ -1,0 +1,6 @@
+# Permitir a todos los robots rastrear todo el sitio.
+User-agent: *
+Allow: /
+
+# Indicar la ubicación de nuestro sitemap.
+Sitemap: https://www.turnix.app/sitemap.xml

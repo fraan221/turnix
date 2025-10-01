@@ -7,15 +7,51 @@ import { Analytics } from "@vercel/analytics/react";
 import { cn } from "@/lib/utils";
 import { inter, montserrat } from "./fonts";
 import { LoaderProvider } from "@/context/LoaderContext";
-import { getBaseUrl } from "@/lib/get-base-url";
+
+const siteUrl = "https://www.turnix.app";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getBaseUrl()),
-  title: "Turnix - Agenda Online y Sistema de Turnos para Barberías",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Turnix - Software de Agenda de Turnos para Barberías",
+    template: `%s | Turnix`,
+  },
   description:
-    "Simplifica la gestión de tu barbería con Turnix. Ofrece a tus clientes una agenda online para reservar turnos 24/7. Ideal para barberos y estilistas.",
+    "Turnix es el software de gestión y agenda de turnos online diseñado para barberos y barberías en Argentina. Simplifica tu trabajo, reduce ausencias y potencia tu negocio.",
+
+  alternates: {
+    canonical: "/",
+  },
+
+  openGraph: {
+    title: "Turnix - El Software de Gestión para tu Barbería",
+    description:
+      "Agenda de turnos online, recordatorios automáticos y más. ¡Prueba gratis por 14 días!",
+    url: siteUrl,
+    siteName: "Turnix",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "es_AR",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Turnix - El Software de Gestión para tu Barbería",
+    description:
+      "El software para barberías que te ayuda a organizar tu negocio y ofrecer la mejor experiencia a tus clientes.",
+    images: [`${siteUrl}/og-image.png`],
+  },
+
   manifest: "/manifest.json",
   icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
 };
