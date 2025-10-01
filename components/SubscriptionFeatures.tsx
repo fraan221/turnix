@@ -12,13 +12,13 @@ const features = [
   { name: "Perfil personalizado con tu marca", included: true },
 ];
 
-export function SubscriptionFeatures() {
+export function SubscriptionFeatures({ price }: { price: number }) {
   return (
     <Card className="max-w-md p-4 mx-auto border rounded-lg border-primary/50">
       <CardHeader>
         <CardTitle className="text-center font-heading">Plan PRO</CardTitle>
         <div className="flex items-baseline justify-center gap-2 pt-2">
-          <span className="text-4xl font-bold tracking-tight">$9.900</span>
+          <span className="text-4xl font-bold tracking-tight">${price}</span>
           <span className="text-lg font-semibold text-muted-foreground">
             /mes
           </span>

@@ -31,7 +31,13 @@ function SubmitButton({ isTrial }: { isTrial: boolean }) {
   );
 }
 
-export default function SubscriptionButton({ isTrial }: { isTrial: boolean }) {
+export default function SubscriptionButton({
+  isTrial,
+  discountCode,
+}: {
+  isTrial: boolean;
+  discountCode?: string | null;
+}) {
   const [state, formAction] = useFormState(createSubscription, {});
 
   useEffect(() => {
@@ -45,6 +51,9 @@ export default function SubscriptionButton({ isTrial }: { isTrial: boolean }) {
 
   return (
     <form action={formAction}>
+      {discountCode && (
+        <input type="hidden" name="discountCode" value={discountCode} />
+      )}
       <SubmitButton isTrial={isTrial} />
     </form>
   );

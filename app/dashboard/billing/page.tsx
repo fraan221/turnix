@@ -1,11 +1,9 @@
 import { Suspense } from "react";
-import BillingSkeleton from "@/components/skeletons/BillingSkeleton";
-import { getUserForLayout } from "@/lib/data";
 import { redirect } from "next/navigation";
+import { getUserForLayout } from "@/lib/data";
 import ActiveSubscriptionCard from "@/components/billing/ActiveSubscriptionCard";
-import SubscriptionStatus from "@/components/billing/SubscriptionStatus";
-import SubscriptionButton from "@/components/billing/SubscriptionButton";
-import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
+import BillingSkeleton from "@/components/skeletons/BillingSkeleton";
+import { SubscriptionCta } from "@/components/billing/SubscriptionCta";
 
 async function BillingPageContent() {
   const user = await getUserForLayout();
@@ -27,11 +25,7 @@ async function BillingPageContent() {
       )}
 
       {shouldShowSubscribeCta && !hasActiveSubscription && (
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <SubscriptionStatus />
-          <SubscriptionFeatures />
-          <SubscriptionButton isTrial={!!isInTrial} />
-        </div>
+        <SubscriptionCta isTrial={!!isInTrial} showStatus={true} />
       )}
     </div>
   );

@@ -1,6 +1,3 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,20 +6,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SubscriptionFeatures } from "@/components/SubscriptionFeatures";
-import SubscriptionButton from "@/components/billing/SubscriptionButton";
 import { LogoutForm } from "@/components/LogoutButton";
+import { SubscriptionCta } from "@/components/billing/SubscriptionCta";
 
-export default function SubscribePage() {
-  const searchParams = useSearchParams();
-  const reason = searchParams.get("reason");
+interface SubscribePageProps {
+  searchParams: {
+    reason?: string;
+  };
+}
+
+export default function SubscribePage({ searchParams }: SubscribePageProps) {
+  const reason = searchParams.reason;
   const isProactiveSubscription = reason === "trial";
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4">
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-black">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">
+          <CardTitle className="text-2xl font-heading">
             {isProactiveSubscription
               ? "¡Continuá sin interrupciones!"
               : "Tu prueba gratuita terminó"}
@@ -34,10 +35,7 @@ export default function SubscribePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center space-y-4">
-            <SubscriptionFeatures />
-            <SubscriptionButton isTrial={isProactiveSubscription} />
-          </div>
+          <SubscriptionCta isTrial={isProactiveSubscription} />
         </CardContent>
         <CardFooter className="flex flex-col items-center w-full">
           <LogoutForm />

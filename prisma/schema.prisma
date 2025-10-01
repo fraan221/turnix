@@ -210,6 +210,10 @@ model Subscription {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  appliedDiscountCodeId String?
+  discountedUntil       DateTime?
+  discountCode          DiscountCode? @relation(fields: [appliedDiscountCodeId], references: [id])
 }
 
 model Team {
@@ -240,4 +244,18 @@ model WorkScheduleBlock {
   workingHoursId String
 
   @@unique([workingHoursId, type])
+}
+
+model DiscountCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  overridePrice  Int
+  durationMonths Int
+  validFrom      DateTime
+  validUntil     DateTime
+  maxUses        Int?
+  timesUsed      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  subscriptions Subscription[]
 }
