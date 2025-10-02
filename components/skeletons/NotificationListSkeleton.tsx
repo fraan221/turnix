@@ -21,7 +21,7 @@ export default function NotificationListSkeleton() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="max-w-6xl mx-auto">
       <div className="space-y-4">
         {renderSection("Esta semana", "week")}
         {renderSection("Este mes", "month")}

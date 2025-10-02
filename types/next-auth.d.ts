@@ -7,6 +7,15 @@ interface SubscriptionInfo {
   currentPeriodEnd: Date | null;
 }
 
+interface BarberShopSessionInfo {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  address: string | null;
+  description: string | null;
+}
+
 declare module "next-auth" {
   interface User {
     role?: Role | null;
@@ -16,11 +25,7 @@ declare module "next-auth" {
     user: {
       id: string;
       role?: Role | null;
-      barbershop?: {
-        id: string;
-        name: string;
-        slug: string;
-      } | null;
+      barbershop?: BarberShopSessionInfo | null;
       teamMembership: Team | null;
       trialEndsAt: Date | null;
       subscription: SubscriptionInfo | null;
@@ -32,11 +37,7 @@ declare module "next-auth/jwt" {
   interface JWT extends NextAuthJWT {
     id: string;
     role?: Role | null;
-    barbershop?: {
-      id: string;
-      name: string;
-      slug: string;
-    } | null;
+    barbershop?: BarberShopSessionInfo | null;
     teamMembership: Team | null;
     trialEndsAt: Date | null;
     subscription: SubscriptionInfo | null;

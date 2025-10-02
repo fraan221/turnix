@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 
 export default function ServiceListSkeleton() {
   return (
-    <div className="mx-auto space-y-6 max-w-7xl">
+    <div className="max-w-6xl mx-auto space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>

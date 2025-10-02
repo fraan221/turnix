@@ -81,7 +81,7 @@ export function ServicesClient({
 
   return (
     <>
-      <Card>
+      <Card className="max-w-6xl mx-auto">
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>Lista de Servicios</CardTitle>
           <Button onClick={() => setModalOpen(true)}>

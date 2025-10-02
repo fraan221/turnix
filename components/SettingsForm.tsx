@@ -28,7 +28,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "./ui/dialog";
 
@@ -80,7 +79,7 @@ function SubmitButton() {
 
 interface SettingsFormProps {
   user: User & {
-    ownedBarbershop: {
+    barbershop: {
       id: string;
       name: string;
       slug: string;
@@ -96,7 +95,10 @@ const initialState: FormState = { success: null, error: null };
 export default function SettingsForm({ user }: SettingsFormProps) {
   const [state, formAction] = useFormState(updateUserProfile, initialState);
   const { data: session, update } = useSession();
-  const [slugValue, setSlugValue] = useState(user.ownedBarbershop?.slug || "");
+  const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
+  const [barbershopImagePreview, setBarbershopImagePreview] = useState<
+    string | null
+  >(user.barbershop?.image || null);
   const [isCopied, setIsCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
@@ -109,9 +111,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     string | null
   >(null);
   const croppedBarbershopImageRef = useRef<File | null>(null);
-  const [barbershopImagePreview, setBarbershopImagePreview] = useState<
-    string | null
-  >(user.ownedBarbershop?.image || null);
 
   useEffect(() => {
     const handleStateChange = async () => {
@@ -156,12 +155,14 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   }, [state, session, update, router]);
 
   const handleCopy = () => {
-    if (!slugValue) {
-      toast.error("Guarda tu perfil para generar la URL y poder copiarla.");
+    const urlToCopy = `${window.location.origin}/${user.barbershop?.slug}`;
+
+    if (!user.barbershop?.slug) {
+      toast.error("No hay una URL que copiar para esta barbería.");
       return;
     }
-    const fullUrl = `${window.location.origin}/${slugValue}`;
-    navigator.clipboard.writeText(fullUrl);
+
+    navigator.clipboard.writeText(urlToCopy);
     toast.success("¡URL copiada al portapapeles!");
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -352,7 +353,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-full">
                 <Image
                   src={barbershopImagePreview || "/images/cta-background.jpg"}
-                  alt={user.ownedBarbershop?.name || "Logo Barbería"}
+                  alt={user.barbershop?.name || "Logo Barbería"}
                   fill
                   className="object-cover bg-muted"
                 />
@@ -376,7 +377,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <Input
                 id="barbershopName"
                 name="barbershopName"
-                defaultValue={user.ownedBarbershop?.name || ""}
+                defaultValue={user.barbershop?.name || ""}
                 required
               />
             </div>
@@ -388,7 +389,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <Input
                 id="barbershopAddress"
                 name="barbershopAddress"
-                defaultValue={user.ownedBarbershop?.address || ""}
+                defaultValue={user.barbershop?.address || ""}
               />
             </div>
 
@@ -397,7 +398,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <Textarea
                 id="barbershopDescription"
                 name="barbershopDescription"
-                defaultValue={user.ownedBarbershop?.description || ""}
+                defaultValue={user.barbershop?.description || ""}
                 placeholder="Ej: La mejor barbería de la ciudad, especializada en cortes clásicos y modernos."
               />
             </div>
@@ -418,8 +419,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                     )
                   }
                   className="rounded-none focus-visible:ring-ring focus-visible:ring-offset-0 read-only:bg-muted/50 read-only:cursor-not-allowed"
-                  required={!user.ownedBarbershop?.slug}
-                  readOnly={!!user.ownedBarbershop?.slug}
+                  required={!user.barbershop?.slug}
+                  readOnly={!!user.barbershop?.slug}
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -430,7 +431,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                       onClick={handleCopy}
                       className="border-l-0 rounded-l-none"
                       aria-label="Copiar URL"
-                      disabled={!user.ownedBarbershop?.slug}
+                      disabled={!user.barbershop?.slug}
                     >
                       {isCopied ? (
                         <Check className="w-5 h-5 mx-3 text-green-500" />
@@ -446,54 +447,51 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               </div>
               <div className="text-xs text-muted-foreground">
                 <p>
-                  {user.ownedBarbershop?.slug
+                  {user.barbershop?.slug
                     ? "Tu URL pública ya no se puede cambiar. Esta acción se completa una única vez."
                     : "Usa minúsculas y guiones medios (-). ¡Esta acción es permanente!"}
                 </p>
               </div>
             </div>
           </>
-        ) : (
-          user.role === Role.BARBER &&
-          user.ownedBarbershop?.slug && (
-            <div className="grid w-full gap-2">
-              <Label htmlFor="slug">URL de la Barbería</Label>
-              <div className="flex items-center">
-                <span className="inline-flex items-center h-10 px-3 text-sm border border-r-0 rounded-l-md border-input bg-muted text-muted-foreground">
-                  turnix.app/
-                </span>
-                <Input
-                  id="slug"
-                  name="slug"
-                  value={user.ownedBarbershop.slug}
-                  className="rounded-none read-only:bg-muted/50 read-only:cursor-not-allowed"
-                  readOnly
-                />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleCopy}
-                      className="border-l-0 rounded-l-none"
-                      aria-label="Copiar URL"
-                    >
-                      {isCopied ? (
-                        <Check className="w-5 h-5 mx-3 text-green-500" />
-                      ) : (
-                        <Clipboard className="w-5 h-5 mx-3" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Copiar URL pública</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+        ) : user.role === Role.BARBER && user.barbershop?.slug ? (
+          <div className="grid w-full gap-2">
+            <Label htmlFor="slug">URL de la Barbería</Label>
+            <div className="flex items-center">
+              <span className="inline-flex items-center h-10 px-3 text-sm border border-r-0 rounded-l-md border-input bg-muted text-muted-foreground">
+                turnix.app/
+              </span>
+              <Input
+                id="slug"
+                name="slug"
+                value={user.barbershop.slug}
+                className="rounded-none read-only:bg-muted/50 read-only:cursor-not-allowed"
+                readOnly
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopy}
+                    className="border-l-0 rounded-l-none"
+                    aria-label="Copiar URL"
+                  >
+                    {isCopied ? (
+                      <Check className="w-5 h-5 mx-3 text-green-500" />
+                    ) : (
+                      <Clipboard className="w-5 h-5 mx-3" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Copiar URL pública</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
-          )
-        )}
+          </div>
+        ) : null}
         <SubmitButton />
       </form>
     </TooltipProvider>

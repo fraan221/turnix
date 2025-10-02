@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Contact, Users } from "lucide-react";
-import { Client, Role } from "@prisma/client";
-import { Separator } from "@/components/ui/separator";
+import { Client } from "@prisma/client";
 
 async function ClientsPageContent() {
   const user = await getCurrentUserWithBarbershop();
@@ -32,7 +31,7 @@ async function ClientsPageContent() {
   const hasClients = clients.length > 0;
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="max-w-6xl mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>Clientes de la Barbería</CardTitle>

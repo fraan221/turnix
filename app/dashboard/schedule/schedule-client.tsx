@@ -100,7 +100,7 @@ export function ScheduleClient({
 
       <Separator />
 
-      <Card className="mx-auto max-w-7xl">
+      <Card className="max-w-6xl mx-auto">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>Bloqueos Horarios</CardTitle>
           <Button onClick={() => setModalOpen(true)}>

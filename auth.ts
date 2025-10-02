@@ -88,10 +88,10 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           include: {
-            ownedBarbershop: { select: { id: true, name: true, slug: true } },
+            ownedBarbershop: true,
             teamMembership: {
               include: {
-                barbershop: { select: { id: true, name: true, slug: true } },
+                barbershop: true,
               },
             },
             subscription: true,

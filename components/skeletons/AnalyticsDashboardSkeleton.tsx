@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AnalyticsDashboardSkeleton() {
   return (
     <>
-      <div className="mx-auto space-y-2 max-w-7xl">
+      <div className="max-w-6xl mx-auto space-y-2">
         <div className="flex flex-row items-center justify-between space-x-4">
           <div className="space-y-2">
             <Skeleton className="w-48 h-7" />

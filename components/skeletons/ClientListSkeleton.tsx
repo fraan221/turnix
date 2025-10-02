@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ClientListSkeleton() {
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="max-w-6xl mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>

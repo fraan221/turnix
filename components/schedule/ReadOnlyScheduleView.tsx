@@ -34,7 +34,7 @@ export function ReadOnlyScheduleView({
   });
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className="grid max-w-6xl grid-cols-1 gap-3 mx-auto md:grid-cols-2">
       {daysOfWeek.map((dayName, index) => {
         const daySchedule = scheduleMap.get(index);
         const isWorking = daySchedule?.isWorking ?? false;

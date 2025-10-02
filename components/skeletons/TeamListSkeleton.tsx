@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeamListSkeleton() {
   return (
-    <Card className="mx-auto max-w-7xl">
+    <Card className="max-w-6xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>
           <Skeleton className="w-32 h-8" />

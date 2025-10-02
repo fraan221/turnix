@@ -60,7 +60,14 @@ export const getUserForSettings = cache(async () => {
       teamMembership: {
         include: {
           barbershop: {
-            select: { name: true, slug: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              image: true,
+              address: true,
+              description: true,
+            },
           },
         },
       },
