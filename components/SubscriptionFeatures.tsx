@@ -3,38 +3,42 @@ import { Check } from "lucide-react";
 
 const features = [
   { name: "Agenda completa y fácil de usar", included: true },
-  { name: "Servicios ilimitados (cortes, barba, etc.)", included: true },
+  { name: "Servicios ilimitados", included: true },
   { name: "Horarios y bloqueos personalizados", included: true },
-  { name: "Portal de clientes", included: true },
-  { name: "Manejo de equipo de barberos", included: true },
-  { name: "Estadísticas de tu negocio", included: true },
-  { name: "Web propia para que tus clientes reserven", included: true },
-  { name: "Perfil personalizado con tu marca", included: true },
+  { name: "Portal para que tus clientes reserven", included: true },
+  { name: "Gestión de equipo", included: true },
+  { name: "Estadísticas de negocio", included: true },
+  { name: "Página web propia", included: true },
+  { name: "Perfil con tu marca", included: true },
 ];
 
 export function SubscriptionFeatures({ price }: { price: number }) {
   return (
-    <Card className="max-w-md p-4 mx-auto border rounded-lg border-primary/50">
-      <CardHeader>
-        <CardTitle className="text-center font-heading">Plan PRO</CardTitle>
-        <div className="flex items-baseline justify-center gap-2 pt-2">
+    <Card className="w-full border rounded-lg">
+      <CardHeader className="pb-4">
+        <div className="space-y-1 text-center">
+          <CardTitle className="text-xl font-heading">Plan PRO</CardTitle>
+        </div>
+        <div className="flex items-baseline justify-center gap-1">
           <span className="text-4xl font-bold tracking-tight">${price}</span>
-          <span className="text-lg font-semibold text-muted-foreground">
-            /mes
-          </span>
+          <span className="text-lg text-muted-foreground">/mes</span>
         </div>
       </CardHeader>
-      <CardContent className="max-w-md mx-auto">
-        <ul className="space-y-4">
-          {features.map((feature) => (
-            <li key={feature.name} className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 shrink-0">
-                <Check className="w-4 h-4 text-primary" />
-              </div>
-              <span className="flex-1">{feature.name}</span>
-            </li>
-          ))}
-        </ul>
+      <CardContent className="pt-0">
+        <div className="pt-4 border-t">
+          <ul className="space-y-3">
+            {features.map((feature) => (
+              <li key={feature.name} className="flex items-start gap-3">
+                <div className="flex items-center justify-center rounded-full w-5 h-5 bg-primary/10 shrink-0 mt-0.5">
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="flex-1 text-sm leading-relaxed">
+                  {feature.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </CardContent>
     </Card>
   );

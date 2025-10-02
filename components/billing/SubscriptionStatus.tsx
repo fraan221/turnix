@@ -9,13 +9,14 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Clock, AlertCircle } from "lucide-react";
 
 const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
   if (!endDate) return "";
   const distance = new Date(endDate).getTime() - new Date().getTime();
 
   if (distance < 0) {
-    return "Tu prueba ha finalizado.";
+    return "expirada";
   }
 
   const days = Math.floor(distance / (1000 * 60 * 60 * 24));
@@ -31,7 +32,11 @@ const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
     .toString()
     .padStart(2, "0");
 
-  return `${days} días ${hours}:${minutes}:${seconds}`;
+  if (days === 0) {
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  return `${days}d ${hours}:${minutes}:${seconds}`;
 };
 
 export default function SubscriptionStatus() {
@@ -43,6 +48,7 @@ export default function SubscriptionStatus() {
   );
 
   const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
+  const isExpired = timeLeft === "expirada";
 
   useEffect(() => {
     if (!trialEndsAt || !isInTrial) return;
@@ -57,27 +63,42 @@ export default function SubscriptionStatus() {
   }, [trialEndsAt, isInTrial]);
 
   return (
-    <Card>
-      <CardHeader className="text-center">
+    <Card className="w-full border-2">
+      <CardHeader className="pb-4 space-y-3 text-center">
         {isInTrial ? (
           <>
-            <CardTitle>¡No pierdas tu barbería digital!</CardTitle>
-            <CardDescription>Tu prueba gratuita se vence en:</CardDescription>
+            <div className="flex items-center justify-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              <CardTitle className="text-xl">Prueba gratuita activa</CardTitle>
+            </div>
+            <CardDescription className="text-base">
+              Tu acceso completo termina en:
+            </CardDescription>
           </>
         ) : (
           <>
-            <CardTitle>Tu cuenta está pausada</CardTitle>
-            <CardDescription>
-              Reactivá tu Plan PRO y volvé a gestionar tu barbería como siempre.
+            <div className="flex items-center justify-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <CardTitle className="text-xl">
+                Prueba gratuita finalizada
+              </CardTitle>
+            </div>
+            <CardDescription className="text-base">
+              Suscribite al Plan PRO para seguir gestionando tu barbería.
             </CardDescription>
           </>
         )}
       </CardHeader>
-      {isInTrial && (
-        <CardContent className="flex items-center justify-center">
-          <span className="px-3 py-2 font-mono text-xl font-bold rounded-lg bg-primary/10 text-primary">
-            {timeLeft}
-          </span>
+      {isInTrial && !isExpired && (
+        <CardContent className="flex flex-col items-center justify-center pb-6">
+          <div className="flex items-center gap-3 px-6 py-4 border-2 rounded-lg bg-primary/5 border-primary/20">
+            <span className="font-mono text-3xl font-bold tracking-wider text-primary">
+              {timeLeft}
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Días : Horas : Minutos : Segundos
+          </p>
         </CardContent>
       )}
     </Card>

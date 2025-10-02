@@ -27,7 +27,11 @@ export const getUserForLayout = cache(async () => {
   return prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      subscription: true,
+      subscription: {
+        include: {
+          discountCode: true,
+        },
+      },
     },
   });
 });
