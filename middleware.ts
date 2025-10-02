@@ -21,14 +21,19 @@ export default auth(async (req) => {
 
   if (isLoggedIn) {
     if (!session.user.role) {
-      if (isOnCompleteProfile) return NextResponse.next();
+      if (isOnCompleteProfile) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL("/complete-profile", nextUrl));
     }
 
     const isBarber = session.user.role === Role.BARBER;
     const isUnlinkedBarber = isBarber && !session.user.teamMembership;
 
-    if (isUnlinkedBarber && !isOnConnectPage) {
+    if (isUnlinkedBarber) {
+      if (isOnConnectPage) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL("/dashboard/connect", nextUrl));
     }
 
@@ -40,15 +45,19 @@ export default auth(async (req) => {
       return NextResponse.redirect(new URL("/dashboard", nextUrl));
     }
 
-    if (isOnDashboard && !isOnSubscribePage) {
-      const hasAccess = hasActiveSubscription(session);
-      if (!hasAccess) {
+    const hasAccess = hasActiveSubscription(session);
+    if (!hasAccess) {
+      if (!isOnSubscribePage && !isOnSubscriptionInactivePage) {
         if (session.user.role === Role.OWNER) {
           return NextResponse.redirect(new URL("/subscribe", nextUrl));
         }
         return NextResponse.redirect(
           new URL("/subscription-inactive", nextUrl)
         );
+      }
+    } else {
+      if (isOnSubscribePage || isOnSubscriptionInactivePage) {
+        return NextResponse.redirect(new URL("/dashboard", nextUrl));
       }
     }
   } else {
@@ -68,10 +77,6 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
-    /*
-     * Coincide con todas las rutas que requieren autenticación.
-     * Esto protege todo el dashboard y las páginas de configuración/suscripción.
-     */
     "/dashboard/:path*",
     "/subscribe",
     "/complete-profile",
