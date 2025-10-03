@@ -57,6 +57,10 @@ export default auth(async (req) => {
       }
     } else {
       if (isOnSubscribePage || isOnSubscriptionInactivePage) {
+        const reason = nextUrl.searchParams.get("reason");
+        if (reason === "trial" && isOnSubscribePage) {
+          return NextResponse.next();
+        }
         return NextResponse.redirect(new URL("/dashboard", nextUrl));
       }
     }
