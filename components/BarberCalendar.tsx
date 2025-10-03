@@ -360,6 +360,7 @@ export default function BarberCalendar({
           initialDate={searchParams.get("date") || new Date().toISOString()}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           {...calendarOptions}
+          timeZone="local"
           datesSet={handleDatesSet}
           events={events}
           editable={true}

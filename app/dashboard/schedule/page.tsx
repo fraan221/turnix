@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { getUserForDashboard } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { Separator } from "@/components/ui/separator";
 import {
   Role,
   TimeBlock,
