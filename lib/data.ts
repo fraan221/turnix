@@ -130,6 +130,14 @@ export const getTeamPageData = cache(async () => {
   const barbershop = await prisma.barbershop.findUnique({
     where: { ownerId: session.user.id },
     include: {
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
       teamMembers: {
         include: {
           user: {

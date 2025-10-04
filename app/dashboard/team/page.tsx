@@ -11,7 +11,7 @@ import { AlertTriangle } from "lucide-react";
 async function TeamPageContent() {
   const barbershop = await getTeamPageData();
 
-  if (!barbershop) {
+  if (!barbershop || !barbershop.owner) {
     return (
       <Alert variant="destructive" className="max-w-md mx-auto">
         <AlertTriangle className="w-4 h-4" />
@@ -23,32 +23,23 @@ async function TeamPageContent() {
     );
   }
 
-  if (!barbershop) {
-    return (
-      <Alert variant="destructive" className="max-w-md mx-auto">
-        <AlertTriangle className="w-4 h-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>
-          No se pudo encontrar la información de tu barbería.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   if (!barbershop.teamsEnabled) {
     return <EnableTeamView />;
   }
 
-  const teamMembers = barbershop.teamMembers.map((member) => member.user);
+  const allMembers = [
+    barbershop.owner,
+    ...barbershop.teamMembers.map((member) => member.user),
+  ];
 
   return (
-    <Card className="mx-auto max-w-7xl">
+    <Card className="max-w-6xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Barberos</CardTitle>
         <AddBarberForm />
       </CardHeader>
       <CardContent>
-        <TeamList teamMembers={teamMembers} />
+        <TeamList teamMembers={allMembers} ownerId={barbershop.ownerId} />
       </CardContent>
     </Card>
   );

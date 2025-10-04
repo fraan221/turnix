@@ -17,6 +17,22 @@ type LinkBarberState = {
   error?: string | null;
 };
 
+async function generateUniqueConnectionCode(): Promise<string> {
+  let code: string;
+  let isUnique = false;
+
+  do {
+    code = Math.floor(100000 + Math.random() * 900000).toString();
+    const existingUser = await prisma.user.findUnique({
+      where: { connectionCode: code },
+    });
+    if (!existingUser) {
+      isUnique = true;
+    }
+  } while (!isUnique);
+  return code;
+}
+
 const LinkBarberSchema = z.object({
   connectionCode: z
     .string()
@@ -135,6 +151,65 @@ export async function enableTeamFeature(): Promise<TeamActionState> {
     return {
       error:
         "No se pudo activar la gestión de equipos. Inténtalo de nuevo más tarde.",
+    };
+  }
+}
+
+export async function removeTeamMember(
+  formData: FormData
+): Promise<TeamActionState> {
+  const user = await getUserForSettings();
+  const memberIdToRemove = formData.get("memberId")?.toString();
+
+  if (!user || user.role !== Role.OWNER || !user.ownedBarbershop) {
+    return { error: "Acción no autorizada." };
+  }
+  if (!memberIdToRemove) {
+    return { error: "ID de miembro no proporcionado." };
+  }
+  if (user.id === memberIdToRemove) {
+    return { error: "No puedes eliminarte a ti mismo de tu propio equipo." };
+  }
+
+  const barbershopId = user.ownedBarbershop.id;
+
+  try {
+    const teamMembership = await prisma.team.findFirst({
+      where: {
+        userId: memberIdToRemove,
+        barbershopId: barbershopId,
+      },
+    });
+
+    if (!teamMembership) {
+      return { error: "El miembro no pertenece a tu equipo o no existe." };
+    }
+
+    const newConnectionCode = await generateUniqueConnectionCode();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.team.delete({
+        where: { id: teamMembership.id },
+      });
+
+      await tx.user.update({
+        where: { id: memberIdToRemove },
+        data: { connectionCode: newConnectionCode },
+      });
+    });
+
+    await pusherServer.trigger(`user-${memberIdToRemove}`, "team-removed", {});
+
+    revalidatePath("/dashboard/team");
+    if (user.ownedBarbershop.slug) {
+      revalidateTag(`barber-profile:${user.ownedBarbershop.slug}`);
+    }
+
+    return { success: "¡Miembro eliminado del equipo con éxito!" };
+  } catch (error) {
+    console.error("Error al eliminar el miembro del equipo:", error);
+    return {
+      error: "No se pudo eliminar al miembro. Inténtalo de nuevo más tarde.",
     };
   }
 }

@@ -13,50 +13,65 @@ const slidesContent = [
     title: "Introducción",
   },
   {
-    type: "PROBLEM",
-    title: "¿Te suena familiar?",
-    problems: [
-      {
-        emoji: "📱",
-        text: "WhatsApp que no para de sonar",
-      },
-      {
-        emoji: "💸",
-        text: "Clientes que faltan sin avisar",
-      },
-      {
-        emoji: "⏰",
-        text: "Horas perdidas organizando turnos",
-      },
+    type: "AGENDA",
+    title: "Temario",
+    items: [
+      "Cómo crear tu cuenta",
+      "Cómo crear servicios",
+      "Configurar horarios de trabajo",
+      "Uso de la agenda eficientemente",
+      "Optimizar tu perfil público (SEO)",
+      "Cómo reservan tus clientes",
     ],
   },
   {
-    type: "SOLUTION",
-    title: "Turnix resuelve esto",
-    benefits: [
-      "Tu agenda se llena sola, 24/7",
-      "Recordatorios automáticos = menos ausencias",
-      "Más tiempo para cortar, menos tiempo gestionando",
-    ],
+    type: "DEMO_SECTION",
+    title: "1. Crear tu cuenta",
+    subtitle: "Registrate en menos de 3 minutos",
+  },
+  {
+    type: "DEMO_SECTION",
+    title: "2. Crear servicios",
+    subtitle: "Corte, barba, afeitado y lo que ofrezcas",
+  },
+  {
+    type: "DEMO_SECTION",
+    title: "3. Configurar horarios",
+    subtitle: "Define cuándo trabajás y cuándo no",
+  },
+  {
+    type: "DEMO_SECTION",
+    title: "4. Usar la agenda",
+    subtitle: "Gestiona tus turnos día a día",
+  },
+  {
+    type: "DEMO_SECTION",
+    title: "5. Optimizar tu perfil",
+    subtitle: "Mejorá tu visibilidad en Google",
+  },
+  {
+    type: "DEMO_SECTION",
+    title: "6. Reservas de clientes",
+    subtitle: "Cómo funciona desde el lado del cliente",
   },
   {
     type: "OFFER",
     title: "Oferta Exclusiva del Evento",
-    subtitle: "Solo para los asistentes de hoy",
+    subtitle: "Solo para asistentes de hoy",
     originalPrice: 9900,
-    finalPrice: 7920,
+    finalPrice: 7900,
     discount: "20% OFF",
   },
   {
     type: "QR",
-    title: "Probá gratis por 14 días",
-    subtitle: "Escaneá el código y empezá ahora",
+    title: "Registrate ahora",
+    subtitle: "Escaneá y empezá tu prueba gratis de 14 días",
     qrValue: "https://turnix.app/register",
   },
   {
     type: "FINAL",
-    title: "¿Hablamos?",
-    subtitle: "Estamos para ayudarte a hacer crecer tu barbería",
+    title: "Gracias por participar",
+    subtitle: "Ronda de preguntas",
     contact: "+54 9 11 6054-2164",
   },
 ];
@@ -111,48 +126,39 @@ export default function PresentationClient() {
           </div>
         );
 
-      case "PROBLEM":
+      case "AGENDA":
         return (
-          <div className="space-y-16">
+          <div className="space-y-12">
             <h1 className="font-bold text-7xl font-heading">
               {activeSlide.title}
             </h1>
-            <div className="grid gap-8">
-              {activeSlide.problems?.map((problem, index) => (
+            <div className="grid gap-4">
+              {activeSlide.items?.map((item, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-6 p-8 border-l-8 rounded-lg bg-white/5 border-primary"
+                  className="flex items-center gap-6 p-6 rounded-lg bg-white/5"
                 >
-                  <span className="text-6xl">{problem.emoji}</span>
-                  <p className="text-4xl font-medium">{problem.text}</p>
+                  <div className="flex items-center justify-center rounded-full w-14 h-14 bg-primary shrink-0">
+                    <span className="text-2xl font-bold">{index + 1}</span>
+                  </div>
+                  <p className="text-3xl font-medium">{item}</p>
                 </div>
               ))}
             </div>
           </div>
         );
 
-      case "SOLUTION":
+      case "DEMO_SECTION":
         return (
-          <div className="space-y-16">
-            <h1 className="font-bold text-7xl font-heading text-primary">
-              {activeSlide.title}
-            </h1>
-            <div className="space-y-6">
-              {activeSlide.benefits?.map((benefit, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-4 p-6 rounded-lg bg-primary/10"
-                >
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full shrink-0 bg-primary">
-                    <span className="text-2xl font-bold text-white">
-                      {index + 1}
-                    </span>
-                  </div>
-                  <p className="text-3xl font-medium leading-relaxed">
-                    {benefit}
-                  </p>
-                </div>
-              ))}
+          <div className="flex flex-col items-center justify-center space-y-8">
+            <div className="space-y-6 text-center">
+              <h1 className="font-bold text-7xl font-heading text-primary">
+                {activeSlide.title}
+              </h1>
+              <p className="text-4xl text-gray-300">{activeSlide.subtitle}</p>
+            </div>
+            <div className="px-8 py-4 mt-8 text-2xl font-medium border-2 rounded-lg text-primary border-primary/30">
+              Demo en vivo
             </div>
           </div>
         );
@@ -242,7 +248,7 @@ export default function PresentationClient() {
           onClick={goToPreviousSlide}
           className="w-12 h-12"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-6 h-6 text-black" />
         </Button>
         <span className="text-xl font-semibold">
           {currentSlide + 1} / {totalSlides}
@@ -253,7 +259,7 @@ export default function PresentationClient() {
           onClick={goToNextSlide}
           className="w-12 h-12"
         >
-          <ChevronRight className="w-6 h-6" />
+          <ChevronRight className="w-6 h-6 text-black" />
         </Button>
       </div>
     </div>
