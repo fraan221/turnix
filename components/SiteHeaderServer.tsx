@@ -9,13 +9,16 @@ export async function SiteHeaderServer() {
     redirect("/login");
   }
 
-  const slug =
-    userWithDetails.ownedBarbershop?.slug ||
-    userWithDetails.teamMembership?.barbershop?.slug ||
-    null;
+  const barbershop =
+    userWithDetails.ownedBarbershop ||
+    userWithDetails.teamMembership?.barbershop;
+
+  const slug = barbershop?.slug || null;
+  const logoUrl = barbershop?.image || null;
 
   const userForHeader = {
     slug: slug,
+    logoUrl: logoUrl,
   };
 
   return <SiteHeader user={userForHeader} />;

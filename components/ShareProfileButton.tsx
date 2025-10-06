@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Share2, Link, Check } from "lucide-react";
+import { useState, useRef } from "react";
+import { Share2, Link, Check, Download } from "lucide-react";
 import { toast } from "sonner";
+import { QRCodeCanvas } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +16,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getBaseUrl } from "@/lib/get-base-url";
+import { Separator } from "@/components/ui/separator";
 
 interface ShareProfileButtonProps {
   slug: string;
+  logoUrl: string | null;
 }
 
-export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
+export function ShareProfileButton({ slug, logoUrl }: ShareProfileButtonProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
   const profileUrl = `${getBaseUrl()}/${slug}`;
 
   const copyToClipboard = () => {
@@ -42,6 +46,36 @@ export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
       });
   };
 
+  const downloadQRCode = () => {
+    if (qrCodeRef.current) {
+      const canvas = qrCodeRef.current.querySelector("canvas");
+      if (canvas) {
+        const pngUrl = canvas
+          .toDataURL("image/png")
+          .replace("image/png", "image/octet-stream");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = `${slug}-qr-code.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        toast.success("QR Descargado", {
+          description: "La imagen se guardó en tu dispositivo.",
+        });
+      }
+    }
+  };
+
+  const imageSettings = logoUrl
+    ? {
+        src: logoUrl,
+        height: 40,
+        width: 40,
+        excavate: true,
+        crossOrigin: "anonymous" as const,
+      }
+    : undefined;
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -53,7 +87,7 @@ export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
         <DialogHeader>
           <DialogTitle>Compartí tu perfil público</DialogTitle>
           <DialogDescription>
-            Este es el link que tus clientes usan para reservar turnos con vos.
+            Tus clientes pueden escanear el QR o usar el link para reservar.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
@@ -67,23 +101,37 @@ export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
             <Button size="sm" onClick={copyToClipboard} className="shrink-0">
               {isCopied ? (
                 <>
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 mr-2" />
                   Copiado
                 </>
               ) : (
                 <>
-                  <Link className="w-4 h-4" />
+                  <Link className="w-4 h-4 mr-2" />
                   Copiar
                 </>
               )}
             </Button>
           </div>
-          <div className="p-3 border rounded-lg bg-muted/50">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Tip:</span> Poné
-              este link en tu bio de Instagram, en tu estado de WhatsApp o
-              enviáselo directo a tus clientes.
-            </p>
+
+          <Separator />
+
+          <div className="flex flex-col items-center gap-4">
+            <div
+              ref={qrCodeRef}
+              className="p-4 bg-white border rounded-lg shadow-sm"
+            >
+              <QRCodeCanvas
+                value={profileUrl}
+                size={220}
+                level={"H"}
+                includeMargin={true}
+                imageSettings={imageSettings}
+              />
+            </div>
+            <Button onClick={downloadQRCode} className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Descargar QR
+            </Button>
           </div>
         </div>
       </DialogContent>
