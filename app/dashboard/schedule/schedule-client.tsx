@@ -2,8 +2,14 @@
 
 import { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { TimeBlock, Role } from "@prisma/client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { TimeBlock } from "@prisma/client";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus } from "lucide-react";
+import { Plus, CalendarX } from "lucide-react";
 import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
@@ -89,32 +95,56 @@ export function ScheduleClient({
   const [isModalOpen, setModalOpen] = useState(false);
 
   return (
-    <>
-      <div>
-        {isOwner ? (
-          <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
-        ) : (
-          <ReadOnlyScheduleView workingHours={workingHours} />
-        )}
-      </div>
+    <div className="max-w-6xl pb-6 mx-auto space-y-6">
+      <section className="space-y-4">
+        <div className="px-4 md:px-0">
+          {isOwner ? (
+            <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
+          ) : (
+            <ReadOnlyScheduleView workingHours={workingHours} />
+          )}
+        </div>
+      </section>
 
-      <Separator />
+      <Separator className="mx-4 md:mx-0" />
 
-      <Card className="max-w-6xl mx-auto">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Bloqueos Horarios</CardTitle>
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            Crear bloqueo
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <TimeBlockList timeBlocks={initialTimeBlocks} />
-        </CardContent>
-      </Card>
+      <section className="px-4 md:px-0">
+        <Card className="border-0 shadow-none md:border md:shadow-sm">
+          <CardHeader className="px-0 md:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarX className="w-5 h-5 text-muted-foreground" />
+                  Bloqueos de horario
+                </CardTitle>
+                <CardDescription className="text-sm sr-only">
+                  {isOwner
+                    ? "Bloqueá horarios específicos cuando no puedas atender (vacaciones, eventos, etc.)"
+                    : "Horarios no disponibles para agendar turnos"}
+                </CardDescription>
+              </div>
+
+              {isOwner && (
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  size="sm"
+                  className="w-full sm:w-auto shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="ml-2">Crear bloqueo</span>
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="px-0 md:px-6">
+            <TimeBlockList timeBlocks={initialTimeBlocks} />
+          </CardContent>
+        </Card>
+      </section>
 
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[480px] rounded-lg">
           {isModalOpen && (
             <Suspense fallback={<ModalContentSkeleton />}>
               <AddTimeBlockModalContent onClose={() => setModalOpen(false)} />
@@ -122,6 +152,6 @@ export function ScheduleClient({
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

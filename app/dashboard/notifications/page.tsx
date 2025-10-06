@@ -20,7 +20,7 @@ async function NotificationsPageContent() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="max-w-6xl mx-auto">
       <NotificationList initialNotifications={notifications} />
     </div>
   );

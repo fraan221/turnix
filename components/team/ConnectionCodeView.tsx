@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clipboard, ClipboardCheck } from "lucide-react";
+import { Clipboard, ClipboardCheck, Users, Zap } from "lucide-react";
 
 interface ConnectionCodeViewProps {
   connectionCode: string;
@@ -74,42 +74,83 @@ export function ConnectionCodeView({
     navigator.clipboard.writeText(connectionCode);
     setIsCopied(true);
     toast.success("¡Código copiado!", {
-      description: "Ya puedes compartirlo con el dueño de la barbería.",
+      description: "Ahora solo falta compartirlo con tu jefe.",
     });
     setTimeout(() => setIsCopied(false), 2500);
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-      <Card className="w-full max-w-lg text-center">
-        <CardHeader>
-          <CardTitle className="text-3xl">¡Ya casi estás listo!</CardTitle>
-          <CardDescription className="pt-2 text-base">
-            Para empezar a usar tu agenda, el dueño de la barbería debe añadirte
-            a su equipo.
+    <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4 py-6">
+      <Card className="w-full max-w-md border-2">
+        <CardHeader className="pb-4 space-y-3">
+          <div className="flex justify-center">
+            <div className="p-3 rounded-full bg-primary/10">
+              <Users className="w-8 h-8 text-primary" />
+            </div>
+          </div>
+
+          <CardTitle className="text-2xl font-bold leading-tight text-center sm:text-3xl">
+            Un paso más para empezar
+          </CardTitle>
+
+          <CardDescription className="text-base leading-relaxed text-center sm:text-lg">
+            Necesitás que el dueño de la barbería te agregue a su equipo
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-muted-foreground">
-            Comparte el siguiente código con el dueño:
-          </p>
-          <div className="flex items-center justify-center p-4 border-2 border-dashed rounded-lg bg-muted">
-            <p className="font-mono text-4xl font-bold tracking-widest text-primary">
-              {connectionCode}
+
+        <CardContent className="pb-6 space-y-5">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-center text-foreground/80">
+              Compartí este código con tu jefe:
+            </p>
+
+            <div className="relative">
+              <div className="flex items-center justify-center p-6 border-2 border-dashed sm:p-8 border-primary/30 rounded-xl bg-primary/5">
+                <p className="font-mono text-4xl sm:text-5xl font-bold tracking-[0.3em] text-primary select-all">
+                  {connectionCode}
+                </p>
+              </div>
+
+              <div className="absolute -translate-x-1/2 -top-3 left-1/2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-background border border-primary/20 rounded-full text-primary shadow-sm">
+                  <Zap className="w-3 h-3" />
+                  Código único
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            size="lg"
+            onClick={handleCopy}
+            className="w-full h-12 text-base font-semibold transition-all shadow-md hover:shadow-lg"
+          >
+            {isCopied ? (
+              <>
+                <ClipboardCheck className="w-5 h-5 mr-2" />
+                ¡Copiado!
+              </>
+            ) : (
+              <>
+                <Clipboard className="w-5 h-5 mr-2" />
+                Copiar Código
+              </>
+            )}
+          </Button>
+
+          <div className="pt-2 space-y-2">
+            <div className="p-3 border rounded-lg bg-muted/50 border-muted-foreground/10">
+              <p className="text-xs leading-relaxed text-center sm:text-sm text-muted-foreground">
+                💡 Tip: Podés enviar el código por WhatsApp o mostrarle la
+                pantalla directamente
+              </p>
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground/70">
+              Esta pantalla se actualizará automáticamente cuando te agreguen al
+              equipo
             </p>
           </div>
-          <Button size="lg" onClick={handleCopy} className="w-full max-w-xs">
-            {isCopied ? (
-              <ClipboardCheck className="w-5 h-5 mr-2" />
-            ) : (
-              <Clipboard className="w-5 h-5 mr-2" />
-            )}
-            {isCopied ? "Copiado" : "Copiar Código"}
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Una vez que te hayan añadido al equipo, esta pantalla se actualizará
-            automáticamente.
-          </p>
         </CardContent>
       </Card>
     </div>

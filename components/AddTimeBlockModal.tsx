@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useFormState, useFormStatus } from "react-dom";
+import { toast } from "sonner";
+import { Loader2, CalendarX } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
-import { toast } from "sonner";
 import {
   DialogHeader,
   DialogTitle,
@@ -14,7 +15,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Loader2Icon } from "lucide-react";
 
 interface AddTimeBlockModalContentProps {
   onClose: () => void;
@@ -23,14 +23,18 @@ interface AddTimeBlockModalContentProps {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-[160px]">
+    <Button
+      type="submit"
+      disabled={pending}
+      className="w-full sm:w-auto min-w-[160px]"
+    >
       {pending ? (
         <>
-          <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           Bloqueando...
         </>
       ) : (
-        "Bloquear horario"
+        "Bloquear Horario"
       )}
     </Button>
   );
@@ -44,7 +48,9 @@ export function AddTimeBlockModalContent({
 
   useEffect(() => {
     if (state?.success) {
-      toast.success("¡Éxito!", { description: state.success });
+      toast.success("¡Horario bloqueado!", {
+        description: "Los clientes no podrán reservar en este período.",
+      });
       formRef.current?.reset();
       onClose();
     }
@@ -58,7 +64,9 @@ export function AddTimeBlockModalContent({
           errorMessage = errorValues[0] as string;
         }
       }
-      toast.error("Error", { description: errorMessage });
+      toast.error("No se pudo bloquear el horario", {
+        description: errorMessage,
+      });
     }
   }, [state, onClose]);
 
@@ -83,45 +91,80 @@ export function AddTimeBlockModalContent({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Nuevo Bloqueo</DialogTitle>
-        <DialogDescription className="sr-only">
-          Define un período en el que no estarás disponible. Los clientes no
-          podrán reservar en este rango.
+      <DialogHeader className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-destructive/10">
+            <CalendarX className="w-5 h-5 text-destructive" />
+          </div>
+          <DialogTitle className="text-xl sm:text-2xl">
+            Bloquear Horario
+          </DialogTitle>
+        </div>
+        <DialogDescription className="text-sm text-muted-foreground">
+          Definí un período en el que no estarás disponible para atender
+          clientes
         </DialogDescription>
       </DialogHeader>
-      <form ref={formRef} action={clientAction} className="py-2 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+
+      <form ref={formRef} action={clientAction} className="py-4 space-y-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="startDate">Fecha de Inicio</Label>
+            <Label htmlFor="startDate" className="text-sm font-medium">
+              Fecha de inicio
+            </Label>
             <Input id="startDate" name="startDate" type="date" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="endDate">Fecha de Fin</Label>
+            <Label htmlFor="endDate" className="text-sm font-medium">
+              Fecha de fin
+            </Label>
             <Input id="endDate" name="endDate" type="date" required />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="startTime">Hora de Inicio</Label>
+            <Label htmlFor="startTime" className="text-sm font-medium">
+              Hora de inicio
+            </Label>
             <Input id="startTime" name="startTime" type="time" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="endTime">Hora de Fin</Label>
+            <Label htmlFor="endTime" className="text-sm font-medium">
+              Hora de fin
+            </Label>
             <Input id="endTime" name="endTime" type="time" required />
           </div>
         </div>
+
         <div className="space-y-2">
-          <Label htmlFor="reason">Razón (Opcional)</Label>
+          <Label htmlFor="reason" className="text-sm font-medium">
+            Razón{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (opcional)
+            </span>
+          </Label>
           <Input
             id="reason"
             name="reason"
-            placeholder="Ej: Vacaciones, Viaje de Trabajo..."
+            placeholder="Ej: Vacaciones, día libre, evento personal"
           />
         </div>
-        <DialogFooter className="pt-4">
+
+        <div className="p-3 border rounded-lg bg-muted/50 border-muted-foreground/10">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            💡 Tip: Durante este período, los clientes no podrán reservar turnos
+            en tu agenda
+          </p>
+        </div>
+
+        <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row">
           <DialogClose asChild>
-            <Button type="button" variant="secondary">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
               Cancelar
             </Button>
           </DialogClose>

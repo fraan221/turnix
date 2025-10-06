@@ -75,7 +75,6 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
               key={member.id}
               className="relative p-4 transition-colors border rounded-lg bg-card hover:border-primary/50"
             >
-              {/* Badge de dueño en esquina superior derecha */}
               {isOwner && (
                 <div className="absolute top-3 right-3">
                   <Badge variant="secondary" className="gap-1">
@@ -105,7 +104,6 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
                 </div>
               </div>
 
-              {/* Botón de eliminar */}
               {!isOwner && (
                 <div className="pt-4 mt-4 border-t">
                   <Button

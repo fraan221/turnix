@@ -1,15 +1,8 @@
+import { notFound } from "next/navigation";
+import { Role } from "@prisma/client";
 import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import EditServiceForm from "@/components/EditServiceForm";
-import { Role } from "@prisma/client";
 
 interface EditServicePageProps {
   params: { serviceId: string };
@@ -24,8 +17,7 @@ export default async function EditServicePage({
   }
 
   const barbershopId =
-    currentUser?.ownedBarbershop?.id ||
-    currentUser?.teamMembership?.barbershopId;
+    currentUser.ownedBarbershop?.id || currentUser.teamMembership?.barbershopId;
 
   if (!barbershopId) {
     return notFound();
@@ -46,18 +38,8 @@ export default async function EditServicePage({
   }
 
   return (
-    <div className="max-w-xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Editar Servicio</CardTitle>
-          <CardDescription>
-            Realiza los cambios necesarios y haz clic en guardar.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EditServiceForm service={service} />
-        </CardContent>
-      </Card>
+    <div className="w-full max-w-3xl px-4 py-6 mx-auto sm:px-6 sm:py-8">
+      <EditServiceForm service={service} />
     </div>
   );
 }

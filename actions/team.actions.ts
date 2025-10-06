@@ -188,6 +188,41 @@ export async function removeTeamMember(
     const newConnectionCode = await generateUniqueConnectionCode();
 
     await prisma.$transaction(async (tx) => {
+      await tx.booking.updateMany({
+        where: {
+          barberId: memberIdToRemove,
+          barbershopId: barbershopId,
+          startTime: {
+            gte: new Date(),
+          },
+        },
+        data: {
+          status: "CANCELLED",
+        },
+      });
+
+      await tx.service.deleteMany({
+        where: {
+          barberId: memberIdToRemove,
+          barbershopId: barbershopId,
+        },
+      });
+
+      await tx.workingHours.deleteMany({
+        where: {
+          barberId: memberIdToRemove,
+        },
+      });
+
+      await tx.timeBlock.deleteMany({
+        where: {
+          barberId: memberIdToRemove,
+          startTime: {
+            gte: new Date(),
+          },
+        },
+      });
+
       await tx.team.delete({
         where: { id: teamMembership.id },
       });

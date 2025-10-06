@@ -1,13 +1,6 @@
 import { getCurrentUser } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import EditTimeBlockForm from "@/components/EditTimeBlockForm";
 
 interface EditTimeBlockPageProps {
@@ -37,18 +30,8 @@ export default async function EditTimeBlockPage({
   }
 
   return (
-    <div className="max-w-xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Editar Bloqueo de Tiempo</CardTitle>
-          <CardDescription>
-            Ajusta las fechas, horas o la razón de este bloqueo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EditTimeBlockForm timeBlock={timeBlock} />
-        </CardContent>
-      </Card>
+    <div className="container max-w-2xl px-4 py-6 mx-auto sm:px-6 sm:py-8">
+      <EditTimeBlockForm timeBlock={timeBlock} />
     </div>
   );
 }

@@ -1,108 +1,87 @@
 "use client";
-// NOTA: TODO - AGREGAR LA ELIMINACION DE UN SERVICIO PERO PARA MAS ADELANTE
+
 import { Service } from "@prisma/client";
-import { Button } from "./ui/button";
-// import { deleteService } from "@/actions/service.actions";
-// import { useTransition } from "react";
-// import { toast } from "sonner";
-import { Pencil } from "lucide-react";
-// import { Trash2 } from "lucide-react";
-import { formatPrice, formatDuration } from "@/lib/utils";
 import Link from "next/link";
-// import {
-//   AlertDialog,
-//   AlertDialogAction,
-//   AlertDialogCancel,
-//   AlertDialogContent,
-//   AlertDialogDescription,
-//   AlertDialogFooter,
-//   AlertDialogHeader,
-//   AlertDialogTitle,
-//   AlertDialogTrigger,
-// } from "@/components/ui/alert-dialog";
+import { Button } from "./ui/button";
+import { Pencil, Scissors, Clock, DollarSign } from "lucide-react";
+import { formatPrice, formatDuration } from "@/lib/utils";
 
-function ServiceItem({ service }: { service: Service }) {
-  // const [isPending, startTransition] = useTransition();
+interface ServiceItemProps {
+  service: Service;
+}
 
-  // const handleDelete = () => {
-  //   startTransition(async () => {
-  //     const result = await deleteService(service.id);
-  //     if (result?.success) {
-  //       toast.success("¡Éxito!", { description: result.success });
-  //     }
-  //     if (result?.error) {
-  //       toast.error("Error", { description: result.error });
-  //     }
-  //   });
-  // };
-
+function ServiceItem({ service }: ServiceItemProps) {
   return (
-    <li className="flex items-center justify-between p-4 border rounded-lg">
-      <div>
-        <p className="font-semibold">{service.name}</p>
+    <li className="relative flex flex-col p-4 transition-all border-2 group rounded-xl hover:border-primary/50 bg-card">
+      <div className="flex-1 space-y-2">
+        <h3 className="pr-12 text-base font-semibold sm:text-lg text-foreground">
+          {service.name}
+        </h3>
 
         {service.description && (
-          <p className="mt-1 text-xs text-gray-500">{service.description}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">
+            {service.description}
+          </p>
         )}
 
-        <div className="flex items-center mt-1 text-sm text-gray-600 gap-x-2">
-          <span>{formatPrice(service.price)}</span>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+            <DollarSign className="w-4 h-4 text-primary" />
+            <span>{formatPrice(service.price)}</span>
+          </div>
+
           {service.durationInMinutes && service.durationInMinutes > 0 && (
             <>
-              <span className="text-gray-400">•</span>
-              <span>{formatDuration(service.durationInMinutes)}</span>
+              <span className="text-muted-foreground/40">•</span>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span>{formatDuration(service.durationInMinutes)}</span>
+              </div>
             </>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-x-2">
-        <Link href={`/dashboard/services/${service.id}/edit`}>
-          <Button variant="outline" size="icon">
-            <Pencil className="w-4 h-4" />
-          </Button>
-        </Link>
 
-        {/* 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="icon">
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción no se puede deshacer. Esto eliminará permanentemente
-                el servicio
-                <span className="font-semibold"> "{service.name}"</span>.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isPending}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isPending ? "Eliminando..." : "Sí, eliminar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        */}
-      </div>
+      <Link
+        href={`/dashboard/services/${service.id}/edit`}
+        className="absolute top-4 right-4"
+      >
+        <Button
+          variant="outline"
+          size="icon"
+          className="transition-all h-9 w-9 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+        >
+          <Pencil className="w-4 h-4" />
+          <span className="sr-only">Editar servicio {service.name}</span>
+        </Button>
+      </Link>
     </li>
   );
 }
 
-export default function ServiceList({ services }: { services: Service[] }) {
+interface ServiceListProps {
+  services: Service[];
+}
+
+export default function ServiceList({ services }: ServiceListProps) {
   if (services.length === 0) {
-    return <p>Aún no has añadido ningún servicio.</p>;
+    return (
+      <div className="flex flex-col items-center justify-center px-4 py-12 border-2 border-dashed rounded-xl bg-muted/30">
+        <div className="p-4 mb-4 rounded-full bg-primary/10">
+          <Scissors className="w-8 h-8 text-primary" />
+        </div>
+        <h3 className="mb-2 text-lg font-semibold text-center">
+          Todavía no tenés servicios
+        </h3>
+        <p className="max-w-sm text-sm text-center text-muted-foreground">
+          Creá tu primer servicio para que tus clientes puedan reservar turnos
+        </p>
+      </div>
+    );
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {services.map((service) => (
         <ServiceItem key={service.id} service={service} />
       ))}

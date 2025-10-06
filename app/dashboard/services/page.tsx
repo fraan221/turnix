@@ -88,7 +88,7 @@ export default async function ServicesPage() {
   }
 
   return (
-    <div className="mx-auto space-y-6 max-w-7xl">
+    <div className="max-w-6xl mx-auto space-y-6">
       <Suspense fallback={<ServiceListSkeleton />}>
         <ServicesClient
           userId={data.user.id}

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
 import { createService } from "@/actions/service.actions";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,6 @@ import {
   DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
-import React from "react";
 
 interface AddServiceModalContentProps {
   onClose: () => void;
@@ -33,8 +32,7 @@ const formatPrice = (value: string): string => {
   if (cleanValue.length > 6) {
     return formatPrice(cleanValue.slice(0, 6));
   }
-  const formattedValue = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return formattedValue;
+  return cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
 const cleanPriceValue = (formattedValue: string): string => {
@@ -84,121 +82,155 @@ export function AddServiceModalContent({
 
       const result = await createService(serviceData);
       if (result?.success) {
-        toast.success("¡Éxito!", { description: result.success });
+        toast.success("¡Servicio creado!", {
+          description: "Ya está disponible para agendar turnos.",
+        });
         reset();
         setPriceDisplay("");
         onClose();
       }
       if (result?.error) {
-        toast.error("Error", { description: result.error });
+        toast.error("No se pudo crear el servicio", {
+          description: result.error,
+        });
       }
     });
   };
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Nuevo Servicio</DialogTitle>
-        <DialogDescription className="sr-only">
-          Completa los datos para añadir un nuevo servicio a tu lista.
+      <DialogHeader className="space-y-3">
+        <DialogTitle className="text-xl sm:text-2xl">
+          Crear Nuevo Servicio
+        </DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">
+          Completá los datos del servicio que ofrecés a tus clientes
         </DialogDescription>
       </DialogHeader>
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-2">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Nombre del Servicio</Label>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="py-4 space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="name" className="text-sm font-medium">
+            Nombre del servicio
+          </Label>
           <Input
             id="name"
-            placeholder="Ej: Corte Fade"
+            placeholder="Ej: Corte, Ribete, Afeitado tradicional"
             {...register("name")}
-            className={errors.name ? "border-red-500 focus:border-red-500" : ""}
+            className={errors.name ? "border-destructive" : ""}
           />
           {errors.name && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="w-1 h-1 rounded-full bg-destructive" />
               {errors.name.message}
             </p>
           )}
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="price">Precio ($)</Label>
-          <Input
-            id="price"
-            type="text"
-            placeholder="Ej: 10.000"
-            value={priceDisplay}
-            onChange={handlePriceChange}
-            onBlur={() => {
-              const cleanValue = cleanPriceValue(priceDisplay);
-              setValue("price", cleanValue);
-              trigger("price");
-            }}
-            className={
-              errors.price ? "border-red-500 focus:border-red-500" : ""
-            }
-          />
-          {errors.price && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <span className="w-1 h-1 bg-red-500 rounded-full"></span>
-              {errors.price.message}
-            </p>
-          )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="price" className="text-sm font-medium">
+              Precio
+            </Label>
+            <div className="relative">
+              <span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="price"
+                type="text"
+                placeholder="10.000"
+                value={priceDisplay}
+                onChange={handlePriceChange}
+                onBlur={() => {
+                  const cleanValue = cleanPriceValue(priceDisplay);
+                  setValue("price", cleanValue);
+                  trigger("price");
+                }}
+                className={`pl-7 ${errors.price ? "border-destructive" : ""}`}
+              />
+            </div>
+            {errors.price && (
+              <p className="flex items-center gap-1.5 text-xs text-destructive">
+                <span className="w-1 h-1 rounded-full bg-destructive" />
+                {errors.price.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="durationInMinutes" className="text-sm font-medium">
+              Duración{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                (opcional)
+              </span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="durationInMinutes"
+                type="number"
+                placeholder="30"
+                {...register("durationInMinutes")}
+                className={errors.durationInMinutes ? "border-destructive" : ""}
+              />
+              <span className="absolute text-xs -translate-y-1/2 right-3 top-1/2 text-muted-foreground">
+                min
+              </span>
+            </div>
+            {errors.durationInMinutes && (
+              <p className="flex items-center gap-1.5 text-xs text-destructive">
+                <span className="w-1 h-1 rounded-full bg-destructive" />
+                {errors.durationInMinutes.message}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="durationInMinutes">
-            Duración (minutos) (Opcional)
+
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium">
+            Descripción{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (opcional)
+            </span>
           </Label>
-          <Input
-            id="durationInMinutes"
-            type="number"
-            placeholder="Ej: 30"
-            {...register("durationInMinutes")}
-            className={
-              errors.durationInMinutes
-                ? "border-red-500 focus:border-red-500"
-                : ""
-            }
-          />
-          {errors.durationInMinutes && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <span className="w-1 h-1 bg-red-500 rounded-full"></span>
-              {errors.durationInMinutes.message}
-            </p>
-          )}
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="description">Descripción (Opcional)</Label>
           <Textarea
             id="description"
-            placeholder="Describe brevemente el servicio..."
+            placeholder="Ej: Incluye lavado, productos y secado"
+            rows={3}
             {...register("description")}
-            className={
-              errors.description ? "border-red-500 focus:border-red-500" : ""
-            }
+            className={errors.description ? "border-destructive" : ""}
           />
           {errors.description && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <span className="w-1 h-1 rounded-full bg-destructive" />
               {errors.description.message}
             </p>
           )}
         </div>
-        <DialogFooter>
+
+        {/* Footer con botones */}
+        <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row">
           <DialogClose asChild>
-            <Button type="button" variant="secondary">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
               Cancelar
             </Button>
           </DialogClose>
           <Button
             type="submit"
             disabled={isSubmitting || isPending || !isValid}
-            className="min-w-[120px]"
+            className="w-full sm:w-auto min-w-[140px]"
           >
             {isSubmitting || isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creando...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creando...
               </>
             ) : (
-              "Crear servicio"
+              "Crear Servicio"
             )}
           </Button>
         </DialogFooter>
