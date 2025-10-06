@@ -24,6 +24,7 @@ const pageTitles: { [key: string]: string } = {
 interface SiteHeaderProps {
   user: {
     slug: string | null;
+    logoUrl: string | null;
   };
 }
 
@@ -58,7 +59,9 @@ export function SiteHeader({ user }: SiteHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {user.slug && <ShareProfileButton slug={user.slug} />}
+          {user.slug && (
+            <ShareProfileButton slug={user.slug} logoUrl={user.logoUrl} />
+          )}
           <NotificationBell />
         </div>
       </div>
