@@ -29,15 +29,24 @@ export function formatDuration(totalMinutes: number) {
 }
 
 export function formatPhoneNumberForWhatsApp(phone: string) {
+  if (!phone) return "";
+
   let cleaned = phone.replace(/\D/g, "");
 
   if (cleaned.startsWith("54")) {
     if (cleaned.length > 9 && !cleaned.startsWith("549")) {
       cleaned = "549" + cleaned.substring(2);
     }
-  } else {
-    cleaned = "549" + cleaned;
+    return cleaned;
   }
 
-  return cleaned;
+  if (cleaned.startsWith("0")) {
+    cleaned = cleaned.substring(1);
+  }
+
+  if (cleaned.startsWith("15")) {
+    cleaned = cleaned.substring(2);
+  }
+
+  return "549" + cleaned;
 }
