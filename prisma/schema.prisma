@@ -35,8 +35,9 @@ model User {
   timeBlocks   TimeBlock[]
   Notification Notification[]
 
-  ownedBarbershop Barbershop? @relation("BarbershopOwner")
-  teamMembership  Team?
+  ownedBarbershop  Barbershop?        @relation("BarbershopOwner")
+  teamMembership   Team?
+  PushSubscription PushSubscription[]
 }
 
 model Barbershop {
@@ -258,4 +259,17 @@ model DiscountCode {
   createdAt      DateTime @default(now())
 
   subscriptions Subscription[]
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@index([userId])
 }

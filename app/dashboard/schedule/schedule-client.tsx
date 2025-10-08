@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { TimeBlock } from "@prisma/client";
+import { Plus, CalendarX } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -21,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, CalendarX } from "lucide-react";
 import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
 import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
@@ -35,49 +35,51 @@ const AddTimeBlockModalContent = dynamic(
   { ssr: false }
 );
 
-const ModalContentSkeleton = () => (
-  <>
-    <DialogHeader>
-      <DialogTitle>
-        <Skeleton className="w-48 h-6" />
-      </DialogTitle>
-      <DialogDescription>
-        <Skeleton className="w-full h-4" />
-        <Skeleton className="w-10/12 h-4 mt-1" />
-      </DialogDescription>
-    </DialogHeader>
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Skeleton className="w-24 h-4" />
-          <Skeleton className="w-full h-10" />
+function ModalContentSkeleton() {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          <Skeleton className="w-48 h-6" />
+        </DialogTitle>
+        <DialogDescription>
+          <Skeleton className="w-full h-4" />
+          <Skeleton className="w-10/12 h-4 mt-1" />
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-24 h-4" />
+            <Skeleton className="w-full h-10" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="w-24 h-4" />
+            <Skeleton className="w-full h-10" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-24 h-4" />
+            <Skeleton className="w-full h-10" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="w-24 h-4" />
+            <Skeleton className="w-full h-10" />
+          </div>
         </div>
         <div className="space-y-2">
           <Skeleton className="w-24 h-4" />
           <Skeleton className="w-full h-10" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Skeleton className="w-24 h-4" />
-          <Skeleton className="w-full h-10" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="w-24 h-4" />
-          <Skeleton className="w-full h-10" />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="w-24 h-4" />
-        <Skeleton className="w-full h-10" />
-      </div>
-    </div>
-    <DialogFooter className="pt-4">
-      <Skeleton className="w-24 h-10" />
-      <Skeleton className="w-[160px] h-10" />
-    </DialogFooter>
-  </>
-);
+      <DialogFooter className="pt-4">
+        <Skeleton className="w-24 h-10" />
+        <Skeleton className="w-[160px] h-10" />
+      </DialogFooter>
+    </>
+  );
+}
 
 interface ScheduleClientProps {
   isOwner: boolean;
@@ -95,56 +97,55 @@ export function ScheduleClient({
   const [isModalOpen, setModalOpen] = useState(false);
 
   return (
-    <div className="max-w-6xl pb-6 mx-auto space-y-6">
-      <section className="space-y-4">
-        <div className="px-4 md:px-0">
-          {isOwner ? (
-            <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
-          ) : (
-            <ReadOnlyScheduleView workingHours={workingHours} />
-          )}
-        </div>
+    <div className="w-full max-w-6xl px-4 pb-6 mx-auto space-y-8 sm:px-6">
+      {/* Sección de horarios semanales */}
+      <section>
+        {isOwner ? (
+          <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
+        ) : (
+          <ReadOnlyScheduleView workingHours={workingHours} />
+        )}
       </section>
 
-      <Separator className="mx-4 md:mx-0" />
+      <Separator />
 
-      <section className="px-4 md:px-0">
-        <Card className="border-0 shadow-none md:border md:shadow-sm">
-          <CardHeader className="px-0 md:px-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2 text-lg">
+      {/* Sección de bloqueos de horario */}
+      <section>
+        <Card className="border-2">
+          <CardHeader>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
                   <CalendarX className="w-5 h-5 text-muted-foreground" />
-                  Bloqueos de horario
+                  Bloqueos de Horario
                 </CardTitle>
-                <CardDescription className="text-sm sr-only">
+                <CardDescription className="text-sm">
                   {isOwner
-                    ? "Bloqueá horarios específicos cuando no puedas atender (vacaciones, eventos, etc.)"
-                    : "Horarios no disponibles para agendar turnos"}
+                    ? "Bloqueá horarios cuando no puedas atender (vacaciones, eventos, etc.)"
+                    : "Bloqueá horarios cuando no estés disponible para atender"}
                 </CardDescription>
               </div>
 
-              {isOwner && (
-                <Button
-                  onClick={() => setModalOpen(true)}
-                  size="sm"
-                  className="w-full sm:w-auto shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="ml-2">Crear bloqueo</span>
-                </Button>
-              )}
+              <Button
+                onClick={() => setModalOpen(true)}
+                size="lg"
+                className="w-full sm:w-auto shrink-0"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Crear Bloqueo
+              </Button>
             </div>
           </CardHeader>
 
-          <CardContent className="px-0 md:px-6">
+          <CardContent className="pt-6">
             <TimeBlockList timeBlocks={initialTimeBlocks} />
           </CardContent>
         </Card>
       </section>
 
+      {/* Modal de crear bloqueo */}
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-[480px] rounded-lg">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[500px]">
           {isModalOpen && (
             <Suspense fallback={<ModalContentSkeleton />}>
               <AddTimeBlockModalContent onClose={() => setModalOpen(false)} />

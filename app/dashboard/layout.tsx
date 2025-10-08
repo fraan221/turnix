@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import TrialStatusBanner from "@/components/TrialStatusBanner";
 import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 import { PusherHandler } from "@/components/PusherHandler";
+import { PushNotificationProvider } from "@/components/providers/PushNotificationProvider";
 
 export default function DashboardLayout({
   children,
@@ -14,11 +15,13 @@ export default function DashboardLayout({
     <SidebarProvider>
       <DashboardSidebar />
       <SidebarInset>
-        <SubscriptionStatusHandler />
-        <TrialStatusBanner />
-        <SiteHeaderServer />
-        <PusherHandler />
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <PushNotificationProvider>
+          <SubscriptionStatusHandler />
+          <TrialStatusBanner />
+          <SiteHeaderServer />
+          <PusherHandler />
+          <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        </PushNotificationProvider>
       </SidebarInset>
     </SidebarProvider>
   );
