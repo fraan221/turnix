@@ -5,7 +5,6 @@ import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
-import { put } from "@vercel/blob";
 import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
 import { Client, User, Barbershop } from "@prisma/client";
 
@@ -152,6 +151,21 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
         });
       }
     });
+
+    const userWithBarbershop = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        ownedBarbershop: {
+          select: { slug: true },
+        },
+      },
+    });
+
+    const slug = userWithBarbershop?.ownedBarbershop?.slug;
+
+    if (slug) {
+      revalidateTag(`barber-profile:${slug}`);
+    }
 
     revalidatePath("/dashboard/schedule");
     return { success: "¡Horario guardado con éxito!" };
