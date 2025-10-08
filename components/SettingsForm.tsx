@@ -4,10 +4,8 @@ import { User } from "@prisma/client";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { type FormState, updateUserProfile } from "@/actions/dashboard.actions";
-import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import {
   Clipboard,
@@ -28,7 +26,6 @@ import {
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Role } from "@prisma/client";
 import dynamic from "next/dynamic";
 import { Skeleton } from "./ui/skeleton";
@@ -67,15 +64,14 @@ const AvatarCropperContent = dynamic(
   }
 );
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button
       type="submit"
       className="w-full sm:w-auto sm:min-w-[180px]"
-      disabled={pending}
+      disabled={isPending}
     >
-      {pending ? (
+      {isPending ? (
         <>
           <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
           <span>Guardando...</span>
@@ -103,78 +99,50 @@ interface SettingsFormProps {
   };
 }
 
-const initialState: FormState = { success: null, error: null };
-
 export default function SettingsForm({ user }: SettingsFormProps) {
-  const [state, formAction] = useFormState(updateUserProfile, initialState);
   const { data: session, update } = useSession();
+
+  // Component State
+  const [isPending, setIsPending] = useState(false);
+
+  // Refs
+  const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const croppedImageRef = useRef<File | null>(null);
+  const barbershopFileInputRef = useRef<HTMLInputElement>(null);
+  const croppedBarbershopImageRef = useRef<File | null>(null);
+
+  // Controlled component states
+  const [name, setName] = useState(user.name || "");
+  const [phone, setPhone] = useState(user.phone || "");
+  const [barbershopName, setBarbershopName] = useState(
+    user.barbershop?.name || ""
+  );
+  const [barbershopAddress, setBarbershopAddress] = useState(
+    user.barbershop?.address || ""
+  );
+  const [barbershopDescription, setBarbershopDescription] = useState(
+    user.barbershop?.description || ""
+  );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
+
+  // Image and preview states
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
   const [barbershopImagePreview, setBarbershopImagePreview] = useState<
     string | null
   >(user.barbershop?.image || null);
+
+  // UI and helper states
   const [isCopied, setIsCopied] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-  const croppedImageRef = useRef<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
-  const formStateRef = useRef<FormState>(initialState);
-  const router = useRouter();
-  const barbershopFileInputRef = useRef<HTMLInputElement>(null);
   const [barbershopImageToCrop, setBarbershopImageToCrop] = useState<
     string | null
   >(null);
-  const croppedBarbershopImageRef = useRef<File | null>(null);
-
-  useEffect(() => {
-    const handleStateChange = async () => {
-      if (state !== formStateRef.current) {
-        formStateRef.current = state;
-
-        if (state.success) {
-          toast.success("Perfil actualizado", {
-            description: "Tus cambios se guardaron correctamente",
-          });
-
-          const dataToUpdate: any = {};
-          if (state.newImageUrl) dataToUpdate.image = state.newImageUrl;
-          if (state.newName) dataToUpdate.name = state.newName;
-          if (state.newSlug)
-            dataToUpdate.barbershop = {
-              ...session?.user.barbershop,
-              slug: state.newSlug,
-            };
-
-          if (Object.keys(dataToUpdate).length > 0) {
-            console.log("Antes update:", session?.user.image);
-            await update(dataToUpdate);
-            console.log("Después update:", session?.user.image);
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            router.refresh();
-            console.log("Después refresh");
-          }
-        }
-
-        if (state.error) {
-          if (typeof state.error === "string") {
-            toast.error("Error al guardar", { description: state.error });
-          } else {
-            Object.values(state.error).forEach((errArray) => {
-              (errArray as string[]).forEach((err: string) => {
-                toast.error("Error de validación", { description: err });
-              });
-            });
-          }
-        }
-      }
-    };
-
-    handleStateChange();
-  }, [state, session, update, router]);
 
   const handleCopy = () => {
-    const urlToCopy = `${window.location.origin}/${user.barbershop?.slug}`;
+    const urlToCopy = `${window.location.origin}/${slugValue}`;
 
-    if (!user.barbershop?.slug) {
+    if (!slugValue) {
       toast.error("No hay URL para copiar", {
         description: "Primero necesitás crear tu URL personalizada",
       });
@@ -251,18 +219,101 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     }
   };
 
-  const handleFormAction = (formData: FormData) => {
-    if (croppedImageRef.current) {
-      formData.set("avatar", croppedImageRef.current);
-    } else {
-      formData.delete("avatar");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!formRef.current) return;
+
+    setIsPending(true);
+
+    try {
+      const formData = new FormData(formRef.current);
+
+      if (croppedImageRef.current) {
+        formData.set("avatar", croppedImageRef.current);
+      } else {
+        formData.delete("avatar");
+      }
+      if (croppedBarbershopImageRef.current) {
+        formData.set("barbershopImage", croppedBarbershopImageRef.current);
+      } else {
+        formData.delete("barbershopImage");
+      }
+
+      const response = await fetch("/api/profile/update", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (typeof result.error === "string") {
+          toast.error("Error al guardar", { description: result.error });
+        } else {
+          Object.values(result.error).forEach((errArray) => {
+            (errArray as string[]).forEach((err: string) => {
+              toast.error("Error de validación", { description: err });
+            });
+          });
+        }
+        return;
+      }
+
+      // Handle success
+      if (result.success && result.data) {
+        toast.success("Perfil actualizado", {
+          description: "Tus cambios se guardaron correctamente",
+        });
+
+        const { user: updatedUser, barbershop: updatedBarbershop } =
+          result.data;
+        const sessionUpdateData: any = {};
+
+        // Update local form state from server response
+        if (updatedUser) {
+          setName(updatedUser.name || "");
+          setPhone(updatedUser.phone || "");
+          sessionUpdateData.name = updatedUser.name;
+
+          if (updatedUser.image) {
+            const cacheBustedUrl = `${
+              updatedUser.image
+            }?v=${new Date().getTime()}`;
+            setAvatarPreview(cacheBustedUrl);
+            sessionUpdateData.image = cacheBustedUrl;
+          }
+        }
+
+        if (updatedBarbershop) {
+          setBarbershopName(updatedBarbershop.name || "");
+          setBarbershopAddress(updatedBarbershop.address || "");
+          setBarbershopDescription(updatedBarbershop.description || "");
+          setSlugValue(updatedBarbershop.slug || "");
+          if (updatedBarbershop.image) {
+            const cacheBustedUrl = `${
+              updatedBarbershop.image
+            }?v=${new Date().getTime()}`;
+            setBarbershopImagePreview(cacheBustedUrl);
+          }
+          sessionUpdateData.barbershop = {
+            ...session?.user.barbershop,
+            slug: updatedBarbershop.slug,
+          };
+        }
+
+        // Update NextAuth session for components like UserNav
+        if (Object.keys(sessionUpdateData).length > 0) {
+          await update(sessionUpdateData);
+        }
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("Error inesperado", {
+        description: "Ocurrió un error al enviar el formulario.",
+      });
+    } finally {
+      setIsPending(false);
     }
-    if (croppedBarbershopImageRef.current) {
-      formData.set("barbershopImage", croppedBarbershopImageRef.current);
-    } else {
-      formData.delete("barbershopImage");
-    }
-    formAction(formData);
   };
 
   return (
@@ -321,7 +372,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         </DialogContent>
       </Dialog>
 
-      <form action={handleFormAction} className="pb-6 space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="pb-6 space-y-8">
         <section className="space-y-6">
           <div className="flex items-center gap-2 px-4 md:px-0">
             <UserIcon className="w-5 h-5 text-muted-foreground" />
@@ -340,7 +391,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <div className="relative w-20 h-20 overflow-hidden rounded-full shrink-0 ring-2 ring-border">
                 <Image
                   src={avatarPreview || "/images/hero-background.jpg"}
-                  alt={user.name || "Avatar"}
+                  alt={name || "Avatar"}
                   fill
                   className="object-cover"
                 />
@@ -378,7 +429,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
               <Input
                 id="name"
                 name="name"
-                defaultValue={user.name || ""}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="Tu nombre"
                 required
               />
@@ -393,7 +445,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                 id="phone"
                 name="phone"
                 type="tel"
-                defaultValue={user.phone || ""}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ej: +54 9 11 1234-5678"
               />
             </div>
@@ -424,7 +477,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                       src={
                         barbershopImagePreview || "/images/cta-background.jpg"
                       }
-                      alt={user.barbershop?.name || "Logo Barbería"}
+                      alt={barbershopName || "Logo Barbería"}
                       fill
                       className="object-cover"
                     />
@@ -468,13 +521,13 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   <Input
                     id="barbershopName"
                     name="barbershopName"
-                    defaultValue={user.barbershop?.name || ""}
+                    value={barbershopName}
+                    onChange={(e) => setBarbershopName(e.target.value)}
                     placeholder="Ej: Barbería El Corte"
                     required
                   />
                 </div>
 
-                {/* Dirección */}
                 <div className="space-y-2">
                   <Label
                     htmlFor="barbershopAddress"
@@ -486,7 +539,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   <Input
                     id="barbershopAddress"
                     name="barbershopAddress"
-                    defaultValue={user.barbershop?.address || ""}
+                    value={barbershopAddress}
+                    onChange={(e) => setBarbershopAddress(e.target.value)}
                     placeholder="Ej: Av. Corrientes 1234, CABA"
                   />
                 </div>
@@ -502,7 +556,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                   <Textarea
                     id="barbershopDescription"
                     name="barbershopDescription"
-                    defaultValue={user.barbershop?.description || ""}
+                    value={barbershopDescription}
+                    onChange={(e) => setBarbershopDescription(e.target.value)}
                     placeholder="Contale a tus clientes sobre tu barbería, especialidades, años de experiencia..."
                     rows={4}
                     className="resize-none"
@@ -561,7 +616,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                           onClick={handleCopy}
                           className="w-full h-10 border-t-0 sm:border-t sm:border-l-0 rounded-b-md sm:rounded-b-none sm:rounded-r-md sm:w-10"
                           aria-label="Copiar URL"
-                          disabled={!user.barbershop?.slug}
+                          disabled={!slugValue}
                         >
                           {isCopied ? (
                             <Check className="w-4 h-4 text-green-500" />
@@ -670,7 +725,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         )}
 
         <div className="flex justify-end px-4 pt-4 md:px-0">
-          <SubmitButton />
+          <SubmitButton isPending={isPending} />
         </div>
       </form>
     </TooltipProvider>
