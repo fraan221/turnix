@@ -96,9 +96,8 @@ export async function getBarberAvailability(
   const isSelectedDateToday =
     todayInArgentinaString === selectedDateInArgentinaString;
 
-  const dateStringUTC = date.toISOString().split("T")[0];
   const createDateInArgentina = (timeString: string): Date => {
-    const isoString = `${dateStringUTC}T${timeString}:00-03:00`;
+    const isoString = `${selectedDateInArgentinaString}T${timeString}:00-03:00`;
     return new Date(isoString);
   };
 

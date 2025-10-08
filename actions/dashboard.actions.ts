@@ -48,8 +48,6 @@ const TimeBlockSchema = z
     }
   );
 
-
-
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 const WorkShiftSchema = z.object({
@@ -162,8 +160,6 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
     return { error: "No se pudo guardar el horario." };
   }
 }
-
-
 
 export async function deleteClient(clientId: string) {
   const user = await getUserForSettings();
