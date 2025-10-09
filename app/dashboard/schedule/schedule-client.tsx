@@ -124,16 +124,14 @@ export function ScheduleClient({
                 </CardDescription>
               </div>
 
-              {isOwner && (
                 <Button
                   onClick={() => setModalOpen(true)}
-                  size="sm"
+                  size="lg"
                   className="w-full sm:w-auto shrink-0"
                 >
                   <Plus className="w-4 h-4" />
                   <span className="ml-2">Crear bloqueo</span>
                 </Button>
-              )}
             </div>
           </CardHeader>
 
