@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-// import { saveSubscriptionToDb } from "@/actions/push.actions";
+import { saveSubscriptionToDb } from "@/actions/push.actions";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -25,6 +25,7 @@ export function PushNotificationProvider({
 }) {
   const { data: session, status } = useSession();
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const isProcessing = useRef(false);
 
   useEffect(() => {
     if (
@@ -33,6 +34,9 @@ export function PushNotificationProvider({
       "PushManager" in window
     ) {
       const setupPushNotifications = async () => {
+        if (isProcessing.current) return;
+        isProcessing.current = true;
+
         try {
           const swRegistration =
             await navigator.serviceWorker.register("/sw.js");
@@ -63,8 +67,28 @@ export function PushNotificationProvider({
           });
 
           if (subscription) {
-            console.log("Nueva suscripción creada:", subscription);
-            // await saveSubscriptionToDb(subscription);
+            const subscriptionJSON = subscription.toJSON();
+
+            if (
+              !subscriptionJSON.endpoint ||
+              !subscriptionJSON.keys?.p256dh ||
+              !subscriptionJSON.keys?.auth
+            ) {
+              console.error("Suscripción generada inválida", subscriptionJSON);
+              toast.error("No se pudieron activar las notificaciones.");
+              return;
+            }
+
+            const subscriptionToSend = {
+              endpoint: subscriptionJSON.endpoint,
+              keys: {
+                p256dh: subscriptionJSON.keys.p256dh,
+                auth: subscriptionJSON.keys.auth,
+              },
+            };
+
+            await saveSubscriptionToDb(subscriptionToSend);
+
             setIsSubscribed(true);
             toast.success("Notificaciones activadas", {
               description: "Recibirás avisos de tus nuevos turnos.",
@@ -76,6 +100,8 @@ export function PushNotificationProvider({
             description:
               "No se pudieron activar las notificaciones en este dispositivo.",
           });
+        } finally {
+          isProcessing.current = false;
         }
       };
 

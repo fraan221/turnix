@@ -5,6 +5,7 @@ import { pusherServer } from "@/lib/pusher";
 import { getEndOfDay, getStartOfDay, formatTime } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
+import { sendPushNotification } from "@/lib/push";
 
 export type AvailabilityStatus =
   | "AVAILABLE"
@@ -286,6 +287,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       },
     });
 
+    const formattedTime = formatTime(startTime);
+    const pushPayloadBarber = {
+      title: "¡Nuevo Turno!",
+      body: `${clientName} reservó "${service.name}" a las ${formattedTime}.`,
+      url: "/dashboard/notifications",
+    };
+    await sendPushNotification(barberId, pushPayloadBarber);
+
     const barberNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}".`;
     const barberNotification = await prisma.notification.create({
       data: {
@@ -302,6 +311,13 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
 
     const isEmployeeBooking = barber.id !== barbershop.ownerId;
     if (barbershop.teamsEnabled && isEmployeeBooking) {
+      const pushPayloadOwner = {
+        title: "Nuevo Turno en tu Equipo",
+        body: `${clientName} reservó con ${barber.name} a las ${formattedTime}.`,
+        url: "/dashboard/notifications",
+      };
+      await sendPushNotification(barbershop.ownerId, pushPayloadOwner);
+
       const ownerNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}" con ${barber.name}.`;
       const ownerNotification = await prisma.notification.create({
         data: {
