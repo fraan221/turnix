@@ -2,7 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { getEndOfDay, getStartOfDay, formatTime } from "@/lib/date-helpers";
+import {
+  getEndOfDay,
+  getStartOfDay,
+  formatTime,
+  formatBookingDateForNotification,
+} from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
 import { sendPushNotification } from "@/lib/push";
@@ -288,9 +293,13 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     });
 
     const formattedTime = formatTime(startTime);
+    const relativeDateString = formatBookingDateForNotification(startTime);
+
+    const notificationBody = `${clientName} reservó "${service.name}" para ${relativeDateString} a las ${formattedTime}hs.`;
+
     const pushPayloadBarber = {
       title: "¡Nuevo Turno!",
-      body: `${clientName} reservó "${service.name}" a las ${formattedTime}.`,
+      body: notificationBody,
       url: "/dashboard/notifications",
     };
     await sendPushNotification(barberId, pushPayloadBarber);
@@ -311,9 +320,11 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
 
     const isEmployeeBooking = barber.id !== barbershop.ownerId;
     if (barbershop.teamsEnabled && isEmployeeBooking) {
+      const ownerNotificationBody = `${clientName} reservó con ${barber.name} para ${relativeDateString} a las ${formattedTime}hs.`;
+
       const pushPayloadOwner = {
         title: "Nuevo Turno en tu Equipo",
-        body: `${clientName} reservó con ${barber.name} a las ${formattedTime}.`,
+        body: ownerNotificationBody,
         url: "/dashboard/notifications",
       };
       await sendPushNotification(barbershop.ownerId, pushPayloadOwner);

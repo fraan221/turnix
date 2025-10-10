@@ -275,3 +275,38 @@ export function formatConfirmationDateTime(date: Date | string): string {
   const timePart = formatTime(d);
   return `${datePart} a las ${timePart} hs`;
 }
+
+/**
+ * Formatea la fecha de un turno para una notificación de manera contextual ("hoy", "mañana", "el DD/MM").
+ * Siempre opera en la zona horaria de Argentina.
+ * @param bookingDate - La fecha del turno.
+ * @returns Una cadena de texto descriptiva de la fecha.
+ */
+export function formatBookingDateForNotification(bookingDate: Date): string {
+  const now = new Date();
+
+  const todayString = now.toLocaleDateString("en-CA", { timeZone });
+  const bookingDateString = bookingDate.toLocaleDateString("en-CA", {
+    timeZone,
+  });
+
+  if (todayString === bookingDateString) {
+    return "hoy";
+  }
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const tomorrowString = tomorrow.toLocaleDateString("en-CA", { timeZone });
+
+  if (tomorrowString === bookingDateString) {
+    return "mañana";
+  }
+
+  const formattedDate = new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+  }).format(bookingDate);
+
+  return `el día ${formattedDate}`;
+}

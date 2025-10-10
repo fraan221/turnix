@@ -5,7 +5,7 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body,
     icon: "/icons/icon-192x192.png",
-    badge: "/icons/icon-192x192.png", 
+    badge: "/icons/icon-monochrome.png", 
     data: {
       url: data.url || "/dashboard/notifications",
     },
