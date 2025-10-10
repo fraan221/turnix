@@ -1,5 +1,5 @@
 self.addEventListener("push", (event) => {
-  const data = event.data.json();
+  const data = JSON.parse(event.data.text());
 
   const title = data.title || "Turnix";
   const options = {
@@ -17,24 +17,32 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data.url;
+  const baseUrl = event.notification.data.url;
+  const urlToOpen = new URL(baseUrl, self.location.origin);
+  urlToOpen.searchParams.append("source", "notification");
 
-  event.waitUntil(
-    clients
-      .matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      })
-      .then((clientList) => {
+  const promise = clients
+    .matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    })
+    .then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
         for (let i = 0; i < clientList.length; i++) {
-          let client = clientList[i];
-          if (client.url === "/" && "focus" in client) {
-            return client.focus();
+          if (clientList[i].visibilityState === "visible") {
+            client = clientList[i];
+            break;
           }
         }
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
+        if (client) {
+          client.focus();
+          return client.navigate(urlToOpen);
         }
-      })
-  );
+      }
+
+      return clients.openWindow(urlToOpen);
+    });
+
+  event.waitUntil(promise);
 });

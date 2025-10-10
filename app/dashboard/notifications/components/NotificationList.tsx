@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useTransition } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   isDateInThisWeek,
   isDateInThisMonth,
@@ -9,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Bell, BellOff, Clock } from "lucide-react";
 import type { Notification } from "@prisma/client";
+import { markNotificationsAsRead } from "@/actions/notification.actions";
 
 interface NotificationListProps {
   initialNotifications: Notification[];
@@ -50,6 +52,25 @@ export function NotificationList({
     () => groupNotifications(initialNotifications),
     [initialNotifications]
   );
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const source = searchParams.get("source");
+
+    if (source === "notification") {
+      startTransition(() => {
+        markNotificationsAsRead();
+      });
+
+      const newParams = new URLSearchParams(searchParams.toString());
+      newParams.delete("source");
+      const newPath = `${window.location.pathname}?${newParams.toString()}`;
+      router.replace(newPath, { scroll: false });
+    }
+  }, [searchParams, router, startTransition]);
 
   const renderSection = (title: string, notifications: Notification[]) => {
     if (notifications.length === 0) return null;
@@ -107,7 +128,6 @@ export function NotificationList({
                 </div>
               </div>
 
-              {/* Indicador de no leída (badge) */}
               {!n.read && (
                 <div className="absolute top-3 right-4">
                   <span className="flex w-2 h-2">
