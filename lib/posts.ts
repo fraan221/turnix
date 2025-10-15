@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
+import { mdxComponents } from "@/components/mdx-components";
 
 const postsDirectory = path.join(process.cwd(), "_posts");
 
@@ -38,6 +39,7 @@ export async function getPostData(slug: string) {
 
   const mdxSource = await compileMDX({
     source: content,
+    components: mdxComponents,
     options: { parseFrontmatter: false },
   });
 
