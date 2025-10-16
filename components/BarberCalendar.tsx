@@ -15,7 +15,21 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import type { DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import type {
+  DateSelectArg,
+  EventClickArg,
+  EventDropArg,
+} from "@fullcalendar/core";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import { CalendarViewSwitcher } from "./CalendarViewSwitcher";
 import { Booking, Service, Client, BookingStatus } from "@prisma/client";
 import { useWindowSize } from "@/lib/hooks";
@@ -26,7 +40,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
-import { createBooking, type FormState } from "@/actions/dashboard.actions";
+import {
+  createBooking,
+  updateBookingTime,
+  type FormState,
+} from "@/actions/dashboard.actions";
+import { formatTime } from "@/lib/date-helpers";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
@@ -159,6 +178,29 @@ export default function BarberCalendar({
     },
     [router, searchParams]
   );
+
+  const [draggedEventInfo, setDraggedEventInfo] = useState<{
+    bookingId: string;
+    newStartTime: Date;
+    oldStartTime: Date;
+    revert: () => void;
+  } | null>(null);
+
+  const handleEventDrop = (dropInfo: EventDropArg) => {
+    const { event, oldEvent, revert } = dropInfo;
+
+    if (!event.start) {
+      revert();
+      return;
+    }
+
+    setDraggedEventInfo({
+      bookingId: event.id,
+      newStartTime: event.start,
+      oldStartTime: oldEvent.start!,
+      revert,
+    });
+  };
 
   useEffect(() => {
     const handleNewBooking = () => {
@@ -367,6 +409,7 @@ export default function BarberCalendar({
           selectable={true}
           select={handleDateSelect}
           eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
           navLinkDayClick={(date) => {
             const calendarApi = calendarRef.current?.getApi();
             if (calendarApi) {
@@ -400,6 +443,68 @@ export default function BarberCalendar({
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!draggedEventInfo}
+        onOpenChange={(isOpen) => !isOpen && setDraggedEventInfo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar cambio de horario</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que querés mover este turno a las{" "}
+              <span className="font-bold text-foreground">
+                {draggedEventInfo && formatTime(draggedEventInfo.newStartTime)}
+                hs
+              </span>
+              ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                draggedEventInfo?.revert();
+                setDraggedEventInfo(null);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!draggedEventInfo) return;
+
+                const { bookingId, newStartTime, oldStartTime } =
+                  draggedEventInfo;
+
+                setOptimisticBookings((current) =>
+                  current.map((b) =>
+                    b.id === bookingId ? { ...b, startTime: newStartTime } : b
+                  )
+                );
+
+                setDraggedEventInfo(null);
+
+                const result = await updateBookingTime(bookingId, newStartTime);
+
+                if (result.error) {
+                  toast.error("Error al mover el turno", {
+                    description: result.error,
+                  });
+                  setOptimisticBookings((current) =>
+                    current.map((b) =>
+                      b.id === bookingId ? { ...b, startTime: oldStartTime } : b
+                    )
+                  );
+                } else {
+                  toast.success("Turno reprogramado con éxito.");
+                }
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
         <DialogContent>

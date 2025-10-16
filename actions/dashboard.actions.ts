@@ -670,3 +670,143 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
     return { error: "No se pudo crear el bloqueo." };
   }
 }
+
+export async function updateBookingTime(
+  bookingId: string,
+  newStartTime: Date
+): Promise<{ success?: string; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Acción no autorizada." };
+  }
+
+  try {
+    // 1. OBTENER CONTEXTO INICIAL
+    // Obtenemos el turno, su duración y los permisos necesarios.
+    const bookingToMove = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        barbershop: {
+          select: { ownerId: true, teamMembers: { select: { userId: true } } },
+        },
+        service: { select: { durationInMinutes: true } },
+      },
+    });
+
+    if (!bookingToMove) {
+      return { error: "El turno no fue encontrado." };
+    }
+
+    // --- Validación de Permisos ---
+    const isOwner = bookingToMove.barbershop.ownerId === user.id;
+    // Verificamos si el usuario que mueve el turno es el barbero asignado, o el dueño.
+    const isAssignedBarber = bookingToMove.barberId === user.id;
+
+    if (!isOwner && !isAssignedBarber) {
+      return { error: "No tienes permiso para modificar este turno." };
+    }
+
+    // 2. OBTENER CONTEXTO DEL DÍA DE DESTINO
+    // Calculamos el nuevo intervalo del turno y obtenemos todo lo que necesitamos del día de destino.
+    const serviceDuration = bookingToMove.service.durationInMinutes ?? 60;
+    const newEndTime = new Date(
+      newStartTime.getTime() + serviceDuration * 60000
+    );
+    const dayOfWeek = newStartTime.getDay();
+    const barberId = bookingToMove.barberId;
+
+    const [workingHours, otherBookings, timeBlocks] = await Promise.all([
+      prisma.workingHours.findUnique({
+        where: { barberId_dayOfWeek: { barberId, dayOfWeek } },
+        include: { blocks: true },
+      }),
+      prisma.booking.findMany({
+        where: {
+          id: { not: bookingId },
+          barberId: barberId,
+          status: { not: "CANCELLED" },
+          startTime: {
+            gte: getStartOfDay(newStartTime),
+            lt: getEndOfDay(newStartTime),
+          },
+        },
+        include: { service: { select: { durationInMinutes: true } } },
+      }),
+      prisma.timeBlock.findMany({
+        where: {
+          barberId: barberId,
+          startTime: { lt: getEndOfDay(newStartTime) },
+          endTime: { gt: getStartOfDay(newStartTime) },
+        },
+      }),
+    ]);
+
+    // 3. VALIDACIONES EN CASCADA
+
+    // --- Validación 1: Horario Laboral ---
+    const isWithinWorkingHours =
+      workingHours?.isWorking &&
+      workingHours.blocks.some((shift) => {
+        const shiftStart = new Date(newStartTime);
+        const [startHours, startMinutes] = shift.startTime
+          .split(":")
+          .map(Number);
+        shiftStart.setHours(startHours, startMinutes, 0, 0);
+
+        const shiftEnd = new Date(newStartTime);
+        const [endHours, endMinutes] = shift.endTime.split(":").map(Number);
+        shiftEnd.setHours(endHours, endMinutes, 0, 0);
+
+        return newStartTime >= shiftStart && newEndTime <= shiftEnd;
+      });
+
+    if (!isWithinWorkingHours) {
+      return { error: "El nuevo horario está fuera de la jornada laboral." };
+    }
+
+    // --- Validación 2: Bloqueos de Tiempo ---
+    const overlapsWithTimeBlock = timeBlocks.some(
+      (block) => newStartTime < block.endTime && newEndTime > block.startTime
+    );
+
+    if (overlapsWithTimeBlock) {
+      return {
+        error: "El nuevo horario se superpone con un bloqueo de tiempo.",
+      };
+    }
+
+    // --- Validación 3: Otros Turnos ---
+    const overlapsWithBooking = otherBookings.some((existingBooking) => {
+      const existingStartTime = existingBooking.startTime;
+      const existingDuration =
+        existingBooking.durationAtBooking ??
+        existingBooking.service.durationInMinutes ??
+        60;
+      const existingEndTime = new Date(
+        existingStartTime.getTime() + existingDuration * 60000
+      );
+
+      return newStartTime < existingEndTime && newEndTime > existingStartTime;
+    });
+
+    if (overlapsWithBooking) {
+      return { error: "El nuevo horario se superpone con otro turno." };
+    }
+
+    // 4. ACTUALIZAR O FALLAR
+    // Si todas las validaciones pasaron, procedemos a actualizar.
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        startTime: newStartTime,
+      },
+    });
+
+    revalidatePath("/dashboard");
+
+    return { success: "Turno reprogramado con éxito." };
+  } catch (error) {
+    console.error("Error al actualizar el turno:", error);
+    return { error: "No se pudo mover el turno. Inténtalo de nuevo." };
+  }
+}
