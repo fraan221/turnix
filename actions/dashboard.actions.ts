@@ -681,8 +681,6 @@ export async function updateBookingTime(
   }
 
   try {
-    // 1. OBTENER CONTEXTO INICIAL
-    // Obtenemos el turno, su duración y los permisos necesarios.
     const bookingToMove = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
@@ -697,17 +695,13 @@ export async function updateBookingTime(
       return { error: "El turno no fue encontrado." };
     }
 
-    // --- Validación de Permisos ---
     const isOwner = bookingToMove.barbershop.ownerId === user.id;
-    // Verificamos si el usuario que mueve el turno es el barbero asignado, o el dueño.
     const isAssignedBarber = bookingToMove.barberId === user.id;
 
     if (!isOwner && !isAssignedBarber) {
       return { error: "No tienes permiso para modificar este turno." };
     }
 
-    // 2. OBTENER CONTEXTO DEL DÍA DE DESTINO
-    // Calculamos el nuevo intervalo del turno y obtenemos todo lo que necesitamos del día de destino.
     const serviceDuration = bookingToMove.service.durationInMinutes ?? 60;
     const newEndTime = new Date(
       newStartTime.getTime() + serviceDuration * 60000
