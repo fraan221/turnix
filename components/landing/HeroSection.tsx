@@ -35,9 +35,16 @@ const SocialProof = () => (
         />
         <AvatarFallback>+1</AvatarFallback>
       </Avatar>
+      <Avatar className="w-6 h-6 border-2 border-background">
+        <AvatarImage
+          src="/images/partners/barberia_5.png"
+          alt="HAIRVANA SALON Logo"
+        />
+        <AvatarFallback>+1</AvatarFallback>
+      </Avatar>
     </div>
     <span className="pr-2 text-sm font-medium text-muted-foreground">
-      +4 barberías usan Turnix diariamente
+      +6 barberías usan Turnix diariamente
     </span>
   </div>
 );

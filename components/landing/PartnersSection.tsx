@@ -5,6 +5,7 @@ const partners = [
   { name: "Yankee Barber", logo: "/images/partners/barberia_2.png" },
   { name: "Break Barber", logo: "/images/partners/barberia_3.png" },
   { name: "Lupa Estudio", logo: "/images/partners/barberia_4.png" },
+  { name: "HAIRVANA SALON", logo: "/images/partners/barberia_5.png" },
 ];
 
 export function PartnersSection() {
