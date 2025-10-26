@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
-import { mdxComponents } from "@/components/mdx-components";
+import { YouTubeEmbed } from "@/components/mdx-components";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
 
 const postsDirectory = path.join(process.cwd(), "_posts");
 
@@ -39,7 +41,13 @@ export async function getPostData(slug: string) {
 
   const mdxSource = await compileMDX({
     source: content,
-    components: mdxComponents,
+    components: {
+      YouTubeEmbed,
+      Alert,
+      AlertTitle,
+      AlertDescription,
+      Terminal,
+    },
     options: { parseFrontmatter: false },
   });
 
