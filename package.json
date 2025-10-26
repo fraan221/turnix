@@ -8,7 +8,7 @@
   "homepage": "https://next-auth-example.vercel.app",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/scripts/migrate-schedules.ts && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "email": "email dev --port 3001"
