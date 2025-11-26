@@ -150,7 +150,7 @@ export function Step2_DateTimeSelection({
           <div className="pr-2 space-y-4">{renderTimeSlots()}</div>
         </div>
       </div>
-      <div className="flex justify-between gap-2">
+      <div className="flex gap-2 justify-between">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>

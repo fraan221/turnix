@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { TimeBlock } from "@prisma/client";
 import { Plus, CalendarX } from "lucide-react";
@@ -17,14 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScheduleForm from "@/components/ScheduleForm";
 import TimeBlockList from "@/components/TimeBlockList";
-import { ReadOnlyScheduleView } from "@/components/schedule/ReadOnlyScheduleView";
 import { WorkingHoursWithBlocks } from "./page";
 
 const AddTimeBlockModalContent = dynamic(
@@ -44,39 +50,12 @@ function ModalContentSkeleton() {
         </DialogTitle>
         <DialogDescription>
           <Skeleton className="w-full h-4" />
-          <Skeleton className="w-10/12 h-4 mt-1" />
+          <Skeleton className="mt-1 w-10/12 h-4" />
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Skeleton className="w-24 h-4" />
-            <Skeleton className="w-full h-10" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="w-24 h-4" />
-            <Skeleton className="w-full h-10" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Skeleton className="w-24 h-4" />
-            <Skeleton className="w-full h-10" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="w-24 h-4" />
-            <Skeleton className="w-full h-10" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="w-24 h-4" />
-          <Skeleton className="w-full h-10" />
-        </div>
+        <Skeleton className="w-full h-32" />
       </div>
-      <DialogFooter className="pt-4">
-        <Skeleton className="w-24 h-10" />
-        <Skeleton className="w-[160px] h-10" />
-      </DialogFooter>
     </>
   );
 }
@@ -86,6 +65,8 @@ interface ScheduleClientProps {
   workingHours: WorkingHoursWithBlocks[];
   initialTimeBlocks: TimeBlock[];
   workingHoursKey: string;
+  selectedBarberId: string;
+  teamMembers: { id: string; name: string }[];
 }
 
 export function ScheduleClient({
@@ -93,35 +74,62 @@ export function ScheduleClient({
   workingHours,
   initialTimeBlocks,
   workingHoursKey,
+  selectedBarberId,
+  teamMembers,
 }: ScheduleClientProps) {
   const [isModalOpen, setModalOpen] = useState(false);
+  const router = useRouter();
+
+  const handleBarberChange = (value: string) => {
+    router.push(`/dashboard/schedule?barberId=${value}`);
+  };
 
   return (
-    <div className="w-full max-w-6xl px-4 pb-6 mx-auto space-y-8 sm:px-6">
-      {/* Sección de horarios semanales */}
+    <div className="px-4 pb-6 mx-auto space-y-8 w-full max-w-6xl sm:px-6">
+      {isOwner && teamMembers.length > 1 && (
+        <div className="flex justify-end mb-4">
+          <div className="w-full sm:w-[280px]">
+            <label className="text-xs font-medium mb-1.5 block text-muted-foreground uppercase tracking-wider">
+              Gestionando horarios de:
+            </label>
+            <Select value={selectedBarberId} onValueChange={handleBarberChange}>
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue placeholder="Seleccionar barbero" />
+              </SelectTrigger>
+              <SelectContent>
+                {teamMembers.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       <section>
-        {isOwner ? (
-          <ScheduleForm key={workingHoursKey} workingHours={workingHours} />
-        ) : (
-          <ReadOnlyScheduleView workingHours={workingHours} />
-        )}
+        <ScheduleForm
+          key={workingHoursKey}
+          workingHours={workingHours}
+          barberId={selectedBarberId}
+        />
       </section>
 
       <Separator />
 
-      {/* Sección de bloqueos de horario */}
       <section>
         <Card className="border-2">
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                <CardTitle className="flex gap-2 items-center text-xl sm:text-2xl">
                   <CalendarX className="w-5 h-5 text-muted-foreground" />
                   Bloqueos de Horario
                 </CardTitle>
                 <CardDescription className="text-sm">
                   {isOwner
-                    ? "Bloqueá horarios cuando no puedas atender (vacaciones, eventos, etc.)"
+                    ? "Bloqueá horarios cuando no se pueda atender (vacaciones, eventos, etc.)"
                     : "Bloqueá horarios cuando no estés disponible para atender"}
                 </CardDescription>
               </div>
@@ -131,7 +139,7 @@ export function ScheduleClient({
                 size="lg"
                 className="w-full sm:w-auto shrink-0"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="mr-2 w-4 h-4" />
                 Crear Bloqueo
               </Button>
             </div>
@@ -143,7 +151,6 @@ export function ScheduleClient({
         </Card>
       </section>
 
-      {/* Modal de crear bloqueo */}
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-[500px]">
           {isModalOpen && (

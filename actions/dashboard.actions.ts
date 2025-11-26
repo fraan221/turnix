@@ -83,10 +83,36 @@ const ScheduleSchema = z.array(DayScheduleSchema).refine(
   }
 );
 
-export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
+export async function saveSchedule(
+  schedule: z.infer<typeof ScheduleSchema>,
+  targetBarberId?: string
+) {
   const user = await getCurrentUser();
-  if (!user || user.role !== Role.OWNER) {
-    return { error: "Acción no autorizada." };
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  let barberIdToUpdate = user.id;
+
+  if (user.role === Role.OWNER) {
+    if (targetBarberId && targetBarberId !== user.id) {
+      const isTeamMember = await prisma.team.findFirst({
+        where: {
+          userId: targetBarberId,
+          barbershop: { ownerId: user.id },
+        },
+      });
+
+      if (!isTeamMember) {
+        return { error: "No puedes editar el horario de este usuario." };
+      }
+      barberIdToUpdate = targetBarberId;
+    }
+  } else if (user.role === Role.BARBER) {
+    if (targetBarberId && targetBarberId !== user.id) {
+      return { error: "No tienes permisos para editar horarios de otros." };
+    }
+    barberIdToUpdate = user.id;
   }
 
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
@@ -95,7 +121,7 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
     return { error: validatedSchedule.error.issues[0].message };
   }
 
-  const barberId = user.id;
+  const barberId = barberIdToUpdate;
 
   try {
     const userWorkingHours = await prisma.workingHours.findMany({
@@ -152,16 +178,17 @@ export async function saveSchedule(schedule: z.infer<typeof ScheduleSchema>) {
       }
     });
 
-    const userWithBarbershop = await prisma.user.findUnique({
-      where: { id: user.id },
+    const barberUpdated = await prisma.user.findUnique({
+      where: { id: barberId },
       include: {
-        ownedBarbershop: {
-          select: { slug: true },
-        },
+        ownedBarbershop: { select: { slug: true } },
+        teamMembership: { include: { barbershop: { select: { slug: true } } } },
       },
     });
 
-    const slug = userWithBarbershop?.ownedBarbershop?.slug;
+    const slug =
+      barberUpdated?.ownedBarbershop?.slug ||
+      barberUpdated?.teamMembership?.barbershop?.slug;
 
     if (slug) {
       revalidateTag(`barber-profile:${slug}`);

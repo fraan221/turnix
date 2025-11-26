@@ -66,14 +66,10 @@ type WorkingHoursWithBlocks = WorkingHours & {
 interface ScheduleFormProps {
   workingHours: WorkingHoursWithBlocks[];
   isReadOnly?: boolean;
+  barberId?: string;
 }
 
-type ShiftState = {
-  enabled: boolean;
-  startTime: string;
-  endTime: string;
-};
-
+type ShiftState = { enabled: boolean; startTime: string; endTime: string };
 type DayScheduleState = {
   dayOfWeek: number;
   isWorking: boolean;
@@ -83,11 +79,11 @@ type DayScheduleState = {
 export default function ScheduleForm({
   workingHours,
   isReadOnly = false,
+  barberId,
 }: ScheduleFormProps) {
   const [schedule, setSchedule] = useState<DayScheduleState[]>(() =>
     daysOfWeek.map((_, index) => {
       const dayData = workingHours.find((wh) => wh.dayOfWeek === index);
-
       const getShift = (type: WorkShiftType): ShiftState => {
         const block = dayData?.blocks.find((b) => b.type === type);
         return {
@@ -97,18 +93,15 @@ export default function ScheduleForm({
           endTime: block?.endTime || shiftConfig[type].defaultValue.endTime,
         };
       };
-
       const shifts = {
         MORNING: getShift("MORNING"),
         AFTERNOON: getShift("AFTERNOON"),
         NIGHT: getShift("NIGHT"),
       };
-
       const hasEnabledShifts = Object.values(shifts).some((s) => s.enabled);
       if (dayData?.isWorking && !hasEnabledShifts) {
         shifts.MORNING.enabled = true;
       }
-
       return {
         dayOfWeek: index,
         isWorking: dayData?.isWorking ?? false,
@@ -191,7 +184,7 @@ export default function ScheduleForm({
 
   const handleSave = () => {
     startTransition(async () => {
-      const result = await saveSchedule(schedule);
+      const result = await saveSchedule(schedule, barberId);
       if (result.success) {
         toast.success("¡Horarios guardados!", {
           description: "Tus cambios se aplicaron correctamente.",
@@ -206,7 +199,7 @@ export default function ScheduleForm({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto space-y-6 w-full max-w-6xl">
       <Card className="border-2">
         <CardContent className="p-4 sm:p-6">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -215,14 +208,13 @@ export default function ScheduleForm({
                 (type) => day.shifts[type].enabled
               );
               const canAddMore = enabledShifts.length < 3;
-
               return (
                 <div
                   key={day.dayOfWeek}
-                  className="flex flex-col p-4 space-y-4 transition-colors border-2 rounded-xl hover:border-primary/30"
+                  className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-colors hover:border-primary/30"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-3 items-center">
                       <Switch
                         id={`switch-${day.dayOfWeek}`}
                         checked={day.isWorking}
@@ -244,16 +236,14 @@ export default function ScheduleForm({
                       </span>
                     )}
                   </div>
-
                   {day.isWorking && (
                     <div className="flex-grow pl-1 space-y-4">
                       {enabledShifts.map((shiftType, index) => (
                         <div key={shiftType}>
                           {index > 0 && <Separator className="mb-4" />}
-
                           {enabledShifts.length > 1 && (
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex gap-2 items-center">
                                 <Clock className="w-4 h-4 text-primary" />
                                 <Label className="text-sm font-medium">
                                   {shiftNames[shiftType]}
@@ -275,8 +265,7 @@ export default function ScheduleForm({
                               </Button>
                             </div>
                           )}
-
-                          <div className="flex flex-col items-center gap-2 sm:flex-row">
+                          <div className="flex flex-col gap-2 items-center sm:flex-row">
                             <Input
                               type="time"
                               value={day.shifts[shiftType].startTime}
@@ -315,7 +304,6 @@ export default function ScheduleForm({
                       ))}
                     </div>
                   )}
-
                   {day.isWorking && !isReadOnly && canAddMore && (
                     <div className="pt-2 mt-auto">
                       <Separator className="mb-4" />
@@ -325,7 +313,7 @@ export default function ScheduleForm({
                         className="w-full"
                         onClick={() => handleAddShift(day.dayOfWeek)}
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="mr-2 w-4 h-4" />
                         Agregar Jornada
                       </Button>
                     </div>
@@ -336,7 +324,6 @@ export default function ScheduleForm({
           </div>
         </CardContent>
       </Card>
-
       {!isReadOnly && (
         <div className="flex justify-center">
           <Button
@@ -347,12 +334,12 @@ export default function ScheduleForm({
           >
             {isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 Guardando...
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
+                <Save className="mr-2 w-4 h-4" />
                 Guardar Horarios
               </>
             )}

@@ -28,9 +28,9 @@ interface BarberPublicPageProps {
 
 function ProfileSkeleton() {
   return (
-    <div className="w-full max-w-4xl space-y-8">
+    <div className="space-y-8 w-full max-w-4xl">
       <Card>
-        <CardHeader className="flex flex-col items-center justify-center p-6 space-y-4 text-center bg-card">
+        <CardHeader className="flex flex-col justify-center items-center p-6 space-y-4 text-center bg-card">
           <Skeleton className="w-24 h-24 rounded-full" />
           <Skeleton className="w-48 h-8" />
         </CardHeader>
@@ -106,7 +106,7 @@ export default async function BarberPublicPage({
   params,
 }: BarberPublicPageProps) {
   return (
-    <main className="flex flex-col items-center min-h-screen p-4 bg-muted/40 md:p-12">
+    <main className="flex flex-col items-center p-4 min-h-screen bg-muted/40 md:p-12">
       <Suspense fallback={<ProfileSkeleton />}>
         <PublicProfileData slug={params.slug} />
       </Suspense>

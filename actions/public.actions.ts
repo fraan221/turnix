@@ -50,23 +50,25 @@ export async function getBarberAvailability(
     return { slotGroups: [], status: "DAY_OFF" };
   }
 
-  const scheduleOwnerId =
-    barber.role === Role.OWNER
-      ? barber.id
-      : barber.teamMembership?.barbershop.ownerId;
-
-  if (!scheduleOwnerId) {
-    return { slotGroups: [], status: "DAY_OFF" };
-  }
-
   const startOfDayUTC = getStartOfDay(date);
   const endOfDayUTC = getEndOfDay(date);
 
-  const [workingHours, bookings, timeBlocks] = await Promise.all([
-    prisma.workingHours.findUnique({
-      where: { barberId_dayOfWeek: { barberId: scheduleOwnerId, dayOfWeek } },
-      include: { blocks: { orderBy: { startTime: "asc" } } },
-    }),
+  let workingHours = await prisma.workingHours.findUnique({
+    where: { barberId_dayOfWeek: { barberId: barberId, dayOfWeek } },
+    include: { blocks: { orderBy: { startTime: "asc" } } },
+  });
+
+  if (!workingHours && barber.role === Role.BARBER) {
+    const ownerId = barber.teamMembership?.barbershop.ownerId;
+    if (ownerId) {
+      workingHours = await prisma.workingHours.findUnique({
+        where: { barberId_dayOfWeek: { barberId: ownerId, dayOfWeek } },
+        include: { blocks: { orderBy: { startTime: "asc" } } },
+      });
+    }
+  }
+
+  const [bookings, timeBlocks] = await Promise.all([
     prisma.booking.findMany({
       where: {
         barberId: barberId,
