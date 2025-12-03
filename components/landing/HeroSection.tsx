@@ -42,9 +42,23 @@ const SocialProof = () => (
         />
         <AvatarFallback>+1</AvatarFallback>
       </Avatar>
+      <Avatar className="w-6 h-6 border-2 border-background">
+        <AvatarImage
+          src="/images/partners/barberia_6.png"
+          alt="KC Barberia Logo"
+        />
+        <AvatarFallback>+1</AvatarFallback>
+      </Avatar>
+      <Avatar className="w-6 h-6 border-2 border-background">
+        <AvatarImage
+          src="/images/partners/barberia_7.png"
+          alt="Barberia NA Logo"
+        />
+        <AvatarFallback>+1</AvatarFallback>
+      </Avatar>
     </div>
     <span className="pr-2 text-sm font-medium text-muted-foreground">
-      +6 barberías usan Turnix diariamente
+      +10 barberías usan Turnix diariamente
     </span>
   </div>
 );

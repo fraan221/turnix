@@ -6,6 +6,8 @@ const partners = [
   { name: "Break Barber", logo: "/images/partners/barberia_3.png" },
   { name: "Lupa Estudio", logo: "/images/partners/barberia_4.png" },
   { name: "HAIRVANA SALON", logo: "/images/partners/barberia_5.png" },
+  { name: "KC Barbería", logo: "/images/partners/barberia_6.png" },
+  { name: "Barbería NA", logo: "/images/partners/barberia_7.png" },
 ];
 
 export function PartnersSection() {
@@ -19,7 +21,7 @@ export function PartnersSection() {
           <div className="relative w-full max-w-5xl mt-6 overflow-hidden">
             <div className="flex w-max animate-marquee">
               {[...partners, ...partners].map((partner, index) => (
-                <div key={index} className="flex-shrink-0 w-48 mx-6">
+                <div key={index} className="flex-shrink-0 w-48 mx-4">
                   <Image
                     src={partner.logo}
                     alt={`Logo de ${partner.name}`}

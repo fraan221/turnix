@@ -26,3 +26,6 @@ next-env.d.ts
 # Testing
 playwright-report/
 test-results/
+
+.vscode
+.github
