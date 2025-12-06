@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MercadoPagoConfig, PreApproval } from "mercadopago";
-import prisma from "@/lib/prisma";
+import { MercadoPagoConfig, Payment } from "mercadopago";
 import crypto from "crypto";
-import { revalidatePath } from "next/cache";
+import { syncSubscriptionStatus } from "@/lib/mercadopago/sync";
+import prisma from "@/lib/prisma";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -10,101 +10,95 @@ const client = new MercadoPagoConfig({
 const WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET;
 
 export async function POST(req: NextRequest) {
-  console.log("--- INICIANDO PROCESAMIENTO DE WEBHOOK ---");
+  console.log("--- WEBHOOK MP RECIBIDO ---");
 
   try {
     const body = await req.json();
-    console.log("Cuerpo del Webhook recibido:", JSON.stringify(body, null, 2));
-
     const signature = req.headers.get("x-signature");
     const requestId = req.headers.get("x-request-id");
 
+    const topic = body.type || body.topic;
+    const resourceId = body.data?.id;
+
+    console.log(`Evento: ${topic} | ID: ${resourceId}`);
+
     if (WEBHOOK_SECRET && signature && requestId) {
       const parts = signature.split(",");
-      const timestamp = parts
-        .find((part) => part.startsWith("ts="))
-        ?.split("=")[1];
-      const hash = parts.find((part) => part.startsWith("v1="))?.split("=")[1];
+      const timestamp = parts.find((p) => p.startsWith("ts="))?.split("=")[1];
+      const hash = parts.find((p) => p.startsWith("v1="))?.split("=")[1];
 
       if (timestamp && hash) {
-        const manifest = `id:${body.data.id};request-id:${requestId};ts:${timestamp};`;
+        const manifest = `id:${resourceId};request-id:${requestId};ts:${timestamp};`;
         const hmac = crypto.createHmac("sha256", WEBHOOK_SECRET);
         hmac.update(manifest);
-        const expectedSignature = hmac.digest("hex");
-
-        if (expectedSignature !== hash) {
-          console.error(
-            "Error de validación de Webhook: la firma no coincide."
-          );
+        if (hmac.digest("hex") !== hash) {
+          console.error("Firma inválida.");
           return NextResponse.json(
-            { error: "Firma inválida." },
+            { error: "Invalid signature" },
             { status: 400 }
           );
         }
-        console.log("Firma del Webhook validada exitosamente.");
       }
     } else {
-      console.warn(
-        "Advertencia: No se encontró firma de webhook para validar."
-      );
+      console.warn("Webhook sin firma segura validada.");
     }
 
-    if (body.type === "subscription_preapproval") {
-      console.log(
-        `Tipo de evento 'preapproval' detectado. ID: ${body.data.id}`
-      );
-      const preapprovalClient = new PreApproval(client);
-      const subscriptionData = await preapprovalClient.get({
-        id: body.data.id,
-      });
-      console.log(
-        "Datos de la suscripción obtenidos de MP:",
-        JSON.stringify(subscriptionData, null, 2)
-      );
+    if (topic === "subscription_preapproval") {
+      console.log(`Evento de Suscripción. Sincronizando ID: ${resourceId}...`);
+      await syncSubscriptionStatus(resourceId);
+    } else if (topic === "payment") {
+      console.log(`Pago detectado ${resourceId}. Buscando propietario...`);
 
-      if (subscriptionData.status === "authorized") {
-        const userId = subscriptionData.external_reference;
+      const paymentClient = new Payment(client);
+      const paymentData = await paymentClient.get({ id: resourceId });
 
-        if (userId) {
-          console.log(`Vinculando suscripción al User ID: ${userId}`);
-          await prisma.subscription.upsert({
-            where: { userId: userId },
-            create: {
-              userId: userId,
-              mercadopagoSubscriptionId: subscriptionData.id!,
-              status: subscriptionData.status!,
-              currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
-            },
-            update: {
-              mercadopagoSubscriptionId: subscriptionData.id!,
-              status: subscriptionData.status!,
-              currentPeriodEnd: new Date(subscriptionData.next_payment_date!),
-            },
-          });
+      let userIdToSync: string | null = null;
 
-          revalidatePath("/dashboard");
-          revalidatePath("/subscribe");
-          console.log(
-            "ÉXITO: Revalidación de caché para /dashboard y /subscribe iniciada."
-          );
-
-          console.log(
-            `ÉXITO: Base de datos actualizada para el usuario: ${userId}, Estado: ${subscriptionData.status}`
-          );
-        } else {
-          console.error(
-            "Error crítico: No se encontró 'external_reference' (userId) en la suscripción."
-          );
+      if (paymentData.external_reference) {
+        userIdToSync = paymentData.external_reference;
+        console.log(
+          `Usuario identificado por external_reference: ${userIdToSync}`
+        );
+      } else if (paymentData.payer?.email) {
+        console.log(`Buscando usuario por email: ${paymentData.payer.email}`);
+        const user = await prisma.user.findUnique({
+          where: { email: paymentData.payer.email },
+          select: { id: true },
+        });
+        if (user) {
+          userIdToSync = user.id;
+          console.log(`Usuario encontrado por email: ${userIdToSync}`);
         }
       }
+
+      if (userIdToSync) {
+        const userSubscription = await prisma.subscription.findUnique({
+          where: { userId: userIdToSync },
+        });
+
+        if (userSubscription?.mercadopagoSubscriptionId) {
+          console.log(
+            `Forzando sync de suscripción vinculada: ${userSubscription.mercadopagoSubscriptionId}`
+          );
+          await syncSubscriptionStatus(
+            userSubscription.mercadopagoSubscriptionId
+          );
+        } else {
+          console.warn(
+            `Usuario ${userIdToSync} encontrado, pero no tiene suscripción activa en DB para sincronizar.`
+          );
+        }
+      } else {
+        console.warn(
+          `No se pudo vincular el pago ${resourceId} a ningún usuario conocido.`
+        );
+      }
     }
-    console.log("--- FINALIZANDO PROCESAMIENTO DE WEBHOOK ---");
+
+    console.log("--- WEBHOOK PROCESADO ---");
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error(
-      "Error catastrófico al procesar el webhook de Mercado Pago:",
-      error
-    );
+    console.error("Error en Webhook:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

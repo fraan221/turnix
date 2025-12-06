@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { revalidatePath } from "next/cache";
 import { getBaseUrl } from "@/lib/get-base-url";
+import { syncSubscriptionStatus } from "@/lib/mercadopago/sync";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -236,7 +237,7 @@ export async function cancelSubscription(
     const result = await preapproval.update({
       id: mercadopagoSubscriptionId,
       body: {
-        status: "cancelled",
+        status: "paused",
       },
     });
 
@@ -298,4 +299,48 @@ export async function validateDiscountCode(code: string): Promise<{
     price: discountCode.overridePrice,
     duration: discountCode.durationMonths,
   };
+}
+
+export async function refreshSubscriptionStatus() {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user || !user.id) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!subscription || !subscription.mercadopagoSubscriptionId) {
+      return {
+        success: false,
+        message: "No se encontró una suscripción activa para sincronizar.",
+      };
+    }
+
+    const updatedSub = await syncSubscriptionStatus(
+      subscription.mercadopagoSubscriptionId
+    );
+
+    if (!updatedSub) {
+      return {
+        success: false,
+        message: "Error al conectar con Mercado Pago. Intenta en unos minutos.",
+      };
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/billing");
+
+    return {
+      success: true,
+      status: updatedSub.status,
+      message: "Estado de suscripción actualizado correctamente.",
+    };
+  } catch (error) {
+    console.error("Error en refreshSubscriptionStatus:", error);
+    return { success: false, message: "Error interno del servidor." };
+  }
 }
