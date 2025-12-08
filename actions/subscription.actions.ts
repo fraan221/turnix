@@ -241,10 +241,10 @@ export async function cancelSubscription(
       },
     });
 
-    if (result.status === "cancelled") {
+    if (result.status === "cancelled" || result.status === "paused") {
       await prisma.subscription.update({
         where: { mercadopagoSubscriptionId },
-        data: { status: "cancelled" },
+        data: { status: result.status },
       });
       revalidatePath("/dashboard/billing");
       return { success: "Tu suscripción ha sido cancelada con éxito." };
@@ -253,6 +253,47 @@ export async function cancelSubscription(
     }
   } catch (error) {
     console.error("Error al cancelar la suscripción en Mercado Pago:", error);
+    return { error: "Ocurrió un error al comunicarnos con Mercado Pago." };
+  }
+}
+
+export async function reactivateSubscription(
+  mercadopagoSubscriptionId: string
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  const subscriptionInDb = await prisma.subscription.findUnique({
+    where: { mercadopagoSubscriptionId },
+  });
+
+  if (subscriptionInDb?.userId !== user.id) {
+    return { error: "No tienes permiso para reactivar esta suscripción." };
+  }
+
+  try {
+    const preapproval = new PreApproval(client);
+    const result = await preapproval.update({
+      id: mercadopagoSubscriptionId,
+      body: {
+        status: "authorized",
+      },
+    });
+
+    if (result.status === "authorized") {
+      await prisma.subscription.update({
+        where: { mercadopagoSubscriptionId },
+        data: { status: "authorized" },
+      });
+      revalidatePath("/dashboard/billing");
+      return { success: "Tu suscripción ha sido reactivada con éxito." };
+    } else {
+      return { error: "Mercado Pago no pudo procesar la reactivación." };
+    }
+  } catch (error) {
+    console.error("Error al reactivar la suscripción en Mercado Pago:", error);
     return { error: "Ocurrió un error al comunicarnos con Mercado Pago." };
   }
 }

@@ -9,6 +9,7 @@ export default auth(async (req) => {
   const isLoggedIn = !!session?.user;
 
   const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
+  const isOnBillingPage = nextUrl.pathname.startsWith("/dashboard/billing");
   const isOnSubscribePage = nextUrl.pathname.startsWith("/subscribe");
   const isOnSubscriptionInactivePage = nextUrl.pathname.startsWith(
     "/subscription-inactive"
@@ -46,7 +47,12 @@ export default auth(async (req) => {
     }
 
     const hasAccess = hasActiveSubscription(session);
+
     if (!hasAccess) {
+      if (session.user.role === Role.OWNER && isOnBillingPage) {
+        return NextResponse.next();
+      }
+
       if (!isOnSubscribePage && !isOnSubscriptionInactivePage) {
         if (session.user.role === Role.OWNER) {
           return NextResponse.redirect(new URL("/subscribe", nextUrl));
@@ -58,7 +64,7 @@ export default auth(async (req) => {
     } else {
       if (isOnSubscribePage || isOnSubscriptionInactivePage) {
         const reason = nextUrl.searchParams.get("reason");
-        if (reason === "trial" && isOnSubscribePage) {
+        if (reason === "manage" || reason === "trial") {
           return NextResponse.next();
         }
         return NextResponse.redirect(new URL("/dashboard", nextUrl));

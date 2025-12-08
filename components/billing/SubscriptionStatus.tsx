@@ -8,9 +8,21 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Clock,
   AlertCircle,
@@ -18,18 +30,23 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Sparkles,
+  CreditCard,
+  Loader2,
+  Calendar,
 } from "lucide-react";
-import { refreshSubscriptionStatus } from "@/actions/subscription.actions";
+import {
+  refreshSubscriptionStatus,
+  cancelSubscription,
+  reactivateSubscription,
+} from "@/actions/subscription.actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
   if (!endDate) return "";
   const distance = new Date(endDate).getTime() - new Date().getTime();
-
-  if (distance < 0) {
-    return "expirada";
-  }
+  if (distance < 0) return "expirada";
 
   const days = Math.floor(distance / (1000 * 60 * 60 * 24));
   const hours = Math.floor(
@@ -44,11 +61,15 @@ const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
     .toString()
     .padStart(2, "0");
 
-  if (days === 0) {
-    return `${hours}:${minutes}:${seconds}`;
-  }
+  return days === 0
+    ? `${hours}:${minutes}:${seconds}`
+    : `${days}d ${hours}:${minutes}:${seconds}`;
+};
 
-  return `${days}d ${hours}:${minutes}:${seconds}`;
+const formatFullDate = (date: Date) => {
+  return new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(
+    new Date(date)
+  );
 };
 
 interface SubscriptionStatusProps {
@@ -56,15 +77,20 @@ interface SubscriptionStatusProps {
     status: string;
     currentPeriodEnd: Date;
     mercadopagoSubscriptionId: string;
+    discountedUntil?: Date | null;
+    discountCode?: {
+      overridePrice: number;
+    } | null;
   } | null;
 }
 
 export default function SubscriptionStatus({
   subscription,
 }: SubscriptionStatusProps) {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPendingSync, startTransitionSync] = useTransition();
+  const [isPendingCancel, startTransitionCancel] = useTransition();
 
   const trialEndsAt = session?.user?.trialEndsAt;
   const [timeLeft, setTimeLeft] = useState(() =>
@@ -74,25 +100,56 @@ export default function SubscriptionStatus({
   const isTrialExpired = timeLeft === "expirada";
 
   useEffect(() => {
-    if (subscription || !trialEndsAt || !isInTrial) return;
-
+    if (!trialEndsAt || !isInTrial) return;
     setTimeLeft(calculateTimeLeft(trialEndsAt));
-    const intervalId = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(trialEndsAt));
-    }, 1000);
-
+    const intervalId = setInterval(
+      () => setTimeLeft(calculateTimeLeft(trialEndsAt)),
+      1000
+    );
     return () => clearInterval(intervalId);
-  }, [trialEndsAt, isInTrial, subscription]);
+  }, [trialEndsAt, isInTrial]);
 
   const handleSync = () => {
-    startTransition(async () => {
+    startTransitionSync(async () => {
       const result = await refreshSubscriptionStatus();
-
       if (result.success) {
-        toast.success(`Estado actualizado: ${result.status}`);
+        const messages: Record<string, string> = {
+          authorized: "Tu pago se procesó correctamente. ¡Tu plan está activo!",
+          pending: "Tu pago aún se está procesando. Esperá unos minutos.",
+          paused: "Tu suscripción está pausada en Mercado Pago.",
+          cancelled:
+            "Tu suscripción fue cancelada. Podés reactivarla cuando quieras.",
+        };
+        const userMessage =
+          messages[result.status as string] ||
+          `Estado sincronizado: ${result.status}`;
+
+        if (result.status === "authorized") {
+          toast.success("Estado actualizado", { description: userMessage });
+        } else {
+          toast.info("Estado actualizado", { description: userMessage });
+        }
         router.refresh();
       } else {
-        toast.error(result.message);
+        toast.error("No se pudo actualizar", { description: result.message });
+      }
+    });
+  };
+
+  const handleCancel = () => {
+    if (!subscription) return;
+    startTransitionCancel(async () => {
+      const result = await cancelSubscription(
+        subscription.mercadopagoSubscriptionId
+      );
+      if (result.success) {
+        toast.success("Suscripción cancelada", {
+          description: "Ya no se renovará automáticamente.",
+        });
+        await update();
+        router.refresh();
+      } else {
+        toast.error("No se pudo cancelar", { description: result.error });
       }
     });
   };
@@ -101,35 +158,35 @@ export default function SubscriptionStatus({
     switch (status) {
       case "authorized":
         return {
-          color: "bg-green-100 text-green-800 border-green-200",
+          color: "bg-green-50 text-green-700 border-green-200",
           icon: CheckCircle2,
           label: "Activa",
-          description: "Tu suscripción se encuentra al día.",
+          description: "Tu plan está funcionando correctamente.",
         };
       case "paused":
         return {
-          color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          color: "bg-yellow-50 text-yellow-700 border-yellow-200",
           icon: AlertTriangle,
-          label: "Pausada",
-          description: "La suscripción está pausada temporalmente.",
+          label: "Cancelación Programada",
+          description: "Tenés acceso hasta el final del periodo actual.",
         };
       case "cancelled":
         return {
-          color: "bg-red-100 text-red-800 border-red-200",
+          color: "bg-red-50 text-red-700 border-red-200",
           icon: XCircle,
           label: "Cancelada",
           description: "Tu suscripción fue cancelada.",
         };
       case "pending":
         return {
-          color: "bg-orange-100 text-orange-800 border-orange-200",
+          color: "bg-orange-50 text-orange-700 border-orange-200",
           icon: AlertTriangle,
           label: "Pago Pendiente",
-          description: "Estamos esperando la confirmación del pago.",
+          description: "Esperando confirmación de tu pago.",
         };
       default:
         return {
-          color: "bg-gray-100 text-gray-800",
+          color: "bg-gray-50 text-gray-700 border-gray-200",
           icon: AlertTriangle,
           label: status,
           description: "Estado desconocido.",
@@ -137,147 +194,260 @@ export default function SubscriptionStatus({
     }
   };
 
-  if (subscription) {
+  const shouldShowSubscription =
+    subscription &&
+    (["authorized", "paused"].includes(subscription.status) ||
+      !isInTrial);
+
+  if (shouldShowSubscription) {
     const config = getStatusConfig(subscription.status);
     const StatusIcon = config.icon;
+    const isDiscountActive =
+      subscription.discountedUntil &&
+      new Date(subscription.discountedUntil) > new Date();
+    const standardPrice = 9900;
 
-    return (
-      <Card className="w-full border-2 border-l-4 border-l-primary">
-        <CardHeader className="pb-2">
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                Estado de Suscripción
-              </CardTitle>
-              <CardDescription>{config.description}</CardDescription>
-            </div>
-            <Badge
-              variant="outline"
-              className={`${config.color} px-3 py-1 flex gap-2 items-center text-sm font-medium`}
-            >
-              <StatusIcon className="w-4 h-4" />
-              {config.label}
-            </Badge>
+  const handleReactivate = () => {
+    if (!subscription) return;
+
+    if (subscription.status === "paused") {
+      startTransitionSync(async () => {
+        const result = await reactivateSubscription(
+          subscription.mercadopagoSubscriptionId
+        );
+        if (result.success) {
+          toast.success("Suscripción reactivada", {
+            description: "Tu plan vuelve a estar activo.",
+          });
+          await update();
+          router.refresh();
+        } else {
+          toast.error("No se pudo reactivar", { description: result.error });
+        }
+      });
+    } else {
+      router.push("/subscribe?reason=manage");
+    }
+  };
+
+  return (
+    <Card className="mx-auto max-w-md rounded-lg border">
+      <CardHeader className="pb-4 space-y-1 border-b">
+        <div className="flex gap-4 justify-between items-start">
+          <div className="space-y-1">
+            <CardTitle className="text-xl">Plan PRO</CardTitle>
+            <CardDescription className="text-sm">
+              {config.description}
+            </CardDescription>
           </div>
-        </CardHeader>
+          <Badge
+            variant="outline"
+            className={`${config.color} px-3 py-1.5 flex gap-2 items-center text-sm font-medium shrink-0`}
+          >
+            <StatusIcon className="w-4 h-4" />
+            {config.label}
+          </Badge>
+        </div>
+      </CardHeader>
 
-        <CardContent className="pt-4 space-y-4">
-          <div className="grid grid-cols-1 gap-4 p-3 text-sm rounded-lg sm:grid-cols-2 bg-muted/30">
-            <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                Vencimiento del ciclo
+      <CardContent className="pt-6 space-y-6">
+        <div className="flex gap-3 items-start p-4 rounded-lg border bg-muted/30">
+          <Calendar className="w-5 h-5 mt-0.5 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-muted-foreground">
+              Próximo cobro
+            </p>
+            <p className="mt-1 text-base font-semibold">
+              {formatFullDate(subscription.currentPeriodEnd)}
+            </p>
+            {!isDiscountActive && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                ${standardPrice}/mes
               </p>
-              <p className="text-base font-medium">
-                {subscription.currentPeriodEnd
-                  ? new Intl.DateTimeFormat("es-AR", {
-                      dateStyle: "long",
-                    }).format(new Date(subscription.currentPeriodEnd))
-                  : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                Referencia de Pago
-              </p>
-              <p
-                className="mt-1 font-mono text-xs truncate text-muted-foreground"
-                title={subscription.mercadopagoSubscriptionId}
-              >
-                {subscription.mercadopagoSubscriptionId.slice(0, 15)}...
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSync}
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${isPending ? "animate-spin" : ""}`}
-              />
-              {isPending ? "Verificando..." : "Verificar Estado Ahora"}
-            </Button>
-
-            {(subscription.status === "cancelled" ||
-              subscription.status === "paused") && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => router.push("/subscribe")}
-                className="w-full bg-green-600 sm:w-auto hover:bg-green-700"
-              >
-                Reactivar Plan PRO
-              </Button>
             )}
           </div>
+        </div>
 
-          {subscription.status === "pending" && (
-            <p className="p-2 text-xs text-orange-600 border border-orange-100 rounded bg-orange-50">
-              ⚠️ Si ya realizaste el pago, espera unos instantes y presiona
-              "Verificar Estado Ahora".
-            </p>
+        {isDiscountActive && subscription.discountCode && (
+          <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+            <div className="flex gap-3 items-start">
+              <Sparkles className="w-5 h-5 mt-0.5 text-primary" />
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">
+                  Descuento especial activo
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Estás pagando{" "}
+                  <span className="font-bold text-foreground">
+                    ${subscription.discountCode.overridePrice}/mes
+                  </span>{" "}
+                  hasta el{" "}
+                  <span className="font-medium text-foreground">
+                    {formatFullDate(subscription.discountedUntil!)}
+                  </span>
+                  .
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Después: ${standardPrice}/mes
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={isPendingSync}
+            className="w-full"
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isPendingSync ? "animate-spin" : ""}`}
+            />
+            {isPendingSync ? "Verificando..." : "Verificar estado"}
+          </Button>
+          <p className="mt-2 text-xs text-center text-muted-foreground">
+            ID: {subscription.mercadopagoSubscriptionId}
+          </p>
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex-col gap-3 pt-4 border-t">
+        {subscription.status === "cancelled" ||
+        subscription.status === "paused" ? (
+          <Button
+            className="w-full"
+            onClick={handleReactivate}
+            disabled={isPendingSync}
+          >
+            {isPendingSync && subscription.status === "paused" ? (
+              <>
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                Reactivando...
+              </>
+            ) : (
+              "Reactivar Plan PRO"
+            )}
+          </Button>
+        ) : (
+            <>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() =>
+                  toast.info("Gestionar medio de pago", {
+                    description:
+                      "Escribinos por WhatsApp para cambiar tu tarjeta.",
+                  })
+                }
+              >
+                <CreditCard className="mr-2 w-4 h-4" />
+                Cambiar medio de pago
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground hover:text-destructive"
+                  >
+                    Cancelar suscripción
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Cancelar tu Plan PRO?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Perderás acceso después del{" "}
+                      {formatFullDate(subscription.currentPeriodEnd)}. Podés
+                      seguir usando Turnix hasta esa fecha, pero después ya no
+                      tendrás acceso a tu agenda ni a tus clientes.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Mantener suscripción</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      disabled={isPendingCancel}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {isPendingCancel && (
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      )}
+                      Cancelar Plan PRO
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
-        </CardContent>
+        </CardFooter>
       </Card>
     );
   }
 
   return (
-    <Card
-      className={`w-full max-w-md mx-auto border-2 ${isInTrial ? "border-primary/20" : "border-red-200"}`}
-    >
-      <CardHeader className="pb-4 space-y-3 text-center">
+    <Card className="mx-auto max-w-md rounded-lg border">
+      <CardHeader className="space-y-4 text-center">
         {isInTrial ? (
           <>
-            <div className="flex items-center justify-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              <CardTitle className="text-xl">Prueba gratuita activa</CardTitle>
+            <div className="flex justify-center">
+              <div className="p-3 rounded-full bg-primary/10">
+                <Clock className="w-6 h-6 text-primary" />
+              </div>
             </div>
-            <CardDescription className="text-base">
-              Disfruta de todas las funcionalidades PRO. Tu acceso termina en:
-            </CardDescription>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl">Prueba gratuita activa</CardTitle>
+              <CardDescription className="text-base">
+                Acceso completo a todas las funcionalidades PRO.
+                <br />
+                Tu prueba termina en:
+              </CardDescription>
+            </div>
           </>
         ) : (
           <>
-            <div className="flex items-center justify-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <CardTitle className="text-xl text-red-700">
-                Prueba gratuita finalizada
-              </CardTitle>
+            <div className="flex justify-center">
+              <div className="p-3 bg-orange-100 rounded-full">
+                <AlertCircle className="w-6 h-6 text-orange-600" />
+              </div>
             </div>
-            <CardDescription className="text-base">
-              Tu periodo de prueba ha terminado. Suscríbete para continuar
-              gestionando tu barbería.
-            </CardDescription>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl">
+                Tu prueba gratuita finalizó
+              </CardTitle>
+              <CardDescription className="text-base">
+                Suscribite al Plan PRO para seguir gestionando tu barbería sin
+                interrupciones.
+              </CardDescription>
+            </div>
           </>
         )}
       </CardHeader>
 
       {isInTrial && !isTrialExpired && (
-        <CardContent className="flex flex-col items-center justify-center pb-6">
-          <div className="flex items-center gap-3 px-6 py-4 border-2 rounded-lg shadow-sm bg-primary/5 border-primary/20">
-            <span className="font-mono text-3xl font-bold tracking-wider text-primary">
+        <CardContent className="flex flex-col items-center pb-6 space-y-4">
+          <div className="inline-flex gap-3 items-center px-8 py-5 rounded-lg border-2 bg-primary/5 border-primary/20">
+            <span className="font-mono text-4xl font-bold tracking-wider text-primary">
               {timeLeft}
             </span>
           </div>
-          <p className="mt-3 text-xs font-medium tracking-wide uppercase text-muted-foreground">
+          <p className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
             Días : Horas : Minutos : Segundos
           </p>
         </CardContent>
       )}
 
       {(!isInTrial || isTrialExpired) && (
-        <CardContent className="flex justify-center pb-6">
+        <CardContent className="pb-6">
           <Button
             onClick={() => router.push("/subscribe")}
-            className="w-full sm:w-auto"
+            className="w-full"
             size="lg"
           >
-            Suscribirse al Plan PRO
+            Suscribirme al Plan PRO
           </Button>
         </CardContent>
       )}

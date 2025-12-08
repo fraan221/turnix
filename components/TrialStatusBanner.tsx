@@ -36,7 +36,8 @@ export default async function TrialStatusBanner() {
 
   const { trialEndsAt, role, subscription } = user;
   const isOwner = role === "OWNER";
-  const isSubscribed = subscription?.status === "authorized";
+  const isSubscribed =
+    subscription?.status === "authorized" || subscription?.status === "paused";
 
   const showTrialBanner =
     isOwner &&
