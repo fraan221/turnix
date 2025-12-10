@@ -176,18 +176,21 @@ export async function createSubscription(
       }
 
       await prisma.$transaction(async (tx) => {
-        await tx.subscription.create({
-          data: {
+        await tx.subscription.upsert({
+          where: { userId: user.id },
+          create: {
             userId: user.id,
-
             mercadopagoSubscriptionId: response.id!,
-
             status: "pending",
-
             currentPeriodEnd: tomorrow,
-
             appliedDiscountCodeId: validDiscount?.id,
-
+            discountedUntil: discountedUntilDate,
+          },
+          update: {
+            mercadopagoSubscriptionId: response.id!,
+            status: "pending",
+            currentPeriodEnd: tomorrow,
+            appliedDiscountCodeId: validDiscount?.id,
             discountedUntil: discountedUntilDate,
           },
         });
@@ -195,7 +198,6 @@ export async function createSubscription(
         if (validDiscount) {
           await tx.discountCode.update({
             where: { id: validDiscount.id },
-
             data: { timesUsed: { increment: 1 } },
           });
         }
@@ -286,6 +288,10 @@ export async function reactivateSubscription(
       await prisma.subscription.update({
         where: { mercadopagoSubscriptionId },
         data: { status: "authorized" },
+      });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { trialEndsAt: null },
       });
       revalidatePath("/dashboard/billing");
       return { success: "Tu suscripción ha sido reactivada con éxito." };

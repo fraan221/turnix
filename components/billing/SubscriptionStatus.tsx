@@ -91,6 +91,7 @@ export default function SubscriptionStatus({
   const router = useRouter();
   const [isPendingSync, startTransitionSync] = useTransition();
   const [isPendingCancel, startTransitionCancel] = useTransition();
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 
   const trialEndsAt = session?.user?.trialEndsAt;
   const [timeLeft, setTimeLeft] = useState(() =>
@@ -115,7 +116,8 @@ export default function SubscriptionStatus({
       if (result.success) {
         const messages: Record<string, string> = {
           authorized: "Tu pago se procesó correctamente. ¡Tu plan está activo!",
-          pending: "Tu pago aún se está procesando. Esperá unos minutos.",
+          pending:
+            "El pago está pendiente. Podría estar demorado o haber sido rechazado.",
           paused: "Tu suscripción está pausada en Mercado Pago.",
           cancelled:
             "Tu suscripción fue cancelada. Podés reactivarla cuando quieras.",
@@ -136,7 +138,8 @@ export default function SubscriptionStatus({
     });
   };
 
-  const handleCancel = () => {
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!subscription) return;
     startTransitionCancel(async () => {
       const result = await cancelSubscription(
@@ -148,8 +151,10 @@ export default function SubscriptionStatus({
         });
         await update();
         router.refresh();
+        setIsCancelDialogOpen(false);
       } else {
         toast.error("No se pudo cancelar", { description: result.error });
+        setIsCancelDialogOpen(false);
       }
     });
   };
@@ -182,7 +187,8 @@ export default function SubscriptionStatus({
           color: "bg-orange-50 text-orange-700 border-orange-200",
           icon: AlertTriangle,
           label: "Pago Pendiente",
-          description: "Esperando confirmación de tu pago.",
+          description:
+            "Estamos procesando tu pago. Si demora, revisá tu tarjeta.",
         };
       default:
         return {
@@ -347,7 +353,10 @@ export default function SubscriptionStatus({
                 Cambiar medio de pago
               </Button>
 
-              <AlertDialog>
+              <AlertDialog
+                open={isCancelDialogOpen}
+                onOpenChange={setIsCancelDialogOpen}
+              >
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="ghost"

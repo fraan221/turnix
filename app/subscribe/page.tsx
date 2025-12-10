@@ -3,6 +3,8 @@ import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
 import { LogoutForm } from "@/components/LogoutButton";
 import { SubscriptionCta } from "@/components/billing/SubscriptionCta";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/data";
+import { SubscriptionManagement } from "@/components/billing/SubscriptionManagement";
 
 interface SubscribePageProps {
   searchParams: {
@@ -10,12 +12,13 @@ interface SubscribePageProps {
   };
 }
 
-export default function SubscribePage({ searchParams }: SubscribePageProps) {
+export default async function SubscribePage({ searchParams }: SubscribePageProps) {
+  const user = await getCurrentUser();
   const reason = searchParams.reason;
   const isProactiveSubscription = reason === "trial";
 
   return (
-    <main className="relative flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-black">
+    <main className="flex relative flex-col justify-center items-center p-4 min-h-screen bg-gray-50 dark:bg-black">
       <Link href="/dashboard" passHref>
         <Button
           variant="ghost"
@@ -27,7 +30,7 @@ export default function SubscribePage({ searchParams }: SubscribePageProps) {
         </Button>
       </Link>
 
-      <div className="w-full max-w-lg space-y-8">
+      <div className="space-y-8 w-full max-w-lg">
         <div className="space-y-4 text-center">
           <div className="flex justify-center">
             {isProactiveSubscription ? (
@@ -47,7 +50,7 @@ export default function SubscribePage({ searchParams }: SubscribePageProps) {
                 ? "Tu prueba está por terminar"
                 : "Tu prueba gratuita finalizó"}
             </h1>
-            <p className="max-w-md mx-auto text-base text-muted-foreground">
+            <p className="mx-auto max-w-md text-base text-muted-foreground">
               {isProactiveSubscription
                 ? "Suscribite ahora para seguir gestionando tu barbería sin interrupciones."
                 : "Necesitás el Plan PRO para volver a acceder a tu agenda, clientes y todos tus datos."}
@@ -55,15 +58,19 @@ export default function SubscribePage({ searchParams }: SubscribePageProps) {
           </div>
         </div>
 
+        {user?.subscription && (
+          <SubscriptionManagement subscription={user.subscription} />
+        )}
+
         <div>
           <SubscriptionCta isTrial={isProactiveSubscription} />
         </div>
 
         <div className="relative">
-          <div className="absolute inset-0 flex items-center">
+          <div className="flex absolute inset-0 items-center">
             <span className="w-full border-t" />
           </div>
-          <div className="relative flex justify-center text-xs uppercase">
+          <div className="flex relative justify-center text-xs uppercase">
             <span className="px-2 bg-gray-50 dark:bg-black text-muted-foreground">
               o
             </span>

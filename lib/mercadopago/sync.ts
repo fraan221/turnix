@@ -56,6 +56,13 @@ export async function syncSubscriptionStatus(
       },
     });
 
+    if (mpSubscription.status === "authorized") {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { trialEndsAt: null },
+      });
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/subscribe");
 

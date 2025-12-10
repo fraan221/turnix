@@ -13,7 +13,10 @@ export const getCurrentUser = cache(async () => {
   if (!session?.user?.id) {
     return null;
   }
-  return prisma.user.findUnique({ where: { id: session.user.id } });
+  return prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { subscription: true },
+  });
 });
 
 /**
