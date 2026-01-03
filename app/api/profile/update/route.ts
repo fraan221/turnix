@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { Role } from "@prisma/client";
 import { z } from "zod";
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
 const phoneSchema = z
@@ -32,6 +31,8 @@ const UserProfileSchema = z.object({
     .optional(),
   barbershopDescription: z.string().optional(),
   barbershopAddress: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  barbershopImageUrl: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -49,31 +50,19 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    const avatarFile = formData.get("avatar") as File | null;
-    let avatarUrl: string | undefined = undefined;
 
-    if (avatarFile && avatarFile.size > 0) {
-      const blob = await put(avatarFile.name, avatarFile, {
-        access: "public",
-        addRandomSuffix: true,
-      });
-      avatarUrl = blob.url;
-    }
+    const avatarUrl = formData.get("avatarUrl") as string | null;
+    const barbershopImageUrl = formData.get("barbershopImageUrl") as
+      | string
+      | null;
 
-    const barbershopImageFile = formData.get("barbershopImage") as File | null;
-    let barbershopImageUrl: string | undefined = undefined;
-
-    if (barbershopImageFile && barbershopImageFile.size > 0) {
-      const blob = await put(barbershopImageFile.name, barbershopImageFile, {
-        access: "public",
-        addRandomSuffix: true,
-      });
-      barbershopImageUrl = blob.url;
-    }
-
-    const fieldsToValidate: { [key: string]: FormDataEntryValue | null } = {
+    const fieldsToValidate: {
+      [key: string]: FormDataEntryValue | null | undefined;
+    } = {
       name: formData.get("name"),
       phone: formData.get("phone"),
+      avatarUrl: avatarUrl || undefined,
+      barbershopImageUrl: barbershopImageUrl || undefined,
     };
 
     if (userRole === Role.OWNER) {

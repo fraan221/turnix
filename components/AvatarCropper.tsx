@@ -17,6 +17,7 @@ interface AvatarCropperContentProps {
   imageSrc: string;
   onCropComplete: (croppedImage: Blob | null) => void;
   onClose: () => void;
+  outputMimeType?: string;
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -30,7 +31,9 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 
 async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: Area
+  pixelCrop: Area,
+  mimeType: string = "image/png",
+  maxSize: number = 2048
 ): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
@@ -52,8 +55,22 @@ async function getCroppedImg(
     return null;
   }
 
-  croppedCanvas.width = pixelCrop.width;
-  croppedCanvas.height = pixelCrop.height;
+  let width = pixelCrop.width;
+  let height = pixelCrop.height;
+
+  if (width > maxSize || height > maxSize) {
+    const ratio = width / height;
+    if (width > height) {
+      width = maxSize;
+      height = Math.round(maxSize / ratio);
+    } else {
+      height = maxSize;
+      width = Math.round(maxSize * ratio);
+    }
+  }
+
+  croppedCanvas.width = width;
+  croppedCanvas.height = height;
 
   croppedCtx.drawImage(
     canvas,
@@ -63,14 +80,17 @@ async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    width,
+    height
   );
 
   return new Promise((resolve) => {
-    croppedCanvas.toBlob((blob) => {
-      resolve(blob);
-    }, "image/png");
+    croppedCanvas.toBlob(
+      (blob) => {
+        resolve(blob);
+      },
+      mimeType
+    );
   });
 }
 
@@ -78,6 +98,7 @@ export function AvatarCropperContent({
   imageSrc,
   onCropComplete,
   onClose,
+  outputMimeType = "image/png",
 }: AvatarCropperContentProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -92,7 +113,11 @@ export function AvatarCropperContent({
 
   const handleCrop = async () => {
     if (imageSrc && croppedAreaPixels) {
-      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const croppedImageBlob = await getCroppedImg(
+        imageSrc,
+        croppedAreaPixels,
+        outputMimeType
+      );
       onCropComplete(croppedImageBlob);
     }
   };
@@ -116,8 +141,8 @@ export function AvatarCropperContent({
           onCropComplete={onCropPixelsComplete}
         />
       </div>
-      <div className="flex items-center gap-4 py-4">
-        <ZoomOut className="w-6 h-6 mr-2 stroke-primary" />
+      <div className="flex gap-4 items-center py-4">
+        <ZoomOut className="mr-2 w-6 h-6 stroke-primary" />
         <Slider
           value={[zoom]}
           min={1}
@@ -125,7 +150,7 @@ export function AvatarCropperContent({
           step={0.1}
           onValueChange={(value) => setZoom(value[0])}
         />
-        <ZoomIn className="w-6 h-6 mr-2 stroke-primary" />
+        <ZoomIn className="mr-2 w-6 h-6 stroke-primary" />
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>

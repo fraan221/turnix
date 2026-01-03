@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
+import { upload } from "@vercel/blob/client";
 
 const AvatarCropperContentSkeleton = () => (
   <>
@@ -45,7 +46,7 @@ const AvatarCropperContentSkeleton = () => (
       </DialogTitle>
     </DialogHeader>
     <Skeleton className="w-full h-64" />
-    <div className="flex items-center gap-4 py-4">
+    <div className="flex gap-4 items-center py-4">
       <Skeleton className="w-6 h-6 rounded-full" />
       <Skeleton className="w-full h-2" />
       <Skeleton className="w-6 h-6 rounded-full" />
@@ -73,12 +74,12 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
     >
       {isPending ? (
         <>
-          <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2Icon className="mr-2 w-4 h-4 animate-spin" />
           <span>Guardando...</span>
         </>
       ) : (
         <>
-          <Save className="w-4 h-4 mr-2" />
+          <Save className="mr-2 w-4 h-4" />
           <span>Guardar cambios</span>
         </>
       )}
@@ -102,17 +103,14 @@ interface SettingsFormProps {
 export default function SettingsForm({ user }: SettingsFormProps) {
   const { data: session, update } = useSession();
 
-  // Component State
   const [isPending, setIsPending] = useState(false);
 
-  // Refs
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const croppedImageRef = useRef<File | null>(null);
   const barbershopFileInputRef = useRef<HTMLInputElement>(null);
   const croppedBarbershopImageRef = useRef<File | null>(null);
 
-  // Controlled component states
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(user.phone || "");
   const [barbershopName, setBarbershopName] = useState(
@@ -126,18 +124,19 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
 
-  // Image and preview states
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
   const [barbershopImagePreview, setBarbershopImagePreview] = useState<
     string | null
   >(user.barbershop?.image || null);
 
-  // UI and helper states
   const [isCopied, setIsCopied] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string>("image/png");
   const [barbershopImageToCrop, setBarbershopImageToCrop] = useState<
     string | null
   >(null);
+  const [barbershopImageMimeType, setBarbershopImageMimeType] =
+    useState<string>("image/png");
 
   const handleCopy = () => {
     const urlToCopy = `${window.location.origin}/${slugValue}`;
@@ -162,7 +161,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const MAX_FILE_SIZE_MB = 4;
+    const MAX_FILE_SIZE_MB = 10; // Increased limit for client-side upload
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       toast.error("Imagen demasiado grande", {
         description: `El archivo no puede superar los ${MAX_FILE_SIZE_MB}MB`,
@@ -181,8 +180,10 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     reader.onloadend = () => {
       if (imageType === "avatar") {
         setImageToCrop(reader.result as string);
+        setImageMimeType(file.type);
       } else {
         setBarbershopImageToCrop(reader.result as string);
+        setBarbershopImageMimeType(file.type);
       }
     };
     reader.readAsDataURL(file);
@@ -193,9 +194,14 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     imageType: "avatar" | "barbershop"
   ) => {
     if (imageBlob) {
-      const fileName = imageType === "avatar" ? "avatar.png" : "barbershop.png";
+      const mimeType =
+        imageType === "avatar" ? imageMimeType : barbershopImageMimeType;
+      const extension = mimeType === "image/jpeg" ? "jpg" : "png";
+      const fileName =
+        imageType === "avatar" ? `avatar.${extension}` : `barbershop.${extension}`;
+      
       const croppedFile = new File([imageBlob], fileName, {
-        type: "image/png",
+        type: mimeType,
       });
 
       if (imageType === "avatar") {
@@ -227,17 +233,38 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
     try {
       const formData = new FormData(formRef.current);
+      let avatarUrl = null;
+      let barbershopImageUrl = null;
 
       if (croppedImageRef.current) {
-        formData.set("avatar", croppedImageRef.current);
-      } else {
-        formData.delete("avatar");
+        const ext = croppedImageRef.current.name.split(".").pop();
+        const filename = `avatar-${Date.now()}.${ext}`;
+        const blob = await upload(filename, croppedImageRef.current, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        avatarUrl = blob.url;
       }
+
       if (croppedBarbershopImageRef.current) {
-        formData.set("barbershopImage", croppedBarbershopImageRef.current);
-      } else {
-        formData.delete("barbershopImage");
+        const ext = croppedBarbershopImageRef.current.name.split(".").pop();
+        const filename = `barbershop-${Date.now()}.${ext}`;
+        const blob = await upload(filename, croppedBarbershopImageRef.current, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        barbershopImageUrl = blob.url;
       }
+
+      if (avatarUrl) {
+        formData.set("avatarUrl", avatarUrl);
+      }
+      if (barbershopImageUrl) {
+        formData.set("barbershopImageUrl", barbershopImageUrl);
+      }
+
+      formData.delete("avatar");
+      formData.delete("barbershopImage");
 
       const response = await fetch("/api/profile/update", {
         method: "POST",
@@ -259,7 +286,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         return;
       }
 
-      // Handle success
       if (result.success && result.data) {
         toast.success("Perfil actualizado", {
           description: "Tus cambios se guardaron correctamente",
@@ -269,7 +295,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           result.data;
         const sessionUpdateData: any = {};
 
-        // Update local form state from server response
         if (updatedUser) {
           setName(updatedUser.name || "");
           setPhone(updatedUser.phone || "");
@@ -301,7 +326,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           };
         }
 
-        // Update NextAuth session for components like UserNav
         if (Object.keys(sessionUpdateData).length > 0) {
           await update(sessionUpdateData);
         }
@@ -332,6 +356,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             <Suspense fallback={<AvatarCropperContentSkeleton />}>
               <AvatarCropperContent
                 imageSrc={imageToCrop}
+                outputMimeType={imageMimeType}
                 onCropComplete={(blob) => handleCropComplete(blob, "avatar")}
                 onClose={() => {
                   setImageToCrop(null);
@@ -358,6 +383,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             <Suspense fallback={<AvatarCropperContentSkeleton />}>
               <AvatarCropperContent
                 imageSrc={barbershopImageToCrop}
+                outputMimeType={barbershopImageMimeType}
                 onCropComplete={(blob) =>
                   handleCropComplete(blob, "barbershop")
                 }
@@ -374,7 +400,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
       <form ref={formRef} onSubmit={handleSubmit} className="pb-6 space-y-8">
         <section className="space-y-6">
-          <div className="flex items-center gap-2 px-4 md:px-0">
+          <div className="flex gap-2 items-center px-4 md:px-0">
             <UserIcon className="w-5 h-5 text-muted-foreground" />
             <div>
               <h2 className="text-lg font-semibold text-foreground">
@@ -388,17 +414,18 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
           <div className="px-4 space-y-4 md:px-0">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative w-20 h-20 overflow-hidden rounded-full shrink-0 ring-2 ring-border">
+              <div className="overflow-hidden relative w-20 h-20 rounded-full ring-2 shrink-0 ring-border">
                 <Image
                   src={avatarPreview || "/images/hero-background.jpg"}
                   alt={name || "Avatar"}
                   fill
+                  sizes="80px"
                   className="object-cover"
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 bg-black/50 hover:opacity-100"
+                  className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 hover:opacity-100"
                 >
                   <Camera className="w-5 h-5 text-white" />
                 </button>
@@ -458,7 +485,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             <Separator className="mx-4 md:mx-0" />
 
             <section className="space-y-6">
-              <div className="flex items-center gap-2 px-4 md:px-0">
+              <div className="flex gap-2 items-center px-4 md:px-0">
                 <Store className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
@@ -472,19 +499,20 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
               <div className="px-4 space-y-4 md:px-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="relative w-20 h-20 overflow-hidden rounded-full shrink-0 ring-2 ring-border">
+                  <div className="overflow-hidden relative w-20 h-20 rounded-full ring-2 shrink-0 ring-border">
                     <Image
                       src={
                         barbershopImagePreview || "/images/cta-background.jpg"
                       }
                       alt={barbershopName || "Logo Barbería"}
                       fill
+                      sizes="80px"
                       className="object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => barbershopFileInputRef.current?.click()}
-                      className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 bg-black/50 hover:opacity-100"
+                      className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 hover:opacity-100"
                     >
                       <Camera className="w-5 h-5 text-white" />
                     </button>
@@ -572,7 +600,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             <Separator className="mx-4 md:mx-0" />
 
             <section className="space-y-6">
-              <div className="flex items-center gap-2 px-4 md:px-0">
+              <div className="flex gap-2 items-center px-4 md:px-0">
                 <LinkIcon className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
@@ -590,7 +618,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                     Tu URL en Turnix
                   </Label>
                   <div className="flex flex-col sm:flex-row">
-                    <span className="inline-flex items-center h-10 px-3 text-sm border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
+                    <span className="inline-flex items-center px-3 h-10 text-sm rounded-t-md border border-b-0 sm:border-b sm:border-r-0 sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
                       turnix.app/
                     </span>
                     <Input
@@ -614,7 +642,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                           variant="outline"
                           size="icon"
                           onClick={handleCopy}
-                          className="w-full h-10 border-t-0 sm:border-t sm:border-l-0 rounded-b-md sm:rounded-b-none sm:rounded-r-md sm:w-10"
+                          className="w-full h-10 rounded-b-md border-t-0 sm:border-t sm:border-l-0 sm:rounded-b-none sm:rounded-r-md sm:w-10"
                           aria-label="Copiar URL"
                           disabled={!slugValue}
                         >
@@ -633,7 +661,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="p-3 border rounded-md bg-muted/50 border-muted">
+                  <div className="p-3 rounded-md border bg-muted/50 border-muted">
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       {user.barbershop?.slug ? (
                         <>
@@ -665,7 +693,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             <Separator className="mx-4 md:mx-0" />
 
             <section className="space-y-6">
-              <div className="flex items-center gap-2 px-4 md:px-0">
+              <div className="flex gap-2 items-center px-4 md:px-0">
                 <LinkIcon className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">
@@ -683,7 +711,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                     URL pública
                   </Label>
                   <div className="flex flex-col sm:flex-row">
-                    <span className="inline-flex items-center h-10 px-3 text-sm border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
+                    <span className="inline-flex items-center px-3 h-10 text-sm rounded-t-md border border-b-0 sm:border-b sm:border-r-0 sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
                       turnix.app/
                     </span>
                     <Input
@@ -700,7 +728,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                           variant="outline"
                           size="icon"
                           onClick={handleCopy}
-                          className="w-full h-10 border-t-0 sm:border-t sm:border-l-0 rounded-b-md sm:rounded-b-none sm:rounded-r-md sm:w-10"
+                          className="w-full h-10 rounded-b-md border-t-0 sm:border-t sm:border-l-0 sm:rounded-b-none sm:rounded-r-md sm:w-10"
                           aria-label="Copiar URL"
                         >
                           {isCopied ? (
