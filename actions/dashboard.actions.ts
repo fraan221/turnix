@@ -377,6 +377,9 @@ export async function createBooking(
         where: {
           barberId_dayOfWeek: { barberId: user.id, dayOfWeek },
         },
+        include: {
+          blocks: true,
+        },
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
@@ -387,12 +390,7 @@ export async function createBooking(
       return { success: null, error: "El servicio seleccionado no existe." };
     }
 
-    if (
-      !workingHours ||
-      !workingHours.isWorking ||
-      !workingHours.startTime ||
-      !workingHours.endTime
-    ) {
+    if (!workingHours || !workingHours.isWorking) {
       const dayName = new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
         timeZone: "America/Argentina/Buenos_Aires",
@@ -403,24 +401,40 @@ export async function createBooking(
       };
     }
 
+    // Check if the booking time falls within ANY of the defined blocks
     const bookingTimeStr = startTime.toLocaleTimeString("es-AR", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
       timeZone: "America/Argentina/Buenos_Aires",
     });
-
     const bookingTimeInMinutes = timeToMinutes(bookingTimeStr);
-    const startTimeInMinutes = timeToMinutes(workingHours.startTime);
-    const endTimeInMinutes = timeToMinutes(workingHours.endTime);
 
-    if (
-      bookingTimeInMinutes < startTimeInMinutes ||
-      bookingTimeInMinutes >= endTimeInMinutes
-    ) {
+    // Calculate booking end time in minutes to ensure the *entire* booking fits in the block
+    const serviceDuration = serviceForBooking.durationInMinutes ?? 60;
+    const bookingEndTimeInMinutes = bookingTimeInMinutes + serviceDuration;
+
+    let isWithinWorkingHours = false;
+    let validBlock = null;
+
+    for (const block of workingHours.blocks) {
+      const blockStartMinutes = timeToMinutes(block.startTime);
+      const blockEndMinutes = timeToMinutes(block.endTime);
+
+      if (
+        bookingTimeInMinutes >= blockStartMinutes &&
+        bookingEndTimeInMinutes <= blockEndMinutes
+      ) {
+        isWithinWorkingHours = true;
+        validBlock = block;
+        break;
+      }
+    }
+
+    if (!isWithinWorkingHours) {
       return {
         success: null,
-        error: `El turno está fuera del horario laboral (${workingHours.startTime} - ${workingHours.endTime}).`,
+        error: `El turno seleccionado está fuera de tus horarios laborales configurados para este día.`,
       };
     }
 
