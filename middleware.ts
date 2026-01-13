@@ -1,7 +1,10 @@
-import { auth } from "./auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
 import { hasActiveSubscription } from "@/lib/subscription";
 import { Role } from "@prisma/client";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
   const { nextUrl } = req;

@@ -1,5 +1,6 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { authConfig } from "./auth.config";
 import prisma from "./lib/prisma";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
@@ -13,6 +14,7 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_PERIOD = 5 * 60 * 1000;
 
 const config: NextAuthConfig = {
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   providers: [
