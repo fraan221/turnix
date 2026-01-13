@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getCachedBarberProfile } from "@/lib/data";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const alt = "Turnix - Agenda de Turnos Online";
 export const size = {
   width: 1200,
