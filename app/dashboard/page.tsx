@@ -14,21 +14,38 @@ const BarberCalendarWrapper = dynamic(
   }
 );
 
-async function CalendarDataWrapper({ userId }: { userId: string }) {
+async function CalendarDataWrapper({
+  targetBarberId,
+  teamMembers,
+}: {
+  targetBarberId: string;
+  teamMembers: { id: string; name: string }[];
+}) {
   const [bookings, services] = await Promise.all([
     prisma.booking.findMany({
-      where: { barberId: userId },
+      where: { barberId: targetBarberId },
       include: { service: true, client: true },
     }),
     prisma.service.findMany({
-      where: { barberId: userId },
+      where: { barberId: targetBarberId },
     }),
   ]);
 
-  return <BarberCalendarWrapper bookings={bookings} services={services} />;
+  return (
+    <BarberCalendarWrapper
+      bookings={bookings}
+      services={services}
+      teamMembers={teamMembers}
+      selectedBarberId={targetBarberId}
+    />
+  );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { barberId?: string };
+}) {
   const user = await getUserForDashboard();
 
   if (!user) {
@@ -43,10 +60,45 @@ export default async function DashboardPage() {
     return <ConnectionCodeView connectionCode={user.connectionCode} />;
   }
 
+  const isOwner = user.role === Role.OWNER;
+  let targetBarberId = user.id;
+  let teamMembers: { id: string; name: string }[] = [];
+
+  if (isOwner) {
+    const barbershop = await prisma.barbershop.findUnique({
+      where: { ownerId: user.id },
+      include: {
+        teamMembers: {
+          include: { user: true },
+        },
+      },
+    });
+
+    if (barbershop) {
+      teamMembers = [
+        { id: user.id, name: `${user.name} (Tú)` },
+        ...barbershop.teamMembers.map((tm) => ({
+          id: tm.userId,
+          name: tm.user.name,
+        })),
+      ];
+
+      if (
+        searchParams.barberId &&
+        teamMembers.some((m) => m.id === searchParams.barberId)
+      ) {
+        targetBarberId = searchParams.barberId;
+      }
+    }
+  }
+
   return (
     <>
       <Suspense fallback={<BarberCalendarSkeleton />}>
-        <CalendarDataWrapper userId={user.id} />
+        <CalendarDataWrapper
+          targetBarberId={targetBarberId}
+          teamMembers={teamMembers}
+        />
       </Suspense>
     </>
   );

@@ -59,6 +59,7 @@ import {
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { BookingWithDetails } from "./BookingDetailsDialog";
+import { BarberSelector } from "./BarberSelector";
 
 const BookingDetailsDialogContent = lazy(() =>
   import("./BookingDetailsDialog").then((mod) => ({
@@ -84,7 +85,7 @@ const BookingDetailsSkeleton = () => (
         <Skeleton className="w-11/12 h-4" />
         <Skeleton className="w-full h-4" />
       </div>
-      <div className="flex justify-between gap-2 pt-4">
+      <div className="flex gap-2 justify-between pt-4">
         <Skeleton className="w-32 h-10" />
         <Skeleton className="w-48 h-10" />
       </div>
@@ -102,6 +103,8 @@ type CalendarView = "timeGridDay" | "timeGridWeek" | "dayGridMonth";
 interface BarberCalendarProps {
   bookings: BookingWithDetails[];
   services: Service[];
+  teamMembers?: { id: string; name: string }[];
+  selectedBarberId?: string;
 }
 
 function SubmitButton() {
@@ -110,7 +113,7 @@ function SubmitButton() {
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
           Agendando...
         </>
       ) : (
@@ -123,6 +126,8 @@ function SubmitButton() {
 export default function BarberCalendar({
   bookings,
   services,
+  teamMembers = [],
+  selectedBarberId = "",
 }: BarberCalendarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -313,7 +318,7 @@ export default function BarberCalendar({
       dayGridMonth: {
         titleFormat: { month: "long" },
         dayCellContent: (arg: any) => (
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col justify-center items-center h-full">
             <span className="text-xs text-muted-foreground">
               {arg.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
             </span>
@@ -361,12 +366,12 @@ export default function BarberCalendar({
   return (
     <>
       <div
-        className="mx-auto bg-white max-w-7xl"
+        className="mx-auto max-w-7xl bg-white"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2 items-center">
             {!isMobile && (
               <>
                 <Button variant="secondary" size="icon" onClick={handlePrev}>
@@ -380,6 +385,13 @@ export default function BarberCalendar({
             <Button variant="outline" onClick={handleToday}>
               Hoy
             </Button>
+            {teamMembers.length > 1 && (
+              <BarberSelector
+                teamMembers={teamMembers}
+                selectedBarberId={selectedBarberId}
+                compact
+              />
+            )}
           </div>
 
           <h1 className="text-xl font-bold text-center capitalize font-heading">

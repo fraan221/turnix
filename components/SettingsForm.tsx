@@ -1,31 +1,20 @@
 "use client";
 
 import { User } from "@prisma/client";
-import { Label } from "./ui/label";
-import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { useState, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import {
-  Clipboard,
-  Check,
   Save,
   Loader2Icon,
   User as UserIcon,
   Store,
   Link as LinkIcon,
-  Camera,
+  Shield,
+  CreditCard,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Textarea } from "./ui/textarea";
-import { Separator } from "./ui/separator";
-import Image from "next/image";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Role } from "@prisma/client";
 import dynamic from "next/dynamic";
 import { Skeleton } from "./ui/skeleton";
@@ -37,6 +26,15 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { upload } from "@vercel/blob/client";
+
+import {
+  PersonalInfoSection,
+  BarbershopInfoSection,
+  CustomUrlSection,
+  SecuritySection,
+  PaymentsSection,
+} from "./settings";
+import { SettingsNav, type SettingsNavItem } from "./settings/SettingsNav";
 
 const AvatarCropperContentSkeleton = () => (
   <>
@@ -60,9 +58,7 @@ const AvatarCropperContentSkeleton = () => (
 
 const AvatarCropperContent = dynamic(
   () => import("./AvatarCropper").then((mod) => mod.AvatarCropperContent),
-  {
-    ssr: false,
-  }
+  { ssr: false }
 );
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -104,11 +100,10 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const { data: session, update } = useSession();
 
   const [isPending, setIsPending] = useState(false);
+  const [activeSection, setActiveSection] = useState("personal");
 
   const formRef = useRef<HTMLFormElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const croppedImageRef = useRef<File | null>(null);
-  const barbershopFileInputRef = useRef<HTMLInputElement>(null);
   const croppedBarbershopImageRef = useRef<File | null>(null);
 
   const [name, setName] = useState(user.name || "");
@@ -130,6 +125,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   >(user.barbershop?.image || null);
 
   const [isCopied, setIsCopied] = useState(false);
+
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/png");
   const [barbershopImageToCrop, setBarbershopImageToCrop] = useState<
@@ -137,6 +133,51 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   >(null);
   const [barbershopImageMimeType, setBarbershopImageMimeType] =
     useState<string>("image/png");
+
+  const navItems: SettingsNavItem[] = [
+    {
+      id: "personal",
+      label: "Perfil",
+      icon: UserIcon,
+    },
+    ...(user.role === Role.OWNER
+      ? [
+          {
+            id: "barbershop",
+            label: "Barbería",
+            icon: Store,
+          },
+          {
+            id: "url",
+            label: "URL",
+            icon: LinkIcon,
+          },
+        ]
+      : []),
+    ...(user.role === Role.BARBER && user.barbershop?.slug
+      ? [
+          {
+            id: "url",
+            label: "URL",
+            icon: LinkIcon,
+          },
+        ]
+      : []),
+    {
+      id: "security",
+      label: "Seguridad",
+      icon: Shield,
+      disabled: true,
+      badge: "Pronto",
+    },
+    {
+      id: "payments",
+      label: "Pagos",
+      icon: CreditCard,
+      disabled: true,
+      badge: "Pronto",
+    },
+  ];
 
   const handleCopy = () => {
     const urlToCopy = `${window.location.origin}/${slugValue}`;
@@ -154,39 +195,20 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleFileChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    imageType: "avatar" | "barbershop"
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleAvatarSelect = (_file: File, dataUrl: string) => {
+    setImageToCrop(dataUrl);
+    const type = dataUrl.startsWith("data:image/jpeg")
+      ? "image/jpeg"
+      : "image/png";
+    setImageMimeType(type);
+  };
 
-    const MAX_FILE_SIZE_MB = 10; // Increased limit for client-side upload
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      toast.error("Imagen demasiado grande", {
-        description: `El archivo no puede superar los ${MAX_FILE_SIZE_MB}MB`,
-      });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toast.error("Formato no válido", {
-        description: "Usá una imagen JPG o PNG",
-      });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (imageType === "avatar") {
-        setImageToCrop(reader.result as string);
-        setImageMimeType(file.type);
-      } else {
-        setBarbershopImageToCrop(reader.result as string);
-        setBarbershopImageMimeType(file.type);
-      }
-    };
-    reader.readAsDataURL(file);
+  const handleBarbershopImageSelect = (_file: File, dataUrl: string) => {
+    setBarbershopImageToCrop(dataUrl);
+    const type = dataUrl.startsWith("data:image/jpeg")
+      ? "image/jpeg"
+      : "image/png";
+    setBarbershopImageMimeType(type);
   };
 
   const handleCropComplete = (
@@ -198,8 +220,10 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         imageType === "avatar" ? imageMimeType : barbershopImageMimeType;
       const extension = mimeType === "image/jpeg" ? "jpg" : "png";
       const fileName =
-        imageType === "avatar" ? `avatar.${extension}` : `barbershop.${extension}`;
-      
+        imageType === "avatar"
+          ? `avatar.${extension}`
+          : `barbershop.${extension}`;
+
       const croppedFile = new File([imageBlob], fileName, {
         type: mimeType,
       });
@@ -217,11 +241,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
     if (imageType === "avatar") {
       setImageToCrop(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } else {
       setBarbershopImageToCrop(null);
-      if (barbershopFileInputRef.current)
-        barbershopFileInputRef.current.value = "";
     }
   };
 
@@ -240,8 +261,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         const ext = croppedImageRef.current.name.split(".").pop();
         const filename = `avatar-${Date.now()}.${ext}`;
         const blob = await upload(filename, croppedImageRef.current, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
+          access: "public",
+          handleUploadUrl: "/api/upload",
         });
         avatarUrl = blob.url;
       }
@@ -250,8 +271,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         const ext = croppedBarbershopImageRef.current.name.split(".").pop();
         const filename = `barbershop-${Date.now()}.${ext}`;
         const blob = await upload(filename, croppedBarbershopImageRef.current, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
+          access: "public",
+          handleUploadUrl: "/api/upload",
         });
         barbershopImageUrl = blob.url;
       }
@@ -293,7 +314,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
         const { user: updatedUser, barbershop: updatedBarbershop } =
           result.data;
-        const sessionUpdateData: any = {};
+        const sessionUpdateData: Record<string, unknown> = {};
 
         if (updatedUser) {
           setName(updatedUser.name || "");
@@ -340,6 +361,71 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     }
   };
 
+  const renderSection = () => {
+    switch (activeSection) {
+      case "personal":
+        return (
+          <PersonalInfoSection
+            name={name}
+            phone={phone}
+            avatarPreview={avatarPreview}
+            onNameChange={setName}
+            onPhoneChange={setPhone}
+            onAvatarSelect={handleAvatarSelect}
+          />
+        );
+
+      case "barbershop":
+        if (user.role !== Role.OWNER) return null;
+        return (
+          <BarbershopInfoSection
+            name={barbershopName}
+            address={barbershopAddress}
+            description={barbershopDescription}
+            imagePreview={barbershopImagePreview}
+            onNameChange={setBarbershopName}
+            onAddressChange={setBarbershopAddress}
+            onDescriptionChange={setBarbershopDescription}
+            onImageSelect={handleBarbershopImageSelect}
+          />
+        );
+
+      case "url":
+        if (user.role === Role.OWNER) {
+          return (
+            <CustomUrlSection
+              slug={slugValue}
+              isConfigured={!!user.barbershop?.slug}
+              isCopied={isCopied}
+              onSlugChange={setSlugValue}
+              onCopy={handleCopy}
+            />
+          );
+        }
+        if (user.role === Role.BARBER && user.barbershop?.slug) {
+          return (
+            <CustomUrlSection
+              slug={user.barbershop.slug}
+              isConfigured={true}
+              isCopied={isCopied}
+              readOnly
+              onCopy={handleCopy}
+            />
+          );
+        }
+        return null;
+
+      case "security":
+        return <SecuritySection />;
+
+      case "payments":
+        return <PaymentsSection />;
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={100}>
       <Dialog
@@ -347,7 +433,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             setImageToCrop(null);
-            if (fileInputRef.current) fileInputRef.current.value = "";
           }
         }}
       >
@@ -358,10 +443,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                 imageSrc={imageToCrop}
                 outputMimeType={imageMimeType}
                 onCropComplete={(blob) => handleCropComplete(blob, "avatar")}
-                onClose={() => {
-                  setImageToCrop(null);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
-                }}
+                onClose={() => setImageToCrop(null)}
               />
             </Suspense>
           )}
@@ -373,8 +455,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             setBarbershopImageToCrop(null);
-            if (barbershopFileInputRef.current)
-              barbershopFileInputRef.current.value = "";
           }
         }}
       >
@@ -387,373 +467,39 @@ export default function SettingsForm({ user }: SettingsFormProps) {
                 onCropComplete={(blob) =>
                   handleCropComplete(blob, "barbershop")
                 }
-                onClose={() => {
-                  setBarbershopImageToCrop(null);
-                  if (barbershopFileInputRef.current)
-                    barbershopFileInputRef.current.value = "";
-                }}
+                onClose={() => setBarbershopImageToCrop(null)}
               />
             </Suspense>
           )}
         </DialogContent>
       </Dialog>
 
-      <form ref={formRef} onSubmit={handleSubmit} className="pb-6 space-y-8">
-        <section className="space-y-6">
-          <div className="flex gap-2 items-center px-4 md:px-0">
-            <UserIcon className="w-5 h-5 text-muted-foreground" />
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                Información personal
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Tu nombre y foto de perfil
-              </p>
-            </div>
-          </div>
-
-          <div className="px-4 space-y-4 md:px-0">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="overflow-hidden relative w-20 h-20 rounded-full ring-2 shrink-0 ring-border">
-                <Image
-                  src={avatarPreview || "/images/hero-background.jpg"}
-                  alt={name || "Avatar"}
-                  fill
-                  sizes="80px"
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 hover:opacity-100"
-                >
-                  <Camera className="w-5 h-5 text-white" />
-                </button>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="avatar" className="text-sm font-medium">
-                  Foto de perfil
-                </Label>
-                <Input
-                  id="avatar"
-                  name="avatar"
-                  type="file"
-                  accept="image/png, image/jpeg"
-                  ref={fileInputRef}
-                  onChange={(e) => handleFileChange(e, "avatar")}
-                  className="file:text-primary file:font-medium"
-                />
-                <p className="text-xs text-muted-foreground">
-                  JPG o PNG. Máximo 4MB
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">
-                Nombre completo
-              </Label>
-              <Input
-                id="name"
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Tu nombre"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-sm font-medium">
-                Número de celular{" "}
-                <span className="text-muted-foreground">(opcional)</span>
-              </Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ej: +54 9 11 1234-5678"
-              />
-            </div>
-          </div>
-        </section>
-
+      <form ref={formRef} onSubmit={handleSubmit} className="pb-6">
+        <input type="hidden" name="name" value={name} />
+        <input type="hidden" name="phone" value={phone} />
         {user.role === Role.OWNER && (
           <>
-            <Separator className="mx-4 md:mx-0" />
-
-            <section className="space-y-6">
-              <div className="flex gap-2 items-center px-4 md:px-0">
-                <Store className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Información de la barbería
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Datos que verán tus clientes
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-4 space-y-4 md:px-0">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="overflow-hidden relative w-20 h-20 rounded-full ring-2 shrink-0 ring-border">
-                    <Image
-                      src={
-                        barbershopImagePreview || "/images/cta-background.jpg"
-                      }
-                      alt={barbershopName || "Logo Barbería"}
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => barbershopFileInputRef.current?.click()}
-                      className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 hover:opacity-100"
-                    >
-                      <Camera className="w-5 h-5 text-white" />
-                    </button>
-                  </div>
-                  <div className="flex-1 space-y-1.5">
-                    <Label
-                      htmlFor="barbershopImage"
-                      className="text-sm font-medium"
-                    >
-                      Logo de la barbería
-                    </Label>
-                    <Input
-                      id="barbershopImage"
-                      name="barbershopImage"
-                      type="file"
-                      accept="image/png, image/jpeg"
-                      ref={barbershopFileInputRef}
-                      onChange={(e) => handleFileChange(e, "barbershop")}
-                      className="file:text-primary file:font-medium"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      JPG o PNG. Máximo 4MB
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="barbershopName"
-                    className="text-sm font-medium"
-                  >
-                    Nombre de la barbería
-                  </Label>
-                  <Input
-                    id="barbershopName"
-                    name="barbershopName"
-                    value={barbershopName}
-                    onChange={(e) => setBarbershopName(e.target.value)}
-                    placeholder="Ej: Barbería El Corte"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="barbershopAddress"
-                    className="text-sm font-medium"
-                  >
-                    Dirección{" "}
-                    <span className="text-muted-foreground">(opcional)</span>
-                  </Label>
-                  <Input
-                    id="barbershopAddress"
-                    name="barbershopAddress"
-                    value={barbershopAddress}
-                    onChange={(e) => setBarbershopAddress(e.target.value)}
-                    placeholder="Ej: Av. Corrientes 1234, CABA"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="barbershopDescription"
-                    className="text-sm font-medium"
-                  >
-                    Descripción{" "}
-                    <span className="text-muted-foreground">(opcional)</span>
-                  </Label>
-                  <Textarea
-                    id="barbershopDescription"
-                    name="barbershopDescription"
-                    value={barbershopDescription}
-                    onChange={(e) => setBarbershopDescription(e.target.value)}
-                    placeholder="Contale a tus clientes sobre tu barbería, especialidades, años de experiencia..."
-                    rows={4}
-                    className="resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Aparecerá en tu página pública
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <Separator className="mx-4 md:mx-0" />
-
-            <section className="space-y-6">
-              <div className="flex gap-2 items-center px-4 md:px-0">
-                <LinkIcon className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    URL personalizada
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Tu dirección única para compartir con clientes
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-4 space-y-4 md:px-0">
-                <div className="space-y-2">
-                  <Label htmlFor="slug" className="text-sm font-medium">
-                    Tu URL en Turnix
-                  </Label>
-                  <div className="flex flex-col sm:flex-row">
-                    <span className="inline-flex items-center px-3 h-10 text-sm rounded-t-md border border-b-0 sm:border-b sm:border-r-0 sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
-                      turnix.app/
-                    </span>
-                    <Input
-                      id="slug"
-                      name="slug"
-                      value={slugValue}
-                      onChange={(e) =>
-                        setSlugValue(
-                          e.target.value.toLowerCase().replace(/\s+/g, "-")
-                        )
-                      }
-                      className="rounded-t-none sm:rounded-t sm:rounded-l-none sm:rounded-r-none focus-visible:ring-ring focus-visible:ring-offset-0 read-only:bg-muted/50 read-only:cursor-not-allowed"
-                      placeholder="nombre-barberia"
-                      required={!user.barbershop?.slug}
-                      readOnly={!!user.barbershop?.slug}
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={handleCopy}
-                          className="w-full h-10 rounded-b-md border-t-0 sm:border-t sm:border-l-0 sm:rounded-b-none sm:rounded-r-md sm:w-10"
-                          aria-label="Copiar URL"
-                          disabled={!slugValue}
-                        >
-                          {isCopied ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Clipboard className="w-4 h-4" />
-                          )}
-                          <span className="ml-2 sm:hidden">
-                            {isCopied ? "Copiado" : "Copiar URL"}
-                          </span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent className="hidden sm:block">
-                        <p>Copiar URL pública</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="p-3 rounded-md border bg-muted/50 border-muted">
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {user.barbershop?.slug ? (
-                        <>
-                          <span className="font-medium text-foreground">
-                            Tu URL está configurada.
-                          </span>{" "}
-                          Esta acción se completa una única vez y no se puede
-                          cambiar.
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-medium text-foreground">
-                            Elegí con cuidado.
-                          </span>{" "}
-                          Una vez guardada, tu URL no se puede cambiar. Usá solo
-                          minúsculas y guiones medios (-).
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <input type="hidden" name="barbershopName" value={barbershopName} />
+            <input type="hidden" name="barbershopAddress" value={barbershopAddress} />
+            <input type="hidden" name="barbershopDescription" value={barbershopDescription} />
+            <input type="hidden" name="slug" value={slugValue} />
           </>
         )}
 
-        {user.role === Role.BARBER && user.barbershop?.slug && (
-          <>
-            <Separator className="mx-4 md:mx-0" />
+        <div className="flex flex-col md:flex-row md:gap-8">
+          <SettingsNav
+            items={navItems}
+            activeId={activeSection}
+            onSelect={setActiveSection}
+          />
 
-            <section className="space-y-6">
-              <div className="flex gap-2 items-center px-4 md:px-0">
-                <LinkIcon className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    URL de la barbería
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Compartí esta dirección con tus clientes
-                  </p>
-                </div>
-              </div>
+          <div className="flex-1 min-w-0">
+            {renderSection()}
 
-              <div className="px-4 space-y-4 md:px-0">
-                <div className="space-y-2">
-                  <Label htmlFor="slug" className="text-sm font-medium">
-                    URL pública
-                  </Label>
-                  <div className="flex flex-col sm:flex-row">
-                    <span className="inline-flex items-center px-3 h-10 text-sm rounded-t-md border border-b-0 sm:border-b sm:border-r-0 sm:rounded-t-none sm:rounded-l-md border-input bg-muted text-muted-foreground shrink-0">
-                      turnix.app/
-                    </span>
-                    <Input
-                      id="slug"
-                      name="slug"
-                      value={user.barbershop.slug}
-                      className="rounded-t-none sm:rounded-t sm:rounded-l-none sm:rounded-r-none read-only:bg-muted/50 read-only:cursor-not-allowed"
-                      readOnly
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={handleCopy}
-                          className="w-full h-10 rounded-b-md border-t-0 sm:border-t sm:border-l-0 sm:rounded-b-none sm:rounded-r-md sm:w-10"
-                          aria-label="Copiar URL"
-                        >
-                          {isCopied ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Clipboard className="w-4 h-4" />
-                          )}
-                          <span className="ml-2 sm:hidden">
-                            {isCopied ? "Copiado" : "Copiar URL"}
-                          </span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent className="hidden sm:block">
-                        <p>Copiar URL pública</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </>
-        )}
-
-        <div className="flex justify-end px-4 pt-4 md:px-0">
-          <SubmitButton isPending={isPending} />
+            <div className="flex justify-end mt-6">
+              <SubmitButton isPending={isPending} />
+            </div>
+          </div>
         </div>
       </form>
     </TooltipProvider>
