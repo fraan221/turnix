@@ -529,6 +529,11 @@ export default function BarberCalendar({
               name="startTime"
               value={selectedDateInfo?.start.toISOString() || ""}
             />
+            <input
+              type="hidden"
+              name="targetBarberId"
+              value={selectedBarberId || ""}
+            />
             <div>
               <Label htmlFor="clientName">Nombre del Cliente</Label>
               <Input id="clientName" name="clientName" required />

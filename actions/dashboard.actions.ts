@@ -267,9 +267,21 @@ export async function updateBookingStatus(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
+      include: {
+        barbershop: {
+          select: { ownerId: true },
+        },
+      },
     });
 
-    if (booking?.barberId !== user!.id) {
+    if (!booking) {
+      return { error: "El turno no fue encontrado." };
+    }
+
+    const isAssignedBarber = booking.barberId === user.id;
+    const isOwner = booking.barbershop.ownerId === user.id;
+
+    if (!isAssignedBarber && !isOwner) {
       return { error: "No tienes permiso para modificar este turno." };
     }
 
@@ -348,6 +360,7 @@ export async function createBooking(
     startTime: z
       .string()
       .datetime({ message: "La fecha y hora de inicio no son válidas." }),
+    targetBarberId: z.string().optional(),
   });
 
   const validatedFields = DashboardBookingSchema.safeParse(
@@ -366,8 +379,36 @@ export async function createBooking(
     clientName,
     clientPhone,
     startTime: startTimeStr,
+    targetBarberId,
   } = validatedFields.data;
   const startTime = new Date(startTimeStr);
+
+  let barberId = user.id;
+
+  if (targetBarberId && targetBarberId !== user.id) {
+    if (user.role !== Role.OWNER) {
+      return {
+        success: null,
+        error: "No tienes permiso para agendar turnos para otros barberos.",
+      };
+    }
+
+    const isTeamMember = await prisma.team.findFirst({
+      where: {
+        userId: targetBarberId,
+        barbershop: { ownerId: user.id },
+      },
+    });
+
+    if (!isTeamMember) {
+      return {
+        success: null,
+        error: "El barbero seleccionado no pertenece a tu equipo.",
+      };
+    }
+
+    barberId = targetBarberId;
+  }
 
   try {
     const dayOfWeek = startTime.getDay();
@@ -375,7 +416,7 @@ export async function createBooking(
     const [workingHours, serviceForBooking] = await Promise.all([
       prisma.workingHours.findUnique({
         where: {
-          barberId_dayOfWeek: { barberId: user.id, dayOfWeek },
+          barberId_dayOfWeek: { barberId: barberId, dayOfWeek },
         },
         include: {
           blocks: true,
@@ -395,13 +436,14 @@ export async function createBooking(
         weekday: "long",
         timeZone: "America/Argentina/Buenos_Aires",
       }).format(startTime);
+      const barberName =
+        barberId !== user.id ? "El barbero seleccionado" : "No";
       return {
         success: null,
-        error: `No trabajas los ${dayName} o no has configurado tus horarios.`,
+        error: `${barberName} no trabaja los ${dayName} o no ha configurado sus horarios.`,
       };
     }
 
-    // Check if the booking time falls within ANY of the defined blocks
     const bookingTimeStr = startTime.toLocaleTimeString("es-AR", {
       hour: "2-digit",
       minute: "2-digit",
@@ -410,7 +452,6 @@ export async function createBooking(
     });
     const bookingTimeInMinutes = timeToMinutes(bookingTimeStr);
 
-    // Calculate booking end time in minutes to ensure the *entire* booking fits in the block
     const serviceDuration = serviceForBooking.durationInMinutes ?? 60;
     const bookingEndTimeInMinutes = bookingTimeInMinutes + serviceDuration;
 
@@ -444,7 +485,7 @@ export async function createBooking(
 
     const existingBookings = await prisma.booking.findMany({
       where: {
-        barberId: user.id,
+        barberId: barberId,
         status: { not: "CANCELLED" },
         startTime: {
           gte: getStartOfDay(startTime),
@@ -507,7 +548,7 @@ export async function createBooking(
           startTime,
           priceAtBooking: serviceForBooking.price,
           durationAtBooking: serviceForBooking.durationInMinutes,
-          barberId: user.id,
+          barberId: barberId,
           clientId: client.id,
           serviceId: serviceId,
           barbershopId: barbershopId!,
