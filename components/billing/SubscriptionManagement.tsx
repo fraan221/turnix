@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/actions/subscription.actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useSubscriptionStore } from "@/lib/stores/subscription-store";
 
 interface SubscriptionManagementProps {
   subscription: {
@@ -21,7 +23,9 @@ export function SubscriptionManagement({
   subscription,
 }: SubscriptionManagementProps) {
   const router = useRouter();
+  const { update } = useSession();
   const [isPendingSync, startTransitionSync] = useTransition();
+  const setStatus = useSubscriptionStore((state) => state.setStatus);
 
   const handleSync = () => {
     startTransitionSync(async () => {
@@ -41,10 +45,15 @@ export function SubscriptionManagement({
 
         if (result.status === "authorized") {
           toast.success("Estado actualizado", { description: userMessage });
+          await update();
+          setStatus(result.status);
+          router.push("/dashboard");
         } else {
           toast.info("Estado actualizado", { description: userMessage });
+          await update();
+          setStatus(result.status as string);
+          router.refresh();
         }
-        router.refresh();
       } else {
         toast.error("No se pudo actualizar", { description: result.message });
       }
@@ -60,7 +69,9 @@ export function SubscriptionManagement({
         toast.success("Suscripción reactivada", {
           description: "Tu plan vuelve a estar activo.",
         });
-        router.refresh();
+        await update();
+        setStatus("authorized");
+        router.push("/dashboard");
       } else {
         toast.error("No se pudo reactivar", { description: result.error });
       }

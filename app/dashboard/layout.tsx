@@ -5,6 +5,7 @@ import TrialStatusBanner from "@/components/TrialStatusBanner";
 import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 import { PusherHandler } from "@/components/PusherHandler";
 import { PushNotificationProvider } from "@/components/providers/PushNotificationProvider";
+import { SubscriptionHydrator } from "@/components/providers/SubscriptionHydrator";
 
 export default function DashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default function DashboardLayout({
       <DashboardSidebar />
       <SidebarInset>
         <PushNotificationProvider>
+          <SubscriptionHydrator />
           <SubscriptionStatusHandler />
           <TrialStatusBanner />
           <SiteHeaderServer />

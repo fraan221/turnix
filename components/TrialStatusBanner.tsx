@@ -1,11 +1,14 @@
-import { getUserForLayout } from "@/lib/data";
+"use client";
+
+import { useSubscriptionStore } from "@/lib/stores/subscription-store";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useSession } from "next-auth/react";
 
-const calculateTimeLeft = (endDate: Date | null | undefined) => {
+const calculateTimeLeft = (endDate: Date | null) => {
   if (!endDate) return "";
-  const distance = new Date(endDate).getTime() - new Date().getTime();
+  const distance = new Date(endDate).getTime() - Date.now();
 
   if (distance < 0) {
     return "Tu prueba ha finalizado.";
@@ -27,33 +30,49 @@ const calculateTimeLeft = (endDate: Date | null | undefined) => {
   return "Menos de una hora";
 };
 
-export default async function TrialStatusBanner() {
-  const user = await getUserForLayout();
+export default function TrialStatusBanner() {
+  const { data: session } = useSession();
+  
+  // Get values from store
+  const storeStatus = useSubscriptionStore((state) => state.status);
+  const storeTrialEndsAt = useSubscriptionStore((state) => state.trialEndsAt);
+  const isHydrated = useSubscriptionStore((state) => state.isHydrated);
 
-  if (!user) {
+  // Fallback to session if store not hydrated
+  const status = isHydrated 
+    ? storeStatus 
+    : session?.user?.subscription?.status || null;
+  
+  const trialEndsAt = isHydrated 
+    ? storeTrialEndsAt 
+    : session?.user?.trialEndsAt 
+      ? new Date(session.user.trialEndsAt) 
+      : null;
+
+  // Only show for OWNER role
+  const isOwner = session?.user?.role === "OWNER";
+  if (!isOwner) {
     return null;
   }
 
-  const { trialEndsAt, role, subscription } = user;
-  const isOwner = role === "OWNER";
-  const isSubscribed =
-    subscription?.status === "authorized" || subscription?.status === "paused";
+  // Don't show if user has active subscription (authorized or paused)
+  const isPro = status === "authorized";
+  const isPaused = status === "paused";
+  if (isPro || isPaused) {
+    return null;
+  }
 
-  const showTrialBanner =
-    isOwner &&
-    !isSubscribed &&
-    trialEndsAt &&
-    new Date(trialEndsAt) > new Date();
-
-  if (!showTrialBanner) {
+  // Only show if trial is still active
+  const isTrialActive = trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+  if (!isTrialActive) {
     return null;
   }
 
   const timeLeft = calculateTimeLeft(trialEndsAt);
 
   return (
-    <div className="flex flex-col items-center justify-center w-full gap-2 p-3 text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">
-      <div className="flex items-center gap-2 font-semibold text-md">
+    <div className="flex flex-col gap-2 justify-center items-center p-3 w-full text-sm text-center text-white bg-primary sm:flex-row sm:justify-between">
+      <div className="flex gap-2 items-center font-semibold text-md">
         <p>Te quedan {timeLeft} de prueba gratuita</p>
       </div>
       <Button

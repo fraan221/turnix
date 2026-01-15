@@ -33,8 +33,10 @@ import {
   CustomUrlSection,
   SecuritySection,
   PaymentsSection,
+  BillingSettingsSection,
 } from "./settings";
 import { SettingsNav, type SettingsNavItem } from "./settings/SettingsNav";
+import { Crown } from "lucide-react";
 
 const AvatarCropperContentSkeleton = () => (
   <>
@@ -94,9 +96,17 @@ interface SettingsFormProps {
       description: string | null;
     } | null;
   };
+  subscription?: {
+    status: string;
+    currentPeriodEnd: Date;
+    mercadopagoSubscriptionId: string;
+    discountedUntil?: Date | null;
+    discountCode?: { overridePrice: number } | null;
+  } | null;
+  trialEndsAt?: Date | null;
 }
 
-export default function SettingsForm({ user }: SettingsFormProps) {
+export default function SettingsForm({ user, subscription, trialEndsAt }: SettingsFormProps) {
   const { data: session, update } = useSession();
 
   const [isPending, setIsPending] = useState(false);
@@ -160,6 +170,15 @@ export default function SettingsForm({ user }: SettingsFormProps) {
             id: "url",
             label: "URL",
             icon: LinkIcon,
+          },
+        ]
+      : []),
+    ...(user.role === Role.OWNER
+      ? [
+          {
+            id: "billing",
+            label: "Suscripción",
+            icon: Crown,
           },
         ]
       : []),
@@ -365,29 +384,39 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     switch (activeSection) {
       case "personal":
         return (
-          <PersonalInfoSection
-            name={name}
-            phone={phone}
-            avatarPreview={avatarPreview}
-            onNameChange={setName}
-            onPhoneChange={setPhone}
-            onAvatarSelect={handleAvatarSelect}
-          />
+          <>
+            <PersonalInfoSection
+              name={name}
+              phone={phone}
+              avatarPreview={avatarPreview}
+              onNameChange={setName}
+              onPhoneChange={setPhone}
+              onAvatarSelect={handleAvatarSelect}
+            />
+            <div className="flex justify-end mt-6">
+              <SubmitButton isPending={isPending} />
+            </div>
+          </>
         );
 
       case "barbershop":
         if (user.role !== Role.OWNER) return null;
         return (
-          <BarbershopInfoSection
-            name={barbershopName}
-            address={barbershopAddress}
-            description={barbershopDescription}
-            imagePreview={barbershopImagePreview}
-            onNameChange={setBarbershopName}
-            onAddressChange={setBarbershopAddress}
-            onDescriptionChange={setBarbershopDescription}
-            onImageSelect={handleBarbershopImageSelect}
-          />
+          <>
+            <BarbershopInfoSection
+              name={barbershopName}
+              address={barbershopAddress}
+              description={barbershopDescription}
+              imagePreview={barbershopImagePreview}
+              onNameChange={setBarbershopName}
+              onAddressChange={setBarbershopAddress}
+              onDescriptionChange={setBarbershopDescription}
+              onImageSelect={handleBarbershopImageSelect}
+            />
+            <div className="flex justify-end mt-6">
+              <SubmitButton isPending={isPending} />
+            </div>
+          </>
         );
 
       case "url":
@@ -414,6 +443,15 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           );
         }
         return null;
+
+      case "billing":
+        if (user.role !== Role.OWNER) return null;
+        return (
+          <BillingSettingsSection
+            subscription={subscription ?? null}
+            trialEndsAt={trialEndsAt ?? null}
+          />
+        );
 
       case "security":
         return <SecuritySection />;
@@ -495,10 +533,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
           <div className="flex-1 min-w-0">
             {renderSection()}
-
-            <div className="flex justify-end mt-6">
-              <SubmitButton isPending={isPending} />
-            </div>
           </div>
         </div>
       </form>

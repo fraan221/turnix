@@ -50,6 +50,15 @@ export const getUserForSettings = cache(async () => {
   return prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
+      subscription: {
+        include: {
+          discountCode: {
+            select: {
+              overridePrice: true,
+            },
+          },
+        },
+      },
       ownedBarbershop: {
         select: {
           id: true,

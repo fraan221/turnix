@@ -6,3 +6,4 @@ export { CustomUrlSection } from "./CustomUrlSection";
 export { SecuritySection } from "./SecuritySection";
 export { PaymentsSection } from "./PaymentsSection";
 export { SettingsNav, type SettingsNavItem } from "./SettingsNav";
+export { BillingSettingsSection } from "./BillingSettingsSection";

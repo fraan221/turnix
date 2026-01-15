@@ -56,8 +56,7 @@ export function PersonalInfoSection({
 
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium">
-            Número de celular{" "}
-            <span className="text-muted-foreground">(opcional)</span>
+            Número de celular
           </Label>
           <Input
             id="phone"

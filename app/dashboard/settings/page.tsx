@@ -32,7 +32,11 @@ async function SettingsPageContent() {
           Gestioná tu perfil, tu barbería y preferencias de la cuenta.
         </p>
       </div>
-      <SettingsForm user={userForForm} />
+      <SettingsForm
+        user={userForForm}
+        subscription={userWithRelations.subscription}
+        trialEndsAt={userWithRelations.trialEndsAt}
+      />
     </div>
   );
 }
