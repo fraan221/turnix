@@ -50,7 +50,7 @@ const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
 
   const days = Math.floor(distance / (1000 * 60 * 60 * 24));
   const hours = Math.floor(
-    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
   )
     .toString()
     .padStart(2, "0");
@@ -68,7 +68,7 @@ const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
 
 const formatFullDate = (date: Date) => {
   return new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(
-    new Date(date)
+    new Date(date),
   );
 };
 
@@ -95,7 +95,7 @@ export default function SubscriptionStatus({
 
   const trialEndsAt = session?.user?.trialEndsAt;
   const [timeLeft, setTimeLeft] = useState(() =>
-    calculateTimeLeft(trialEndsAt)
+    calculateTimeLeft(trialEndsAt),
   );
   const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
   const isTrialExpired = timeLeft === "expirada";
@@ -105,7 +105,7 @@ export default function SubscriptionStatus({
     setTimeLeft(calculateTimeLeft(trialEndsAt));
     const intervalId = setInterval(
       () => setTimeLeft(calculateTimeLeft(trialEndsAt)),
-      1000
+      1000,
     );
     return () => clearInterval(intervalId);
   }, [trialEndsAt, isInTrial]);
@@ -143,7 +143,7 @@ export default function SubscriptionStatus({
     if (!subscription) return;
     startTransitionCancel(async () => {
       const result = await cancelSubscription(
-        subscription.mercadopagoSubscriptionId
+        subscription.mercadopagoSubscriptionId,
       );
       if (result.success) {
         toast.success("Suscripción cancelada", {
@@ -202,8 +202,7 @@ export default function SubscriptionStatus({
 
   const shouldShowSubscription =
     subscription &&
-    (["authorized", "paused"].includes(subscription.status) ||
-      !isInTrial);
+    (["authorized", "paused"].includes(subscription.status) || !isInTrial);
 
   if (shouldShowSubscription) {
     const config = getStatusConfig(subscription.status);
@@ -213,131 +212,131 @@ export default function SubscriptionStatus({
       new Date(subscription.discountedUntil) > new Date();
     const standardPrice = 9900;
 
-  const handleReactivate = () => {
-    if (!subscription) return;
+    const handleReactivate = () => {
+      if (!subscription) return;
 
-    if (subscription.status === "paused") {
-      startTransitionSync(async () => {
-        const result = await reactivateSubscription(
-          subscription.mercadopagoSubscriptionId
-        );
-        if (result.success) {
-          toast.success("Suscripción reactivada", {
-            description: "Tu plan vuelve a estar activo.",
-          });
-          await update();
-          router.refresh();
-        } else {
-          toast.error("No se pudo reactivar", { description: result.error });
-        }
-      });
-    } else {
-      router.push("/subscribe?reason=manage");
-    }
-  };
+      if (subscription.status === "paused") {
+        startTransitionSync(async () => {
+          const result = await reactivateSubscription(
+            subscription.mercadopagoSubscriptionId,
+          );
+          if (result.success) {
+            toast.success("Suscripción reactivada", {
+              description: "Tu plan vuelve a estar activo.",
+            });
+            await update();
+            router.refresh();
+          } else {
+            toast.error("No se pudo reactivar", { description: result.error });
+          }
+        });
+      } else {
+        router.push("/subscribe?reason=manage");
+      }
+    };
 
-  return (
-    <Card className="mx-auto max-w-md rounded-lg border">
-      <CardHeader className="pb-4 space-y-1 border-b">
-        <div className="flex gap-4 justify-between items-start">
-          <div className="space-y-1">
-            <CardTitle className="text-xl">Plan PRO</CardTitle>
-            <CardDescription className="text-sm">
-              {config.description}
-            </CardDescription>
+    return (
+      <Card className="mx-auto max-w-md rounded-lg border">
+        <CardHeader className="pb-4 space-y-1 border-b">
+          <div className="flex gap-4 justify-between items-start">
+            <div className="space-y-1">
+              <CardTitle className="text-xl">Plan PRO</CardTitle>
+              <CardDescription className="text-sm">
+                {config.description}
+              </CardDescription>
+            </div>
+            <Badge
+              variant="outline"
+              className={`${config.color} px-3 py-1.5 flex gap-2 items-center text-sm font-medium shrink-0`}
+            >
+              <StatusIcon className="w-4 h-4" />
+              {config.label}
+            </Badge>
           </div>
-          <Badge
-            variant="outline"
-            className={`${config.color} px-3 py-1.5 flex gap-2 items-center text-sm font-medium shrink-0`}
-          >
-            <StatusIcon className="w-4 h-4" />
-            {config.label}
-          </Badge>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="pt-6 space-y-6">
-        <div className="flex gap-3 items-start p-4 rounded-lg border bg-muted/30">
-          <Calendar className="w-5 h-5 mt-0.5 text-muted-foreground" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground">
-              Próximo cobro
-            </p>
-            <p className="mt-1 text-base font-semibold">
-              {formatFullDate(subscription.currentPeriodEnd)}
-            </p>
-            {!isDiscountActive && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                ${standardPrice}/mes
+        <CardContent className="pt-6 space-y-6">
+          <div className="flex gap-3 items-start p-4 rounded-lg border bg-muted/30">
+            <Calendar className="w-5 h-5 mt-0.5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Próximo cobro
               </p>
-            )}
-          </div>
-        </div>
-
-        {isDiscountActive && subscription.discountCode && (
-          <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
-            <div className="flex gap-3 items-start">
-              <Sparkles className="w-5 h-5 mt-0.5 text-primary" />
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">
-                  Descuento especial activo
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Estás pagando{" "}
-                  <span className="font-bold text-foreground">
-                    ${subscription.discountCode.overridePrice}/mes
-                  </span>{" "}
-                  hasta el{" "}
-                  <span className="font-medium text-foreground">
-                    {formatFullDate(subscription.discountedUntil!)}
-                  </span>
-                  .
-                </p>
+              <p className="mt-1 text-base font-semibold">
+                {formatFullDate(subscription.currentPeriodEnd)}
+              </p>
+              {!isDiscountActive && (
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Después: ${standardPrice}/mes
+                  ${standardPrice}/mes
                 </p>
-              </div>
+              )}
             </div>
           </div>
-        )}
 
-        <div className="pt-4 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSync}
-            disabled={isPendingSync}
-            className="w-full"
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${isPendingSync ? "animate-spin" : ""}`}
-            />
-            {isPendingSync ? "Verificando..." : "Verificar estado"}
-          </Button>
-          <p className="mt-2 text-xs text-center text-muted-foreground">
-            ID: {subscription.mercadopagoSubscriptionId}
-          </p>
-        </div>
-      </CardContent>
+          {isDiscountActive && subscription.discountCode && (
+            <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+              <div className="flex gap-3 items-start">
+                <Sparkles className="w-5 h-5 mt-0.5 text-primary" />
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">
+                    Descuento especial activo
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Estás pagando{" "}
+                    <span className="font-bold text-foreground">
+                      ${subscription.discountCode.overridePrice}/mes
+                    </span>{" "}
+                    hasta el{" "}
+                    <span className="font-medium text-foreground">
+                      {formatFullDate(subscription.discountedUntil!)}
+                    </span>
+                    .
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Después: ${standardPrice}/mes
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-      <CardFooter className="flex-col gap-3 pt-4 border-t">
-        {subscription.status === "cancelled" ||
-        subscription.status === "paused" ? (
-          <Button
-            className="w-full"
-            onClick={handleReactivate}
-            disabled={isPendingSync}
-          >
-            {isPendingSync && subscription.status === "paused" ? (
-              <>
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                Reactivando...
-              </>
-            ) : (
-              "Reactivar Plan PRO"
-            )}
-          </Button>
-        ) : (
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={isPendingSync}
+              className="w-full"
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${isPendingSync ? "animate-spin" : ""}`}
+              />
+              {isPendingSync ? "Verificando..." : "Verificar estado"}
+            </Button>
+            <p className="mt-2 text-xs text-center text-muted-foreground">
+              ID: {subscription.mercadopagoSubscriptionId}
+            </p>
+          </div>
+        </CardContent>
+
+        <CardFooter className="flex-col gap-3 pt-4 border-t">
+          {subscription.status === "cancelled" ||
+          subscription.status === "paused" ? (
+            <Button
+              className="w-full"
+              onClick={handleReactivate}
+              disabled={isPendingSync}
+            >
+              {isPendingSync && subscription.status === "paused" ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Reactivando...
+                </>
+              ) : (
+                "Reactivar Plan PRO"
+              )}
+            </Button>
+          ) : (
             <>
               <Button
                 variant="outline"

@@ -24,12 +24,18 @@ import {
   ChevronsUpDown,
   Crown,
 } from "lucide-react";
-import { useSubscriptionStore } from "@/lib/stores/subscription-store";
+import {
+  useSubscriptionStore,
+  selectIsPro,
+  selectIsHydrated,
+} from "@/lib/stores/subscription-store";
 
 export function UserNav() {
   const { data: session } = useSession();
-  const isPro = useSubscriptionStore((state) => state.isPro);
-  const isHydrated = useSubscriptionStore((state) => state.isHydrated);
+
+  // Use Zustand 5 selectors for reactive updates
+  const isPro = useSubscriptionStore(selectIsPro);
+  const isHydrated = useSubscriptionStore(selectIsHydrated);
 
   if (!session?.user) {
     return null;
@@ -38,9 +44,9 @@ export function UserNav() {
   const { user } = session;
   const userRole = user.role;
   const barbershopSlug = user.barbershop?.slug;
-  
-  const isProUser = isHydrated 
-    ? isPro() 
+
+  const isProUser = isHydrated
+    ? isPro
     : user.subscription?.status === "authorized";
 
   return (
@@ -101,8 +107,14 @@ export function UserNav() {
             {userRole === "OWNER" && (
               <DropdownMenuItem asChild className="p-2 cursor-pointer">
                 <Link href="/dashboard/billing">
-                  <Crown className={`w-4 h-4 mr-2 ${isProUser ? "fill-amber-500 stroke-amber-600" : "stroke-primary"}`} />
-                  <span className={isProUser ? "font-medium text-amber-600" : "text-primary"}>
+                  <Crown
+                    className={`w-4 h-4 mr-2 ${isProUser ? "fill-amber-500 stroke-amber-600" : "stroke-primary"}`}
+                  />
+                  <span
+                    className={
+                      isProUser ? "font-medium text-amber-600" : "text-primary"
+                    }
+                  >
                     {isProUser ? "Plan PRO" : "Suscripción"}
                   </span>
                 </Link>

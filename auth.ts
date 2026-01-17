@@ -39,7 +39,7 @@ const config: NextAuthConfig = {
         if (attempt && now < attempt.lockUntil) {
           const timeLeft = Math.ceil((attempt.lockUntil - now) / 1000 / 60);
           throw new CredentialsSignin(
-            `Demasiados intentos fallidos desde esta IP. Intenta de nuevo en ${timeLeft} minutos.`
+            `Demasiados intentos fallidos desde esta IP. Intenta de nuevo en ${timeLeft} minutos.`,
           );
         }
 
@@ -54,13 +54,13 @@ const config: NextAuthConfig = {
           const newCount = (attempt?.count || 0) + 1;
           loginAttempts.set(ip, { count: newCount, lockUntil: 0 });
           throw new CredentialsSignin(
-            "No existe una cuenta con ese correo electrónico."
+            "No existe una cuenta con ese correo electrónico.",
           );
         }
 
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
-          user.password
+          user.password,
         );
 
         if (!passwordsMatch) {
@@ -84,9 +84,13 @@ const config: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
-      if (user || trigger === "update") {
-        const userId = user?.id || token.id;
+      const userId = user?.id || token.id;
 
+      if (!userId) {
+        return token;
+      }
+
+      if (user || trigger === "update") {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           include: {
@@ -149,6 +153,28 @@ const config: NextAuthConfig = {
             }
           }
         }
+      } else {
+        const subscription = await prisma.subscription.findUnique({
+          where: { userId: userId },
+          select: {
+            status: true,
+            currentPeriodEnd: true,
+          },
+        });
+
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { trialEndsAt: true },
+        });
+
+        token.subscription = subscription
+          ? {
+              status: subscription.status,
+              currentPeriodEnd: subscription.currentPeriodEnd,
+            }
+          : null;
+
+        token.trialEndsAt = user?.trialEndsAt || null;
       }
 
       return token;

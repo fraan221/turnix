@@ -52,7 +52,7 @@ interface BillingSettingsSectionProps {
 
 const formatFullDate = (date: Date) => {
   return new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(
-    new Date(date)
+    new Date(date),
   );
 };
 
@@ -129,12 +129,10 @@ export function BillingSettingsSection({
           toast.success("Estado actualizado", { description: userMessage });
           await update();
           setStatus(result.status);
-          router.refresh();
         } else {
           toast.info("Estado actualizado", { description: userMessage });
           await update();
           setStatus(result.status as string);
-          router.refresh();
         }
       } else {
         toast.error("No se pudo actualizar", { description: result.message });
@@ -147,7 +145,7 @@ export function BillingSettingsSection({
     if (!subscription) return;
     startTransitionCancel(async () => {
       const result = await cancelSubscription(
-        subscription.mercadopagoSubscriptionId
+        subscription.mercadopagoSubscriptionId,
       );
       if (result.success) {
         toast.success("Suscripción cancelada", {
@@ -167,7 +165,7 @@ export function BillingSettingsSection({
     if (!subscription) return;
     startTransitionSync(async () => {
       const result = await reactivateSubscription(
-        subscription.mercadopagoSubscriptionId
+        subscription.mercadopagoSubscriptionId,
       );
       if (result.success) {
         toast.success("Suscripción reactivada", {
@@ -287,6 +285,7 @@ export function BillingSettingsSection({
 
         <div className="pt-4 space-y-3 border-t">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleSync}
@@ -301,6 +300,7 @@ export function BillingSettingsSection({
 
           {subscription.status === "paused" ? (
             <Button
+              type="button"
               className="w-full"
               onClick={handleReactivate}
               disabled={isPendingSync}
@@ -317,6 +317,7 @@ export function BillingSettingsSection({
           ) : subscription.status === "authorized" ? (
             <>
               <Button
+                type="button"
                 variant="outline"
                 className="w-full"
                 onClick={() =>
@@ -336,6 +337,7 @@ export function BillingSettingsSection({
               >
                 <AlertDialogTrigger asChild>
                   <Button
+                    type="button"
                     variant="ghost"
                     className="w-full text-muted-foreground hover:text-destructive"
                   >

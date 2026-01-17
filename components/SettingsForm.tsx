@@ -3,8 +3,9 @@
 import { User } from "@prisma/client";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
-import { useState, useRef, Suspense } from "react";
+import { useState, useRef, Suspense, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Save,
   Loader2Icon,
@@ -60,7 +61,7 @@ const AvatarCropperContentSkeleton = () => (
 
 const AvatarCropperContent = dynamic(
   () => import("./AvatarCropper").then((mod) => mod.AvatarCropperContent),
-  { ssr: false }
+  { ssr: false },
 );
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -106,11 +107,42 @@ interface SettingsFormProps {
   trialEndsAt?: Date | null;
 }
 
-export default function SettingsForm({ user, subscription, trialEndsAt }: SettingsFormProps) {
+export default function SettingsForm({
+  user,
+  subscription,
+  trialEndsAt,
+}: SettingsFormProps) {
   const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [isPending, setIsPending] = useState(false);
-  const [activeSection, setActiveSection] = useState("personal");
+
+  const validSections = [
+    "personal",
+    "barbershop",
+    "url",
+    "security",
+    "payments",
+    "billing",
+  ];
+  const sectionFromUrl = searchParams.get("section");
+  const initialSection =
+    sectionFromUrl && validSections.includes(sectionFromUrl)
+      ? sectionFromUrl
+      : "personal";
+  const [activeSection, setActiveSectionState] = useState(initialSection);
+
+  const setActiveSection = useCallback(
+    (section: string) => {
+      setActiveSectionState(section);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("section", section);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
 
   const formRef = useRef<HTMLFormElement>(null);
   const croppedImageRef = useRef<File | null>(null);
@@ -119,13 +151,13 @@ export default function SettingsForm({ user, subscription, trialEndsAt }: Settin
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(user.phone || "");
   const [barbershopName, setBarbershopName] = useState(
-    user.barbershop?.name || ""
+    user.barbershop?.name || "",
   );
   const [barbershopAddress, setBarbershopAddress] = useState(
-    user.barbershop?.address || ""
+    user.barbershop?.address || "",
   );
   const [barbershopDescription, setBarbershopDescription] = useState(
-    user.barbershop?.description || ""
+    user.barbershop?.description || "",
   );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
 
@@ -183,16 +215,16 @@ export default function SettingsForm({ user, subscription, trialEndsAt }: Settin
         ]
       : []),
     {
-      id: "security",
-      label: "Seguridad",
-      icon: Shield,
+      id: "payments",
+      label: "Pagos",
+      icon: CreditCard,
       disabled: true,
       badge: "Pronto",
     },
     {
-      id: "payments",
-      label: "Pagos",
-      icon: CreditCard,
+      id: "security",
+      label: "Seguridad",
+      icon: Shield,
       disabled: true,
       badge: "Pronto",
     },
@@ -232,7 +264,7 @@ export default function SettingsForm({ user, subscription, trialEndsAt }: Settin
 
   const handleCropComplete = (
     imageBlob: Blob | null,
-    imageType: "avatar" | "barbershop"
+    imageType: "avatar" | "barbershop",
   ) => {
     if (imageBlob) {
       const mimeType =
@@ -518,8 +550,16 @@ export default function SettingsForm({ user, subscription, trialEndsAt }: Settin
         {user.role === Role.OWNER && (
           <>
             <input type="hidden" name="barbershopName" value={barbershopName} />
-            <input type="hidden" name="barbershopAddress" value={barbershopAddress} />
-            <input type="hidden" name="barbershopDescription" value={barbershopDescription} />
+            <input
+              type="hidden"
+              name="barbershopAddress"
+              value={barbershopAddress}
+            />
+            <input
+              type="hidden"
+              name="barbershopDescription"
+              value={barbershopDescription}
+            />
             <input type="hidden" name="slug" value={slugValue} />
           </>
         )}
@@ -531,9 +571,7 @@ export default function SettingsForm({ user, subscription, trialEndsAt }: Settin
             onSelect={setActiveSection}
           />
 
-          <div className="flex-1 min-w-0">
-            {renderSection()}
-          </div>
+          <div className="flex-1 min-w-0">{renderSection()}</div>
         </div>
       </form>
     </TooltipProvider>

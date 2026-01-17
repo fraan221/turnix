@@ -1,6 +1,13 @@
 "use client";
 
-import { useSubscriptionStore } from "@/lib/stores/subscription-store";
+import {
+  useSubscriptionStore,
+  selectStatus,
+  selectTrialEndsAt,
+  selectIsPro,
+  selectIsTrialActive,
+  selectIsHydrated,
+} from "@/lib/stores/subscription-store";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -16,7 +23,7 @@ const calculateTimeLeft = (endDate: Date | null) => {
 
   const days = Math.floor(distance / (1000 * 60 * 60 * 24));
   const hours = Math.floor(
-    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
   );
 
   if (days > 0) {
@@ -32,38 +39,34 @@ const calculateTimeLeft = (endDate: Date | null) => {
 
 export default function TrialStatusBanner() {
   const { data: session } = useSession();
-  
-  // Get values from store
-  const storeStatus = useSubscriptionStore((state) => state.status);
-  const storeTrialEndsAt = useSubscriptionStore((state) => state.trialEndsAt);
-  const isHydrated = useSubscriptionStore((state) => state.isHydrated);
 
-  // Fallback to session if store not hydrated
-  const status = isHydrated 
-    ? storeStatus 
+  const storeStatus = useSubscriptionStore(selectStatus);
+  const storeTrialEndsAt = useSubscriptionStore(selectTrialEndsAt);
+  const isHydrated = useSubscriptionStore(selectIsHydrated);
+
+  const status = isHydrated
+    ? storeStatus
     : session?.user?.subscription?.status || null;
-  
-  const trialEndsAt = isHydrated 
-    ? storeTrialEndsAt 
-    : session?.user?.trialEndsAt 
-      ? new Date(session.user.trialEndsAt) 
+
+  const trialEndsAt = isHydrated
+    ? storeTrialEndsAt
+    : session?.user?.trialEndsAt
+      ? new Date(session.user.trialEndsAt)
       : null;
 
-  // Only show for OWNER role
   const isOwner = session?.user?.role === "OWNER";
   if (!isOwner) {
     return null;
   }
 
-  // Don't show if user has active subscription (authorized or paused)
   const isPro = status === "authorized";
   const isPaused = status === "paused";
   if (isPro || isPaused) {
     return null;
   }
 
-  // Only show if trial is still active
-  const isTrialActive = trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+  const isTrialActive =
+    trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
   if (!isTrialActive) {
     return null;
   }
