@@ -16,7 +16,6 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 
 const prismaClientSingleton = () => {
-  console.warn("ADVERTENCIA: Creando nueva instancia de PrismaClient.");
   return new PrismaClient({ adapter });
 };
 

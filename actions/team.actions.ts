@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import { pusherServer } from "@/lib/pusher";
+import { broadcastToUser } from "@/lib/supabase-server";
 
 type TeamActionState = {
   success?: string | null;
@@ -104,8 +104,8 @@ export async function linkBarberToShop(
       });
     });
 
-    await pusherServer.trigger(`user-${barberToLink.id}`, "team-joined", {
-      message: "Fuiste agregado a un equipo!",
+    await broadcastToUser(barberToLink.id, "team-joined", {
+      message: "¡Te han añadido a un equipo!",
     });
 
     revalidatePath("/dashboard/team");
@@ -201,7 +201,6 @@ export async function removeTeamMember(
         },
       });
 
-      // 1. Identificar qué servicios tienen bookings asociados (para no romper FK)
       const services = await tx.service.findMany({
         where: {
           barberId: memberIdToRemove,
@@ -251,7 +250,9 @@ export async function removeTeamMember(
       });
     });
 
-    await pusherServer.trigger(`user-${memberIdToRemove}`, "team-removed", {});
+    await broadcastToUser(memberIdToRemove, "team-removed", {
+      message: "Has sido eliminado del equipo.",
+    });
 
     revalidatePath("/dashboard/team");
     if (user.ownedBarbershop.slug) {

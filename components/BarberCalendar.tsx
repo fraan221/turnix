@@ -60,11 +60,13 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { BookingWithDetails } from "./BookingDetailsDialog";
 import { BarberSelector } from "./BarberSelector";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useSession } from "next-auth/react";
 
 const BookingDetailsDialogContent = lazy(() =>
   import("./BookingDetailsDialog").then((mod) => ({
     default: mod.BookingDetailsDialogContent,
-  }))
+  })),
 );
 
 const BookingDetailsSkeleton = () => (
@@ -131,6 +133,7 @@ export default function BarberCalendar({
 }: BarberCalendarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const { width } = useWindowSize();
   const isMobile = width < 768;
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
@@ -143,11 +146,21 @@ export default function BarberCalendar({
   const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<CalendarView>(
     (searchParams.get("view") as CalendarView) ||
-      (isMobile ? "timeGridDay" : "timeGridWeek")
+      (isMobile ? "timeGridDay" : "timeGridWeek"),
   );
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [calendarTitle, setCalendarTitle] = useState("");
   const [optimisticBookings, setOptimisticBookings] = useState(bookings);
+
+  const targetBarberId = selectedBarberId || session?.user?.id || "";
+  useRealtimeSubscription<Booking>({
+    userId: targetBarberId,
+    table: "Booking",
+    enabled: !!targetBarberId,
+    onInsert: () => router.refresh(),
+    onUpdate: () => router.refresh(),
+    onDelete: () => router.refresh(),
+  });
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
@@ -181,7 +194,7 @@ export default function BarberCalendar({
         scroll: false,
       });
     },
-    [router, searchParams]
+    [router, searchParams],
   );
 
   const [draggedEventInfo, setDraggedEventInfo] = useState<{
@@ -246,12 +259,12 @@ export default function BarberCalendar({
 
   const handleOptimisticUpdate = (
     bookingId: string,
-    newStatus: BookingStatus
+    newStatus: BookingStatus,
   ) => {
     setOptimisticBookings((currentBookings) =>
       currentBookings.map((booking) =>
-        booking.id === bookingId ? { ...booking, status: newStatus } : booking
-      )
+        booking.id === bookingId ? { ...booking, status: newStatus } : booking,
+      ),
     );
   };
 
@@ -275,7 +288,7 @@ export default function BarberCalendar({
     .map((booking) => {
       const endTime = new Date(
         booking.startTime.getTime() +
-          (booking.service.durationInMinutes || 0) * 60000
+          (booking.service.durationInMinutes || 0) * 60000,
       );
 
       let eventColor = "#3b82f6";
@@ -490,8 +503,8 @@ export default function BarberCalendar({
 
                 setOptimisticBookings((current) =>
                   current.map((b) =>
-                    b.id === bookingId ? { ...b, startTime: newStartTime } : b
-                  )
+                    b.id === bookingId ? { ...b, startTime: newStartTime } : b,
+                  ),
                 );
 
                 setDraggedEventInfo(null);
@@ -504,8 +517,10 @@ export default function BarberCalendar({
                   });
                   setOptimisticBookings((current) =>
                     current.map((b) =>
-                      b.id === bookingId ? { ...b, startTime: oldStartTime } : b
-                    )
+                      b.id === bookingId
+                        ? { ...b, startTime: oldStartTime }
+                        : b,
+                    ),
                   );
                 } else {
                   toast.success("Turno reprogramado con éxito.");

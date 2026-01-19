@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { broadcastToUser } from "@/lib/supabase-server";
 import {
   getEndOfDay,
   getStartOfDay,
@@ -37,7 +37,7 @@ type TimeSlotGroup = {
 export async function getBarberAvailability(
   barberId: string,
   date: Date,
-  totalDuration: number
+  totalDuration: number,
 ): Promise<BarberAvailability> {
   const dayOfWeek = date.getDay();
 
@@ -138,7 +138,7 @@ export async function getBarberAvailability(
 
     while (currentTime < dayEndTime) {
       const slotEndTime = new Date(
-        currentTime.getTime() + totalDuration * 60000
+        currentTime.getTime() + totalDuration * 60000,
       );
       if (slotEndTime > dayEndTime) break;
 
@@ -147,7 +147,7 @@ export async function getBarberAvailability(
         const durationInMinutes =
           booking.durationAtBooking ?? booking.service.durationInMinutes ?? 60;
         const bookingEnd = new Date(
-          bookingStart.getTime() + durationInMinutes * 60000
+          bookingStart.getTime() + durationInMinutes * 60000,
         );
         return currentTime < bookingEnd && slotEndTime > bookingStart;
       });
@@ -155,7 +155,7 @@ export async function getBarberAvailability(
       const overlapsWithTimeBlock = timeBlocks.some(
         (block) =>
           currentTime < new Date(block.endTime) &&
-          slotEndTime > new Date(block.startTime)
+          slotEndTime > new Date(block.startTime),
       );
 
       shiftSlots.push({
@@ -197,26 +197,26 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       .pipe(
         z
           .string()
-          .min(8, "El número de WhatsApp debe tener al menos 8 dígitos.")
+          .min(8, "El número de WhatsApp debe tener al menos 8 dígitos."),
       )
       .pipe(
         z
           .string()
-          .max(15, "El número de WhatsApp no puede tener más de 15 dígitos.")
+          .max(15, "El número de WhatsApp no puede tener más de 15 dígitos."),
       )
       .pipe(
         z
           .string()
           .regex(
             /^[0-9]+$/,
-            "El número de WhatsApp solo puede contener dígitos."
-          )
+            "El número de WhatsApp solo puede contener dígitos.",
+          ),
       ),
     startTime: z.string().datetime(),
   });
 
   const validatedFields = BookingFormSchema.safeParse(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedFields.success) {
@@ -314,11 +314,11 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         clientId: client.id,
       },
     });
-    await pusherServer.trigger(
-      `notifications_${barberId}`,
-      "new-notification",
-      barberNotification
-    );
+
+    await broadcastToUser(barberId, "new-notification", {
+      id: barberNotification.id,
+      message: barberNotification.message,
+    });
 
     const isEmployeeBooking = barber.id !== barbershop.ownerId;
     if (barbershop.teamsEnabled && isEmployeeBooking) {
@@ -339,11 +339,11 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
           clientId: client.id,
         },
       });
-      await pusherServer.trigger(
-        `notifications_${barbershop.ownerId}`,
-        "new-notification",
-        ownerNotification
-      );
+
+      await broadcastToUser(barbershop.ownerId, "new-notification", {
+        id: ownerNotification.id,
+        message: ownerNotification.message,
+      });
     }
 
     return {
