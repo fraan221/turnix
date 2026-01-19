@@ -33,7 +33,7 @@ import { Textarea } from "./ui/textarea";
 import { Loader2 } from "lucide-react";
 
 export type BookingWithDetails = Booking & {
-  service: Service;
+  service: Service | null;
   client: Client;
 };
 
@@ -100,7 +100,7 @@ export function BookingDetailsDialogContent({
       formData.append("clientId", booking.client.id);
       const result = await updateClientNotes(
         { success: null, error: null },
-        formData
+        formData,
       );
       if (result.success) {
         toast.success("¡Éxito!", { description: result.success });
@@ -138,7 +138,8 @@ export function BookingDetailsDialogContent({
           <strong>Teléfono:</strong> {booking.client.phone}
         </p>
         <p>
-          <strong>Servicio:</strong> {booking.service.name}
+          <strong>Servicio:</strong>{" "}
+          {booking.service?.name ?? "Servicio eliminado"}
         </p>
         <p>
           <strong>Fecha:</strong>{" "}
@@ -162,7 +163,7 @@ export function BookingDetailsDialogContent({
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={isCancelling}>
                 {isCancelling && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Cancelar Turno
               </Button>
@@ -183,7 +184,7 @@ export function BookingDetailsDialogContent({
                   disabled={isCancelling}
                 >
                   {isCancelling && (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   )}
                   Sí, cancelar
                 </AlertDialogAction>
@@ -197,7 +198,7 @@ export function BookingDetailsDialogContent({
                 disabled={isCompleting || isFutureBooking}
               >
                 {isCompleting && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Marcar como Completado
               </Button>
@@ -217,7 +218,7 @@ export function BookingDetailsDialogContent({
                   disabled={isCompleting}
                 >
                   {isCompleting && (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   )}
                   Sí, confirmar
                 </AlertDialogAction>
@@ -245,7 +246,7 @@ export function BookingDetailsDialogContent({
           Omitir
         </Button>
         <Button onClick={handleAddNote} disabled={isNoteSaving}>
-          {isNoteSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {isNoteSaving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
           Guardar nota
         </Button>
       </DialogFooter>
@@ -280,7 +281,7 @@ export function BookingDetailsDialogContent({
                 disabled={isClientDeleting}
               >
                 {isClientDeleting && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Eliminar
               </AlertDialogAction>
@@ -316,7 +317,7 @@ export function BookingDetailsDialogContent({
         </DialogDescription>
       </DialogHeader>
       {isFutureBooking && view === "details" && (
-        <div className="p-3 text-xs text-center border rounded-md text-primary">
+        <div className="p-3 text-xs text-center rounded-md border text-primary">
           Este es un turno futuro y aún no puede ser marcado como completado.
         </div>
       )}

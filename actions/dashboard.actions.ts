@@ -35,7 +35,7 @@ const TimeBlockSchema = z
     {
       message: "La fecha y hora de fin debe ser posterior a la de inicio.",
       path: ["endDateTime"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -44,7 +44,7 @@ const TimeBlockSchema = z
     {
       message: "No puedes crear un bloqueo en una fecha u hora pasada.",
       path: ["startDateTime"],
-    }
+    },
   );
 
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -80,12 +80,12 @@ const ScheduleSchema = z.array(DayScheduleSchema).refine(
   },
   {
     message: "La hora de inicio debe ser anterior a la hora de fin",
-  }
+  },
 );
 
 export async function saveSchedule(
   schedule: z.infer<typeof ScheduleSchema>,
-  targetBarberId?: string
+  targetBarberId?: string,
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -156,7 +156,7 @@ export async function saveSchedule(
 
         if (day.isWorking) {
           for (const type of Object.keys(
-            day.shifts
+            day.shifts,
           ) as (keyof typeof day.shifts)[]) {
             const shift = day.shifts[type];
             if (shift.enabled) {
@@ -257,7 +257,7 @@ export async function deleteClient(clientId: string) {
 
 export async function updateBookingStatus(
   bookingId: string,
-  newStatus: BookingStatus
+  newStatus: BookingStatus,
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -331,7 +331,7 @@ const timeToMinutes = (timeStr: string) => {
 
 export async function createBooking(
   prevState: any,
-  formData: FormData
+  formData: FormData,
 ): Promise<FormState> {
   const user = await getUserForSettings();
   if (!user) {
@@ -355,7 +355,9 @@ export async function createBooking(
       .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
       .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
       .pipe(
-        z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números.")
+        z
+          .string()
+          .regex(/^[0-9]+$/, "El teléfono solo puede contener números."),
       ),
     startTime: z
       .string()
@@ -364,7 +366,7 @@ export async function createBooking(
   });
 
   const validatedFields = DashboardBookingSchema.safeParse(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedFields.success) {
@@ -480,7 +482,7 @@ export async function createBooking(
     }
 
     const newBookingEndTime = new Date(
-      startTime.getTime() + (serviceForBooking.durationInMinutes ?? 60) * 60000
+      startTime.getTime() + (serviceForBooking.durationInMinutes ?? 60) * 60000,
     );
 
     const existingBookings = await prisma.booking.findMany({
@@ -505,7 +507,7 @@ export async function createBooking(
       const existingStartTime = existing.startTime;
       const existingEndTime = new Date(
         existingStartTime.getTime() +
-          (existing.service.durationInMinutes ?? 60) * 60000
+          (existing.service?.durationInMinutes ?? 60) * 60000,
       );
 
       return (
@@ -575,7 +577,7 @@ export async function createBooking(
 
 export async function updateClientNotes(
   prevState: FormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<FormState> {
   const clientId = formData.get("clientId")?.toString();
   const notes = formData.get("notes")?.toString();
@@ -655,7 +657,7 @@ export async function deleteTimeBlock(blockId: string) {
 export async function updateTimeBlock(
   blockId: string,
   prevState: any,
-  formData: FormData
+  formData: FormData,
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -671,7 +673,7 @@ export async function updateTimeBlock(
   }
 
   const validatedFields = TimeBlockSchema.safeParse(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedFields.success) {
@@ -707,7 +709,7 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
   }
 
   const validatedFields = TimeBlockSchema.safeParse(
-    Object.fromEntries(formData.entries())
+    Object.fromEntries(formData.entries()),
   );
 
   if (!validatedFields.success) {
@@ -755,7 +757,7 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
 
 export async function updateBookingTime(
   bookingId: string,
-  newStartTime: Date
+  newStartTime: Date,
 ): Promise<{ success?: string; error?: string }> {
   const user = await getCurrentUser();
   if (!user) {
@@ -784,9 +786,9 @@ export async function updateBookingTime(
       return { error: "No tienes permiso para modificar este turno." };
     }
 
-    const serviceDuration = bookingToMove.service.durationInMinutes ?? 60;
+    const serviceDuration = bookingToMove.service?.durationInMinutes ?? 60;
     const newEndTime = new Date(
-      newStartTime.getTime() + serviceDuration * 60000
+      newStartTime.getTime() + serviceDuration * 60000,
     );
     const dayOfWeek = newStartTime.getDay();
     const barberId = bookingToMove.barberId;
@@ -842,7 +844,7 @@ export async function updateBookingTime(
 
     // --- Validación 2: Bloqueos de Tiempo ---
     const overlapsWithTimeBlock = timeBlocks.some(
-      (block) => newStartTime < block.endTime && newEndTime > block.startTime
+      (block) => newStartTime < block.endTime && newEndTime > block.startTime,
     );
 
     if (overlapsWithTimeBlock) {
@@ -856,10 +858,10 @@ export async function updateBookingTime(
       const existingStartTime = existingBooking.startTime;
       const existingDuration =
         existingBooking.durationAtBooking ??
-        existingBooking.service.durationInMinutes ??
+        existingBooking.service?.durationInMinutes ??
         60;
       const existingEndTime = new Date(
-        existingStartTime.getTime() + existingDuration * 60000
+        existingStartTime.getTime() + existingDuration * 60000,
       );
 
       return newStartTime < existingEndTime && newEndTime > existingStartTime;

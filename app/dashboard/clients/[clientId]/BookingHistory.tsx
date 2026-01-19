@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarClock, History } from "lucide-react";
 
 type BookingWithDetails = Booking & {
-  service: Service;
+  service: Service | null;
   barber: {
     name: string | null;
   };
@@ -52,7 +52,9 @@ function BookingListItem({
       className={cn("text-sm", booking.status === "CANCELLED" && "opacity-60")}
     >
       <div className="flex items-center justify-between">
-        <p className="font-semibold">{booking.service.name}</p>
+        <p className="font-semibold">
+          {booking.service?.name ?? "Servicio eliminado"}
+        </p>
         {status && <Badge className={status.className}>{status.text}</Badge>}
       </div>
       <p className="capitalize text-muted-foreground">{formattedDate}</p>

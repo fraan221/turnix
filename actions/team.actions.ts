@@ -201,29 +201,12 @@ export async function removeTeamMember(
         },
       });
 
-      const services = await tx.service.findMany({
+      await tx.service.deleteMany({
         where: {
           barberId: memberIdToRemove,
           barbershopId: barbershopId,
         },
-        include: {
-          _count: {
-            select: { bookings: true },
-          },
-        },
       });
-
-      const servicesToDelete = services
-        .filter((service) => service._count.bookings === 0)
-        .map((service) => service.id);
-
-      if (servicesToDelete.length > 0) {
-        await tx.service.deleteMany({
-          where: {
-            id: { in: servicesToDelete },
-          },
-        });
-      }
 
       await tx.workingHours.deleteMany({
         where: {

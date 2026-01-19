@@ -288,7 +288,7 @@ export default function BarberCalendar({
     .map((booking) => {
       const endTime = new Date(
         booking.startTime.getTime() +
-          (booking.service.durationInMinutes || 0) * 60000,
+          (booking.service?.durationInMinutes || 0) * 60000,
       );
 
       let eventColor = "#3b82f6";
@@ -300,7 +300,7 @@ export default function BarberCalendar({
 
       return {
         id: booking.id,
-        title: `${booking.service.name} - ${booking.client.name}`,
+        title: `${booking.service?.name ?? "Servicio"} - ${booking.client.name}`,
         start: booking.startTime,
         end: endTime,
         backgroundColor: eventColor,

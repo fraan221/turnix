@@ -33,7 +33,7 @@ const getBarbershopAnalytics = cache(
     barbershopId: string,
     period: Period,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ) => {
     try {
       const timeZone = "America/Argentina/Buenos_Aires";
@@ -60,10 +60,10 @@ const getBarbershopAnalytics = cache(
       const baseCTE = Prisma.sql`
         WITH "BookingsInLocalTime" AS (
           SELECT
-            b."startTime" AT TIME ZONE ${timeZone} as local_time,
-            s.price
+            b."startTime" AT TIME ZONE 'UTC' AT TIME ZONE ${timeZone} as local_time,
+            COALESCE(b."priceAtBooking", s.price, 0) as price
           FROM "Booking" b
-          JOIN "Service" s ON b."serviceId" = s.id
+          LEFT JOIN "Service" s ON b."serviceId" = s.id
           WHERE b."barbershopId" = ${barbershopId}
             AND b."startTime" BETWEEN ${startDate} AND ${endDate}
             AND b.status = 'COMPLETED'
@@ -112,13 +112,14 @@ const getBarbershopAnalytics = cache(
         ]);
 
       const totalRevenue = completedBookings.reduce(
-        (acc, booking) => acc + booking.service.price,
-        0
+        (acc, booking) =>
+          acc + (booking.priceAtBooking ?? booking.service?.price ?? 0),
+        0,
       );
       const completedBookingsCount = completedBookings.length;
 
       const chartDataMap = new Map<string, number>(
-        rawChartData.map((item) => [String(item.name), item.total])
+        rawChartData.map((item) => [String(item.name), item.total]),
       );
       let chartData: ChartDataPoint[] = [];
 
@@ -167,7 +168,7 @@ const getBarbershopAnalytics = cache(
   {
     revalidate: 300,
     tags: ["analytics"],
-  }
+  },
 );
 
 export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
@@ -282,12 +283,13 @@ export async function getPersonalBarberStats(): Promise<PersonalStatsData> {
     ]);
 
     const totalRevenue = completedBookings.reduce(
-      (acc, booking) => acc + booking.service.price,
-      0
+      (acc, booking) =>
+        acc + (booking.priceAtBooking ?? booking.service?.price ?? 0),
+      0,
     );
     const completedBookingsCount = completedBookings.length;
     const uniqueClients = new Set(
-      completedBookings.map((booking) => booking.client.id)
+      completedBookings.map((booking) => booking.client.id),
     ).size;
 
     const serviceIds = topServices

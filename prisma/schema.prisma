@@ -105,8 +105,8 @@ model Booking {
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
 
-  service   Service @relation(fields: [serviceId], references: [id])
-  serviceId String
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceId String?
 
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
   barbershopId String

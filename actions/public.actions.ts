@@ -145,7 +145,7 @@ export async function getBarberAvailability(
       const overlapsWithBooking = bookings.some((booking) => {
         const bookingStart = new Date(booking.startTime);
         const durationInMinutes =
-          booking.durationAtBooking ?? booking.service.durationInMinutes ?? 60;
+          booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
         const bookingEnd = new Date(
           bookingStart.getTime() + durationInMinutes * 60000,
         );
