@@ -43,7 +43,7 @@ const LinkBarberSchema = z.object({
 
 export async function linkBarberToShop(
   prevState: LinkBarberState,
-  formData: FormData
+  formData: FormData,
 ): Promise<LinkBarberState> {
   const user = await getUserForSettings();
 
@@ -111,7 +111,7 @@ export async function linkBarberToShop(
     revalidatePath("/dashboard/team");
     revalidateTag(`barber-profile:${barbershop.slug}`);
     console.log(
-      `[Cache Invalidation] Revalidando tag por nuevo miembro: barber-profile:${barbershop.slug}`
+      `[Cache Invalidation] Revalidando tag por nuevo miembro: barber-profile:${barbershop.slug}`,
     );
 
     return { success: `¡${barberToLink.name} ha sido añadido a tu equipo!` };
@@ -140,7 +140,7 @@ export async function enableTeamFeature(): Promise<TeamActionState> {
     if (updatedBarbershop.slug) {
       revalidateTag(`barber-profile:${updatedBarbershop.slug}`);
       console.log(
-        `[Cache Invalidation] Revalidando tag por activar equipos: barber-profile:${updatedBarbershop.slug}`
+        `[Cache Invalidation] Revalidando tag por activar equipos: barber-profile:${updatedBarbershop.slug}`,
       );
     }
 
@@ -156,7 +156,7 @@ export async function enableTeamFeature(): Promise<TeamActionState> {
 }
 
 export async function removeTeamMember(
-  formData: FormData
+  formData: FormData,
 ): Promise<TeamActionState> {
   const user = await getUserForSettings();
   const memberIdToRemove = formData.get("memberId")?.toString();
@@ -201,12 +201,30 @@ export async function removeTeamMember(
         },
       });
 
-      await tx.service.deleteMany({
+      // 1. Identificar qué servicios tienen bookings asociados (para no romper FK)
+      const services = await tx.service.findMany({
         where: {
           barberId: memberIdToRemove,
           barbershopId: barbershopId,
         },
+        include: {
+          _count: {
+            select: { bookings: true },
+          },
+        },
       });
+
+      const servicesToDelete = services
+        .filter((service) => service._count.bookings === 0)
+        .map((service) => service.id);
+
+      if (servicesToDelete.length > 0) {
+        await tx.service.deleteMany({
+          where: {
+            id: { in: servicesToDelete },
+          },
+        });
+      }
 
       await tx.workingHours.deleteMany({
         where: {
@@ -243,6 +261,7 @@ export async function removeTeamMember(
     return { success: "¡Miembro eliminado del equipo con éxito!" };
   } catch (error) {
     console.error("Error al eliminar el miembro del equipo:", error);
+
     return {
       error: "No se pudo eliminar al miembro. Inténtalo de nuevo más tarde.",
     };

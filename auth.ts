@@ -97,7 +97,15 @@ const config: NextAuthConfig = {
             ownedBarbershop: true,
             teamMembership: {
               include: {
-                barbershop: true,
+                barbershop: {
+                  include: {
+                    owner: {
+                      include: {
+                        subscription: true,
+                      },
+                    },
+                  },
+                },
               },
             },
             subscription: true,
@@ -109,6 +117,8 @@ const config: NextAuthConfig = {
           token.role = dbUser.role;
           token.name = dbUser.name;
           token.picture = dbUser.image;
+
+          // Default to user's own data
           token.trialEndsAt = dbUser.trialEndsAt;
           token.subscription = dbUser.subscription
             ? {
@@ -118,6 +128,7 @@ const config: NextAuthConfig = {
             : null;
 
           token.teamMembership = dbUser.teamMembership;
+
           if (dbUser.ownedBarbershop) {
             token.barbershop = dbUser.ownedBarbershop;
           } else if (dbUser.teamMembership?.barbershop) {
@@ -125,56 +136,81 @@ const config: NextAuthConfig = {
           } else {
             token.barbershop = null;
           }
-          if (token.role === Role.BARBER && token.teamMembership) {
-            const barbershop = await prisma.barbershop.findUnique({
-              where: { id: token.teamMembership.barbershopId },
-              select: {
-                owner: {
-                  select: {
-                    subscription: true,
-                    trialEndsAt: true,
-                  },
-                },
-              },
-            });
 
-            if (barbershop?.owner) {
-              token.subscription = barbershop.owner.subscription
-                ? {
-                    status: barbershop.owner.subscription.status,
-                    currentPeriodEnd:
-                      barbershop.owner.subscription.currentPeriodEnd,
-                  }
-                : null;
-              token.trialEndsAt = barbershop.owner.trialEndsAt;
-            } else {
-              token.subscription = null;
-              token.trialEndsAt = null;
-            }
+          // Override for BARBER role to use Owner's subscription data
+          if (
+            token.role === Role.BARBER &&
+            dbUser.teamMembership?.barbershop?.owner
+          ) {
+            const owner = dbUser.teamMembership.barbershop.owner;
+
+            token.subscription = owner.subscription
+              ? {
+                  status: owner.subscription.status,
+                  currentPeriodEnd: owner.subscription.currentPeriodEnd,
+                }
+              : null;
+            token.trialEndsAt = owner.trialEndsAt;
           }
         }
       } else {
-        const subscription = await prisma.subscription.findUnique({
-          where: { userId: userId },
-          select: {
-            status: true,
-            currentPeriodEnd: true,
-          },
-        });
+        // Token refresh logic - need to re-fetch to ensure data is fresh
+        // We need to know the role to decide what to fetch, checking token.role
+        if (token.role === Role.BARBER) {
+          // For barbers, we need to find their team -> barbershop -> owner
+          const team = await prisma.team.findUnique({
+            where: { userId: userId },
+            include: {
+              barbershop: {
+                include: {
+                  owner: {
+                    include: {
+                      subscription: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
 
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { trialEndsAt: true },
-        });
+          if (team?.barbershop?.owner) {
+            const owner = team.barbershop.owner;
+            token.subscription = owner.subscription
+              ? {
+                  status: owner.subscription.status,
+                  currentPeriodEnd: owner.subscription.currentPeriodEnd,
+                }
+              : null;
+            token.trialEndsAt = owner.trialEndsAt;
+          } else {
+            // Fallback if relation is broken, though shouldn't happen for active barber
+            token.subscription = null;
+            token.trialEndsAt = null;
+          }
+        } else {
+          // For OWNER or others, fetch their own data
+          const subscription = await prisma.subscription.findUnique({
+            where: { userId: userId },
+            select: {
+              status: true,
+              currentPeriodEnd: true,
+            },
+          });
 
-        token.subscription = subscription
-          ? {
-              status: subscription.status,
-              currentPeriodEnd: subscription.currentPeriodEnd,
-            }
-          : null;
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { trialEndsAt: true },
+          });
 
-        token.trialEndsAt = user?.trialEndsAt || null;
+          token.subscription = subscription
+            ? {
+                status: subscription.status,
+                currentPeriodEnd: subscription.currentPeriodEnd,
+              }
+            : null;
+
+          token.trialEndsAt = user?.trialEndsAt || null;
+        }
       }
 
       return token;
