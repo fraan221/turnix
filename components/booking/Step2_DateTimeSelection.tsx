@@ -34,7 +34,11 @@ export function Step2_DateTimeSelection({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   const totalDuration = useMemo(() => {
-    return selectedServices[0]?.durationInMinutes ?? 60;
+    if (selectedServices.length === 0) return 60;
+    return selectedServices.reduce(
+      (sum, service) => sum + (service.durationInMinutes ?? 60),
+      0
+    );
   }, [selectedServices]);
 
   useEffect(() => {
