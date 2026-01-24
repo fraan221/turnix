@@ -25,7 +25,8 @@ type BroadcastEvent =
   | "team-joined"
   | "team-removed"
   | "booking-created"
-  | "booking-updated";
+  | "booking-updated"
+  | "booking-paid";
 
 export async function broadcastToUser(
   userId: string,

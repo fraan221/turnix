@@ -167,7 +167,10 @@ export async function getBarberAvailability(
     // Generate slots using back-to-back scheduling
     let slotStart = new Date(currentTime);
 
-    while (slotStart.getTime() + totalDuration * 60000 <= dayEndTime.getTime()) {
+    while (
+      slotStart.getTime() + totalDuration * 60000 <=
+      dayEndTime.getTime()
+    ) {
       const slotEnd = new Date(slotStart.getTime() + totalDuration * 60000);
 
       // Find all intervals that overlap with this slot and get the latest end time
@@ -282,7 +285,15 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
 
     const barbershop = await prisma.barbershop.findUnique({
       where: { id: barbershopId },
-      select: { teamsEnabled: true, ownerId: true },
+      select: {
+        teamsEnabled: true,
+        ownerId: true,
+        name: true,
+        depositEnabled: true,
+        depositAmountType: true,
+        depositAmount: true,
+        mpCredentials: { select: { id: true } },
+      },
     });
 
     if (!barbershop) {
@@ -309,7 +320,25 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       return { error: "El servicio seleccionado ya no existe." };
     }
 
-    await prisma.booking.create({
+    // Check if deposit is required
+    const requiresDeposit =
+      barbershop.depositEnabled &&
+      !!barbershop.mpCredentials &&
+      barbershop.depositAmount;
+
+    // Calculate deposit amount
+    let calculatedDeposit: number | null = null;
+    if (requiresDeposit && barbershop.depositAmount) {
+      if (barbershop.depositAmountType === "percentage") {
+        calculatedDeposit =
+          (service.price * Number(barbershop.depositAmount)) / 100;
+      } else {
+        calculatedDeposit = Number(barbershop.depositAmount);
+      }
+    }
+
+    // Create booking - with PENDING status if deposit required
+    const booking = await prisma.booking.create({
       data: {
         startTime,
         priceAtBooking: service.price,
@@ -318,8 +347,26 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         client: { connect: { id: client.id } },
         service: { connect: { id: serviceId } },
         barbershop: { connect: { id: barbershopId } },
+        // Deposit fields
+        ...(requiresDeposit && calculatedDeposit
+          ? {
+              depositAmount: calculatedDeposit,
+              paymentStatus: "PENDING",
+            }
+          : {}),
       },
     });
+
+    // If deposit required, return early with payment info
+    if (requiresDeposit && calculatedDeposit) {
+      return {
+        requiresPayment: true,
+        bookingId: booking.id,
+        depositAmount: calculatedDeposit,
+        barbershopName: barbershop.name,
+        serviceName: service.name,
+      };
+    }
 
     const formattedTime = formatTime(startTime);
     const relativeDateString = formatBookingDateForNotification(startTime);

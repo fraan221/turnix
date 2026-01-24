@@ -47,14 +47,34 @@ model Barbershop {
   address      String?
   description  String?
 
+  // Deposit settings
+  depositEnabled    Boolean  @default(false)
+  depositAmountType String? // "fixed" | "percentage"
+  depositAmount     Decimal? @db.Decimal(10, 2)
+
   owner   User   @relation("BarbershopOwner", fields: [ownerId], references: [id])
   ownerId String @unique
 
-  teamMembers Team[]
+  teamMembers   Team[]
+  mpCredentials MercadoPagoCredentials?
 
   services Service[]
   bookings Booking[]
   clients  Client[]
+}
+
+model MercadoPagoCredentials {
+  id           String     @id @default(cuid())
+  barbershopId String     @unique
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  accessToken  String // Encrypted with AES-256-GCM
+  refreshToken String // Encrypted
+  expiresAt    DateTime
+  mpUserId     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Client {
@@ -98,6 +118,11 @@ model Booking {
   status            BookingStatus @default(SCHEDULED)
   priceAtBooking    Float?
   durationAtBooking Int?
+
+  // Deposit tracking fields
+  depositAmount        Decimal?       @db.Decimal(10, 2)
+  paymentStatus        PaymentStatus?
+  mercadopagoPaymentId String?        @unique
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
@@ -191,6 +216,12 @@ enum BookingStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
 }
 
 enum Role {
