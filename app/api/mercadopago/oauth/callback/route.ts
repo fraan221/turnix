@@ -79,12 +79,18 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.redirect(
-      new URL("/dashboard/settings?mp_connected=true", baseUrl),
+      new URL(
+        "/dashboard/settings?section=payments&mp_connected=true",
+        baseUrl,
+      ),
     );
   } catch (err) {
     console.error("[OAuth Callback] Error processing callback:", err);
     return NextResponse.redirect(
-      new URL("/dashboard/settings?error=token_exchange_failed", baseUrl),
+      new URL(
+        "/dashboard/settings?section=payments&error=token_exchange_failed",
+        baseUrl,
+      ),
     );
   }
 }

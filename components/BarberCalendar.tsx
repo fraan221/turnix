@@ -291,11 +291,16 @@ export default function BarberCalendar({
           (booking.service?.durationInMinutes || 0) * 60000,
       );
 
-      let eventColor = "#3b82f6";
+      let eventColor = "#3b82f6"; // blue - default
       let eventClassName = "cursor-pointer";
 
-      if (booking.status === "COMPLETED") {
-        eventColor = "#22c55e";
+      // Pending payment - show in amber/yellow
+      if (booking.paymentStatus === "PENDING") {
+        eventColor = "#f59e0b"; // amber-500
+      }
+      // Completed booking - show in green
+      else if (booking.status === "COMPLETED") {
+        eventColor = "#22c55e"; // green-500
       }
 
       return {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useTransition, useRef } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   CreditCard,
@@ -59,10 +59,12 @@ export function PaymentsSection({
   onDepositAmountChange,
 }: PaymentsSectionProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [isConnected, setIsConnected] = useState(initialMpConnected);
   const [isLoadingStatus, setIsLoadingStatus] = useState(!initialMpConnected);
+  const toastShownRef = useRef(false);
 
   // For formatted display (with thousand separators)
   const [amountDisplay, setAmountDisplay] = useState(() => {
@@ -73,6 +75,9 @@ export function PaymentsSection({
   });
 
   useEffect(() => {
+    // Prevent duplicate toasts (especially in React Strict Mode)
+    if (toastShownRef.current) return;
+
     const mpConnected = searchParams.get("mp_connected");
     const error = searchParams.get("error");
 
@@ -81,6 +86,7 @@ export function PaymentsSection({
       toast.success("¡Mercado Pago conectado!", {
         description: "Ya podés empezar a cobrar señas.",
       });
+      toastShownRef.current = true;
     }
 
     if (error) {
@@ -93,6 +99,7 @@ export function PaymentsSection({
       toast.error("Error al conectar Mercado Pago", {
         description: errorMessages[error] || error,
       });
+      toastShownRef.current = true;
     }
   }, [searchParams]);
 
@@ -120,6 +127,11 @@ export function PaymentsSection({
         setIsConnected(false);
         onDepositEnabledChange(false);
         toast.success("Mercado Pago desconectado");
+
+        // Clean URL params to prevent wrong toast on refresh
+        router.replace("/dashboard/settings?section=payments");
+        // Reset toast flag so it can show again if user reconnects
+        toastShownRef.current = false;
       } else {
         toast.error("Error al desconectar", {
           description: result.error,
@@ -190,6 +202,7 @@ export function PaymentsSection({
                   </div>
                 </div>
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleDisconnect}
@@ -219,7 +232,7 @@ export function PaymentsSection({
                     </p>
                   </div>
                 </div>
-                <Button size="sm" onClick={handleConnect}>
+                <Button type="button" size="sm" onClick={handleConnect}>
                   Conectar
                   <ExternalLink className="ml-1 w-3 h-3" />
                 </Button>

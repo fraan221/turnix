@@ -74,6 +74,8 @@ export async function getBarberAvailability(
         barberId: barberId,
         startTime: { gte: startOfDayUTC, lt: endOfDayUTC },
         status: { not: "CANCELLED" },
+        // Note: Pending payment bookings ARE included to block the slot
+        // They will be cleaned up by cron after 15 minutes if unpaid
       },
       include: { service: { select: { durationInMinutes: true } } },
     }),
@@ -436,5 +438,31 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     return {
       error: `No se pudo crear la reserva: ${error.message || error.toString()}`,
     };
+  }
+}
+
+export async function cancelFailedBooking(bookingId: string) {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { barbershop: true },
+    });
+
+    if (!booking) {
+      return { error: "Reserva no encontrada" };
+    }
+
+    // Only cancel if it's still pending (avoid cancelling if it was somehow paid in the meantime)
+    if (booking.paymentStatus === "PENDING") {
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: "CANCELLED" },
+      });
+    }
+
+    return { success: true, barbershopSlug: booking.barbershop.slug };
+  } catch (error) {
+    console.error("Error cancelling failed booking:", error);
+    return { error: "Error al cancelar la reserva" };
   }
 }
