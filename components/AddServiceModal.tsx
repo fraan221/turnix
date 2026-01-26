@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
 import { createService } from "@/actions/service.actions";
+import { formatPrice, cleanPriceValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,19 +26,6 @@ interface AddServiceModalContentProps {
 }
 
 type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
-
-const formatPrice = (value: string): string => {
-  const cleanValue = value.replace(/[^\d]/g, "");
-  if (!cleanValue) return "";
-  if (cleanValue.length > 6) {
-    return formatPrice(cleanValue.slice(0, 6));
-  }
-  return cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-const cleanPriceValue = (formattedValue: string): string => {
-  return formattedValue.replace(/\./g, "");
-};
 
 export function AddServiceModalContent({
   onClose,
@@ -133,7 +121,7 @@ export function AddServiceModalContent({
               Precio
             </Label>
             <div className="relative">
-              <span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 $
               </span>
               <Input
@@ -173,7 +161,7 @@ export function AddServiceModalContent({
                 {...register("durationInMinutes")}
                 className={errors.durationInMinutes ? "border-destructive" : ""}
               />
-              <span className="absolute text-xs -translate-y-1/2 right-3 top-1/2 text-muted-foreground">
+              <span className="absolute right-3 top-1/2 text-xs -translate-y-1/2 text-muted-foreground">
                 min
               </span>
             </div>
@@ -226,7 +214,7 @@ export function AddServiceModalContent({
           >
             {isSubmitting || isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 Creando...
               </>
             ) : (

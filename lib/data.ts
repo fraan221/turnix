@@ -67,6 +67,12 @@ export const getUserForSettings = cache(async () => {
           image: true,
           address: true,
           description: true,
+          depositEnabled: true,
+          depositAmountType: true,
+          depositAmount: true,
+          mpCredentials: {
+            select: { id: true },
+          },
         },
       },
       teamMembership: {
@@ -222,7 +228,7 @@ export const getCachedBarberProfile = (slug: string) =>
     {
       tags: [`barber-profile:${slug}`],
       revalidate: 3600,
-    }
+    },
   )();
 
 /**
@@ -232,10 +238,10 @@ export const getCachedBarberProfile = (slug: string) =>
 export const getBarberAvailability = async (
   barberId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ) => {
   console.log(
-    `[Real-Time] Obteniendo disponibilidad para barbero: ${barberId}`
+    `[Real-Time] Obteniendo disponibilidad para barbero: ${barberId}`,
   );
   const bookings = await prisma.booking.findMany({
     where: {

@@ -11,7 +11,7 @@ const phoneSchema = z
   .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
   .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
   .pipe(
-    z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números.")
+    z.string().regex(/^[0-9]+$/, "El teléfono solo puede contener números."),
   );
 
 const UserProfileSchema = z.object({
@@ -26,13 +26,16 @@ const UserProfileSchema = z.object({
     .min(3, "La URL debe tener al menos 3 caracteres.")
     .regex(
       /^[a-z0-9]+(-[a-z0-9]+)*$/,
-      "Formato de URL no válido. Usa solo minúsculas, números y guiones."
+      "Formato de URL no válido. Usa solo minúsculas, números y guiones.",
     )
     .optional(),
   barbershopDescription: z.string().optional(),
   barbershopAddress: z.string().optional(),
   avatarUrl: z.string().optional(),
   barbershopImageUrl: z.string().optional(),
+  depositEnabled: z.enum(["true", "false"]).optional(),
+  depositAmountType: z.enum(["fixed", "percentage"]).optional(),
+  depositAmount: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
   if (!session?.user) {
     return NextResponse.json(
       { error: "Acción no autorizada." },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -69,9 +72,12 @@ export async function POST(request: Request) {
       fieldsToValidate.barbershopName = formData.get("barbershopName");
       fieldsToValidate.slug = formData.get("slug");
       fieldsToValidate.barbershopDescription = formData.get(
-        "barbershopDescription"
+        "barbershopDescription",
       );
       fieldsToValidate.barbershopAddress = formData.get("barbershopAddress");
+      fieldsToValidate.depositEnabled = formData.get("depositEnabled");
+      fieldsToValidate.depositAmountType = formData.get("depositAmountType");
+      fieldsToValidate.depositAmount = formData.get("depositAmount");
     }
 
     const validatedFields = UserProfileSchema.safeParse(fieldsToValidate);
@@ -79,7 +85,7 @@ export async function POST(request: Request) {
     if (!validatedFields.success) {
       return NextResponse.json(
         { error: validatedFields.error.flatten().fieldErrors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -91,8 +97,15 @@ export async function POST(request: Request) {
     };
 
     if (userRole === Role.OWNER) {
-      const { barbershopName, slug, barbershopAddress, barbershopDescription } =
-        validatedFields.data;
+      const {
+        barbershopName,
+        slug,
+        barbershopAddress,
+        barbershopDescription,
+        depositEnabled,
+        depositAmountType,
+        depositAmount,
+      } = validatedFields.data;
       const existingBarbershop = await prisma.barbershop.findUnique({
         where: { ownerId: userId },
       });
@@ -100,7 +113,7 @@ export async function POST(request: Request) {
       if (!existingBarbershop && !slug) {
         return NextResponse.json(
           { error: "La URL personalizada es requerida al crear tu perfil." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -111,7 +124,7 @@ export async function POST(request: Request) {
         if (slugConflict) {
           return NextResponse.json(
             { error: { slug: ["Esta URL ya está en uso. Elige otra."] } },
-            { status: 409 }
+            { status: 409 },
           );
         }
       }
@@ -125,6 +138,14 @@ export async function POST(request: Request) {
               description: barbershopDescription,
               address: barbershopAddress,
               ...(barbershopImageUrl && { image: barbershopImageUrl }),
+              // Deposit settings
+              ...(depositEnabled !== undefined && {
+                depositEnabled: depositEnabled === "true",
+              }),
+              ...(depositAmountType && { depositAmountType }),
+              ...(depositAmount && {
+                depositAmount: parseFloat(depositAmount) || null,
+              }),
             },
             create: {
               name: barbershopName!,
@@ -142,7 +163,7 @@ export async function POST(request: Request) {
           });
 
           return [user, barbershop];
-        }
+        },
       );
 
       revalidatePath("/dashboard/settings");
@@ -191,7 +212,7 @@ export async function POST(request: Request) {
     console.error("Error al actualizar el perfil:", error);
     return NextResponse.json(
       { error: "No se pudo actualizar el perfil. Inténtalo de nuevo." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

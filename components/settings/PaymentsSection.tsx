@@ -11,8 +11,6 @@ import {
   Loader2,
   ExternalLink,
   Unlink,
-  ToggleLeft,
-  ToggleRight,
   DollarSign,
   Percent,
 } from "lucide-react";
@@ -32,42 +30,48 @@ import { Separator } from "@/components/ui/separator";
 import {
   getMercadoPagoStatus,
   disconnectMercadoPago,
-  updateDepositSettings,
 } from "@/actions/payment.actions";
+import { formatPrice, cleanPriceValue } from "@/lib/format";
 
-interface DepositSettings {
+export interface DepositSettings {
   depositEnabled: boolean;
-  depositAmountType: "fixed" | "percentage" | null;
-  depositAmount: number | null;
-  mpConnected: boolean;
+  depositAmountType: "fixed" | "percentage";
+  depositAmount: string;
 }
 
 interface PaymentsSectionProps {
-  initialSettings?: DepositSettings;
+  initialMpConnected?: boolean;
+  depositEnabled: boolean;
+  depositAmountType: "fixed" | "percentage";
+  depositAmount: string;
+  onDepositEnabledChange: (enabled: boolean) => void;
+  onDepositAmountTypeChange: (type: "fixed" | "percentage") => void;
+  onDepositAmountChange: (amount: string) => void;
 }
 
-export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
+export function PaymentsSection({
+  initialMpConnected = false,
+  depositEnabled,
+  depositAmountType,
+  depositAmount,
+  onDepositEnabledChange,
+  onDepositAmountTypeChange,
+  onDepositAmountChange,
+}: PaymentsSectionProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Connection state
-  const [isConnected, setIsConnected] = useState(
-    initialSettings?.mpConnected ?? false,
-  );
-  const [isLoadingStatus, setIsLoadingStatus] = useState(!initialSettings);
+  const [isConnected, setIsConnected] = useState(initialMpConnected);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(!initialMpConnected);
 
-  // Deposit settings state
-  const [depositEnabled, setDepositEnabled] = useState(
-    initialSettings?.depositEnabled ?? false,
-  );
-  const [depositType, setDepositType] = useState<"fixed" | "percentage">(
-    (initialSettings?.depositAmountType as "fixed" | "percentage") ?? "fixed",
-  );
-  const [depositAmount, setDepositAmount] = useState<string>(
-    initialSettings?.depositAmount?.toString() ?? "",
-  );
+  // For formatted display (with thousand separators)
+  const [amountDisplay, setAmountDisplay] = useState(() => {
+    if (depositAmount && depositAmountType === "fixed") {
+      return formatPrice(depositAmount);
+    }
+    return depositAmount;
+  });
 
-  // Check for OAuth callback success/error
   useEffect(() => {
     const mpConnected = searchParams.get("mp_connected");
     const error = searchParams.get("error");
@@ -92,9 +96,8 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
     }
   }, [searchParams]);
 
-  // Load connection status if not provided
   useEffect(() => {
-    if (initialSettings) return;
+    if (initialMpConnected) return;
 
     async function loadStatus() {
       setIsLoadingStatus(true);
@@ -104,10 +107,9 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
     }
 
     loadStatus();
-  }, [initialSettings]);
+  }, [initialMpConnected]);
 
   const handleConnect = () => {
-    // Redirect to OAuth initiation endpoint
     window.location.href = "/api/mercadopago/oauth";
   };
 
@@ -116,7 +118,7 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
       const result = await disconnectMercadoPago();
       if (result.success) {
         setIsConnected(false);
-        setDepositEnabled(false);
+        onDepositEnabledChange(false);
         toast.success("Mercado Pago desconectado");
       } else {
         toast.error("Error al desconectar", {
@@ -126,44 +128,40 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
     });
   };
 
-  const handleSaveSettings = () => {
-    const amount = parseFloat(depositAmount);
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
 
-    if (depositEnabled && (!amount || amount <= 0)) {
-      toast.error("Ingresá un monto válido para la seña");
-      return;
+    if (depositAmountType === "fixed") {
+      // Use formatted display for fixed amounts
+      const formattedValue = formatPrice(inputValue);
+      setAmountDisplay(formattedValue);
+      const cleanValue = cleanPriceValue(formattedValue);
+      onDepositAmountChange(cleanValue);
+    } else {
+      // For percentage, just use the raw value (limited to 100)
+      const numValue = parseInt(inputValue) || 0;
+      const clampedValue = Math.min(100, Math.max(0, numValue));
+      setAmountDisplay(clampedValue.toString());
+      onDepositAmountChange(clampedValue.toString());
     }
-
-    if (depositEnabled && depositType === "percentage" && amount > 100) {
-      toast.error("El porcentaje no puede ser mayor a 100%");
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await updateDepositSettings({
-        depositEnabled,
-        depositAmountType: depositEnabled ? depositType : null,
-        depositAmount: depositEnabled ? amount : null,
-      });
-
-      if (result.success) {
-        toast.success("Configuración guardada");
-      } else {
-        toast.error("Error al guardar", {
-          description: result.error,
-        });
-      }
-    });
   };
+
+  // Sync amountDisplay when type changes
+  useEffect(() => {
+    if (depositAmountType === "fixed" && depositAmount) {
+      setAmountDisplay(formatPrice(depositAmount));
+    } else {
+      setAmountDisplay(depositAmount);
+    }
+  }, [depositAmountType, depositAmount]);
 
   return (
     <SettingsCard
       icon={CreditCard}
-      title="Pagos y Señas"
+      title="Pagos"
       description="Configurá Mercado Pago para cobrar señas en las reservas"
     >
       <div className="space-y-6">
-        {/* Mercado Pago Connection */}
         <div className="space-y-3">
           <div className="flex gap-2 items-center">
             <Wallet className="w-4 h-4 text-muted-foreground" />
@@ -173,14 +171,14 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
           </div>
 
           {isLoadingStatus ? (
-            <div className="flex items-center justify-center p-4 rounded-lg border border-muted bg-muted/30">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            <div className="flex justify-center items-center p-4 rounded-lg border border-muted bg-muted/30">
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
               <span className="text-sm text-muted-foreground">Cargando...</span>
             </div>
           ) : isConnected ? (
-            <div className="p-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200 dark:border-green-900 dark:bg-green-950/30">
+              <div className="flex justify-between items-center">
+                <div className="flex gap-2 items-center">
                   <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <div>
                     <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -202,7 +200,7 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Unlink className="w-4 h-4 mr-1" />
+                      <Unlink className="mr-1 w-4 h-4" />
                       Desconectar
                     </>
                   )}
@@ -211,8 +209,8 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
             </div>
           ) : (
             <div className="p-4 rounded-lg border border-muted bg-muted/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center">
+                <div className="flex gap-2 items-center">
                   <XCircle className="w-5 h-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">No conectado</p>
@@ -223,7 +221,7 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
                 </div>
                 <Button size="sm" onClick={handleConnect}>
                   Conectar
-                  <ExternalLink className="w-3 h-3 ml-1" />
+                  <ExternalLink className="ml-1 w-3 h-3" />
                 </Button>
               </div>
             </div>
@@ -232,9 +230,8 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
 
         <Separator />
 
-        {/* Deposit Configuration */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">Requerir Seña</Label>
               <p className="text-xs text-muted-foreground">
@@ -243,7 +240,7 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
             </div>
             <Switch
               checked={depositEnabled}
-              onCheckedChange={setDepositEnabled}
+              onCheckedChange={onDepositEnabledChange}
               disabled={!isConnected || isPending}
             />
           </div>
@@ -256,9 +253,9 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
                     Tipo de seña
                   </Label>
                   <Select
-                    value={depositType}
+                    value={depositAmountType}
                     onValueChange={(v) =>
-                      setDepositType(v as "fixed" | "percentage")
+                      onDepositAmountTypeChange(v as "fixed" | "percentage")
                     }
                     disabled={isPending}
                   >
@@ -267,13 +264,13 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="fixed">
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           <DollarSign className="w-4 h-4" />
                           Monto fijo
                         </div>
                       </SelectItem>
                       <SelectItem value="percentage">
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           <Percent className="w-4 h-4" />
                           Porcentaje
                         </div>
@@ -284,38 +281,36 @@ export function PaymentsSection({ initialSettings }: PaymentsSectionProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="depositAmount" className="text-sm">
-                    {depositType === "fixed" ? "Monto ($)" : "Porcentaje (%)"}
+                    {depositAmountType === "fixed"
+                      ? "Monto ($)"
+                      : "Porcentaje (%)"}
                   </Label>
-                  <Input
-                    id="depositAmount"
-                    type="number"
-                    min="0"
-                    max={depositType === "percentage" ? "100" : undefined}
-                    step={depositType === "percentage" ? "1" : "100"}
-                    placeholder={
-                      depositType === "fixed" ? "ej: 2000" : "ej: 50"
-                    }
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    disabled={isPending}
-                  />
+                  <div className="relative">
+                    {depositAmountType === "fixed" && (
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                    )}
+                    <Input
+                      id="depositAmount"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={
+                        depositAmountType === "fixed" ? "ej: 5.000" : "ej: 50"
+                      }
+                      value={amountDisplay}
+                      onChange={handleAmountChange}
+                      disabled={isPending}
+                      className={depositAmountType === "fixed" ? "pl-7" : ""}
+                    />
+                    {depositAmountType === "percentage" && (
+                      <span className="absolute right-3 top-1/2 text-xs -translate-y-1/2 text-muted-foreground">
+                        %
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <Button
-                onClick={handleSaveSettings}
-                disabled={isPending || !depositAmount}
-                className="w-full sm:w-auto"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  "Guardar configuración"
-                )}
-              </Button>
             </div>
           )}
         </div>

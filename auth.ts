@@ -94,7 +94,17 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           include: {
-            ownedBarbershop: true,
+            ownedBarbershop: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                image: true,
+                teamsEnabled: true,
+                address: true,
+                description: true,
+              },
+            },
             teamMembership: {
               include: {
                 barbershop: {
@@ -118,7 +128,6 @@ const config: NextAuthConfig = {
           token.name = dbUser.name;
           token.picture = dbUser.image;
 
-          // Default to user's own data
           token.trialEndsAt = dbUser.trialEndsAt;
           token.subscription = dbUser.subscription
             ? {
@@ -137,7 +146,6 @@ const config: NextAuthConfig = {
             token.barbershop = null;
           }
 
-          // Override for BARBER role to use Owner's subscription data
           if (
             token.role === Role.BARBER &&
             dbUser.teamMembership?.barbershop?.owner
@@ -154,8 +162,6 @@ const config: NextAuthConfig = {
           }
         }
       } else {
-        // Token refresh logic - need to re-fetch to ensure data is fresh
-        // We need to know the role to decide what to fetch, checking token.role
         if (token.role === Role.BARBER) {
           // For barbers, we need to find their team -> barbershop -> owner
           const team = await prisma.team.findUnique({

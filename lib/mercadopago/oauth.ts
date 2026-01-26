@@ -70,12 +70,11 @@ export function getAuthorizationUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: APP_ID,
     response_type: "code",
-    platform_id: "mp",
     redirect_uri: REDIRECT_URI,
     state,
   });
 
-  return `https://auth.mercadopago.com/authorization?${params.toString()}`;
+  return `https://auth.mercadopago.com.ar/authorization?${params.toString()}`;
 }
 
 /**

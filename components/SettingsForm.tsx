@@ -95,6 +95,10 @@ interface SettingsFormProps {
       image: string | null;
       address: string | null;
       description: string | null;
+      depositEnabled?: boolean;
+      depositAmountType?: string | null;
+      depositAmount?: { toString(): string } | null;
+      mpCredentials?: { id: string } | null;
     } | null;
   };
   subscription?: {
@@ -161,6 +165,18 @@ export default function SettingsForm({
   );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
 
+  // Deposit settings state
+  const [depositEnabled, setDepositEnabled] = useState(
+    user.barbershop?.depositEnabled ?? false,
+  );
+  const [depositAmountType, setDepositAmountType] = useState<
+    "fixed" | "percentage"
+  >((user.barbershop?.depositAmountType as "fixed" | "percentage") ?? "fixed");
+  const [depositAmount, setDepositAmount] = useState<string>(
+    user.barbershop?.depositAmount?.toString() ?? "",
+  );
+  const initialMpConnected = !!user.barbershop?.mpCredentials;
+
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
   const [barbershopImagePreview, setBarbershopImagePreview] = useState<
     string | null
@@ -214,13 +230,15 @@ export default function SettingsForm({
           },
         ]
       : []),
-    {
-      id: "payments",
-      label: "Pagos",
-      icon: CreditCard,
-      disabled: true,
-      badge: "Pronto",
-    },
+    ...(user.role === Role.OWNER
+      ? [
+          {
+            id: "payments",
+            label: "Pagos",
+            icon: CreditCard,
+          },
+        ]
+      : []),
     {
       id: "security",
       label: "Seguridad",
@@ -485,11 +503,32 @@ export default function SettingsForm({
           />
         );
 
+      case "payments":
+        if (user.role !== Role.OWNER) return null;
+        return (
+          <>
+            <PaymentsSection
+              initialMpConnected={initialMpConnected}
+              depositEnabled={depositEnabled}
+              depositAmountType={depositAmountType}
+              depositAmount={depositAmount}
+              onDepositEnabledChange={setDepositEnabled}
+              onDepositAmountTypeChange={(type) => {
+                setDepositAmountType(type);
+                setDepositAmount("");
+              }}
+              onDepositAmountChange={setDepositAmount}
+            />
+            {depositEnabled && (
+              <div className="flex justify-end mt-6">
+                <SubmitButton isPending={isPending} />
+              </div>
+            )}
+          </>
+        );
+
       case "security":
         return <SecuritySection />;
-
-      case "payments":
-        return <PaymentsSection />;
 
       default:
         return null;
@@ -561,6 +600,17 @@ export default function SettingsForm({
               value={barbershopDescription}
             />
             <input type="hidden" name="slug" value={slugValue} />
+            <input
+              type="hidden"
+              name="depositEnabled"
+              value={depositEnabled ? "true" : "false"}
+            />
+            <input
+              type="hidden"
+              name="depositAmountType"
+              value={depositAmountType}
+            />
+            <input type="hidden" name="depositAmount" value={depositAmount} />
           </>
         )}
 

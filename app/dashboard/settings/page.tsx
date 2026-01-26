@@ -17,9 +17,23 @@ async function SettingsPageContent() {
       ? userWithRelations.ownedBarbershop
       : userWithRelations.teamMembership?.barbershop || null;
 
+  const ownedBarbershop = userWithRelations.ownedBarbershop;
   const userForForm = {
     ...userWithRelations,
-    barbershop: barbershopData,
+    barbershop: barbershopData
+      ? {
+          ...barbershopData,
+          ...(ownedBarbershop && userWithRelations.role === Role.OWNER
+            ? {
+                depositEnabled: ownedBarbershop.depositEnabled,
+                depositAmountType: ownedBarbershop.depositAmountType,
+                depositAmount:
+                  ownedBarbershop.depositAmount?.toString() ?? null,
+                mpCredentials: ownedBarbershop.mpCredentials,
+              }
+            : {}),
+        }
+      : null,
   };
 
   return (
