@@ -31,14 +31,14 @@ export function BarbershopInfoSection({
   return (
     <SettingsCard
       icon={Store}
-      title="Información de la barbería"
-      description="Datos que verán tus clientes"
+      title="Barbería"
+      description="Datos públicos del negocio"
     >
       <div className="space-y-6">
         <ImageUploadField
           id="barbershopImage"
           name="barbershopImage"
-          label="Logo de la barbería"
+          label="Logo"
           preview={imagePreview}
           fallbackSrc="/images/cta-background.jpg"
           altText={name || "Logo Barbería"}
@@ -47,7 +47,7 @@ export function BarbershopInfoSection({
 
         <div className="space-y-2">
           <Label htmlFor="barbershopName" className="text-sm font-medium">
-            Nombre de la barbería
+            Nombre
           </Label>
           <Input
             id="barbershopName"
@@ -61,8 +61,7 @@ export function BarbershopInfoSection({
 
         <div className="space-y-2">
           <Label htmlFor="barbershopAddress" className="text-sm font-medium">
-            Dirección{" "}
-            <span className="text-muted-foreground">(opcional)</span>
+            Dirección <span className="text-muted-foreground">(opcional)</span>
           </Label>
           <Input
             id="barbershopAddress"
@@ -86,13 +85,10 @@ export function BarbershopInfoSection({
             name="barbershopDescription"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="Contale a tus clientes sobre tu barbería, especialidades, años de experiencia..."
+            placeholder="Descripción breve de tu negocio..."
             rows={4}
             className="resize-none"
           />
-          <p className="text-xs text-muted-foreground">
-            Aparecerá en tu página pública
-          </p>
         </div>
       </div>
     </SettingsCard>

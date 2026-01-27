@@ -26,14 +26,14 @@ export function PersonalInfoSection({
   return (
     <SettingsCard
       icon={UserIcon}
-      title="Información personal"
-      description="Tu nombre y foto de perfil"
+      title="Perfil"
+      description="Tus datos personales"
     >
       <div className="space-y-6">
         <ImageUploadField
           id="avatar"
           name="avatar"
-          label="Foto de perfil"
+          label="Foto"
           preview={avatarPreview}
           fallbackSrc="/images/hero-background.jpg"
           altText={name || "Avatar"}
@@ -42,7 +42,7 @@ export function PersonalInfoSection({
 
         <div className="space-y-2">
           <Label htmlFor="name" className="text-sm font-medium">
-            Nombre completo
+            Nombre
           </Label>
           <Input
             id="name"
@@ -56,7 +56,7 @@ export function PersonalInfoSection({
 
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium">
-            Número de celular
+            Celular
           </Label>
           <Input
             id="phone"

@@ -322,13 +322,11 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       return { error: "El servicio seleccionado ya no existe." };
     }
 
-    // Check if deposit is required
     const requiresDeposit =
       barbershop.depositEnabled &&
       !!barbershop.mpCredentials &&
       barbershop.depositAmount;
 
-    // Calculate deposit amount
     let calculatedDeposit: number | null = null;
     if (requiresDeposit && barbershop.depositAmount) {
       if (barbershop.depositAmountType === "percentage") {
@@ -339,7 +337,55 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }
     }
 
-    // Create booking - with PENDING status if deposit required
+    const existingPendingBooking = await prisma.booking.findFirst({
+      where: {
+        barberId,
+        clientId: client.id,
+        startTime,
+        paymentStatus: "PENDING",
+        status: { not: "CANCELLED" },
+      },
+    });
+
+    if (existingPendingBooking) {
+      await prisma.booking.update({
+        where: { id: existingPendingBooking.id },
+        data: {
+          serviceId: serviceId,
+          priceAtBooking: service.price,
+          durationAtBooking: service.durationInMinutes,
+          barbershopId: barbershopId,
+          depositAmount:
+            requiresDeposit && calculatedDeposit
+              ? calculatedDeposit
+              : existingPendingBooking.depositAmount,
+          updatedAt: new Date(),
+        },
+      });
+
+      if (requiresDeposit && calculatedDeposit) {
+        return {
+          requiresPayment: true,
+          bookingId: existingPendingBooking.id,
+          depositAmount: calculatedDeposit,
+          barbershopName: barbershop.name,
+          serviceName: service.name,
+        };
+      }
+
+      return {
+        success: "¡Turno confirmado con éxito!",
+        bookingDetails: {
+          clientName: client.name,
+          barberPhone: barber.phone || "",
+          barberName: barber.name || "",
+          serviceName: service.name,
+          startTime: startTime.toISOString(),
+          teamsEnabled: barbershop.teamsEnabled,
+        },
+      };
+    }
+
     const booking = await prisma.booking.create({
       data: {
         startTime,
@@ -349,7 +395,6 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         client: { connect: { id: client.id } },
         service: { connect: { id: serviceId } },
         barbershop: { connect: { id: barbershopId } },
-        // Deposit fields
         ...(requiresDeposit && calculatedDeposit
           ? {
               depositAmount: calculatedDeposit,
@@ -359,7 +404,6 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       },
     });
 
-    // If deposit required, return early with payment info
     if (requiresDeposit && calculatedDeposit) {
       return {
         requiresPayment: true,
@@ -382,7 +426,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     };
     await sendPushNotification(barberId, pushPayloadBarber);
 
-    const barberNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}".`;
+    const barberNotificationMessage = notificationBody;
     const barberNotification = await prisma.notification.create({
       data: {
         userId: barberId,
@@ -407,7 +451,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       };
       await sendPushNotification(barbershop.ownerId, pushPayloadOwner);
 
-      const ownerNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}" con ${barber.name}.`;
+      const ownerNotificationMessage = ownerNotificationBody;
       const ownerNotification = await prisma.notification.create({
         data: {
           userId: barbershop.ownerId,

@@ -6,6 +6,7 @@ import SubscriptionStatusHandler from "@/components/SubscriptionStatusHandler";
 
 import { PushNotificationProvider } from "@/components/providers/PushNotificationProvider";
 import { SubscriptionHydrator } from "@/components/providers/SubscriptionHydrator";
+import { RealtimeToastHandler } from "@/components/providers/RealtimeToastHandler";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
         <PushNotificationProvider>
           <SubscriptionHydrator />
           <SubscriptionStatusHandler />
+          <RealtimeToastHandler />
           <TrialStatusBanner />
           <SiteHeaderServer />
           <main className="p-4 sm:p-6 lg:p-8">{children}</main>

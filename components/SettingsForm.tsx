@@ -169,9 +169,9 @@ export default function SettingsForm({
   const [depositEnabled, setDepositEnabled] = useState(
     user.barbershop?.depositEnabled ?? false,
   );
-  const [depositAmountType, setDepositAmountType] = useState<
-    "fixed" | "percentage"
-  >((user.barbershop?.depositAmountType as "fixed" | "percentage") ?? "fixed");
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  const [depositAmountType, setDepositAmountType] = useState<"fixed">("fixed");
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   const [depositAmount, setDepositAmount] = useState<string>(
     user.barbershop?.depositAmount?.toString() ?? "",
   );
@@ -414,6 +414,11 @@ export default function SettingsForm({
             ...session?.user.barbershop,
             slug: updatedBarbershop.slug,
           };
+
+          setDepositEnabled(updatedBarbershop.depositEnabled ?? false);
+          // We enforce "fixed" on the frontend, even if backend returns percentage (legacy)
+          setDepositAmountType("fixed");
+          setDepositAmount(updatedBarbershop.depositAmount?.toString() ?? "");
         }
 
         if (Object.keys(sessionUpdateData).length > 0) {
@@ -510,13 +515,8 @@ export default function SettingsForm({
             <PaymentsSection
               initialMpConnected={initialMpConnected}
               depositEnabled={depositEnabled}
-              depositAmountType={depositAmountType}
               depositAmount={depositAmount}
               onDepositEnabledChange={setDepositEnabled}
-              onDepositAmountTypeChange={(type) => {
-                setDepositAmountType(type);
-                setDepositAmount("");
-              }}
               onDepositAmountChange={setDepositAmount}
             />
             {depositEnabled && (

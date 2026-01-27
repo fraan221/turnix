@@ -95,19 +95,16 @@ export default function BookingConfirmedPage({
         <Card className="w-full max-w-lg text-center border-red-200 shadow-md">
           <CardHeader className="items-center">
             <XCircle className="mb-4 w-16 h-16 text-red-500" />
-            <CardTitle className="text-3xl text-red-600">
-              Tu pago no se completó
+            <CardTitle className="text-2xl text-red-600">
+              Pago no completado
             </CardTitle>
-            <CardDescription className="pt-2 text-lg">
-              Hubo un problema al procesar tu pago.
+            <CardDescription className="pt-2">
+              No se pudo procesar tu pago.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="text-muted-foreground">
-              La reserva no pudo ser confirmada porque el pago no se completó o
-              algun error ocurrió.
-              <br />
-              Por favor, intentá nuevamente.
+              Tu reserva no se confirmó. Por favor, intentá nuevamente.
             </p>
             <div className="flex justify-center pt-4">
               <Button asChild variant="default" size="lg">

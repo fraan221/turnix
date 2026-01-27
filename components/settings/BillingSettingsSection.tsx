@@ -219,17 +219,11 @@ export function BillingSettingsSection({
     new Date(subscription.discountedUntil) > new Date();
 
   return (
-    <SettingsCard
-      icon={Crown}
-      title="Suscripción"
-      description="Gestioná tu plan y facturación"
-    >
+    <SettingsCard icon={Crown} title="Suscripción" description="Tu plan">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Estado actual
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">Nivel</p>
             <p className="mt-1 font-semibold">Plan PRO</p>
           </div>
           <Badge
@@ -246,8 +240,8 @@ export function BillingSettingsSection({
           <div className="flex-1">
             <p className="text-sm font-medium text-muted-foreground">
               {subscription.status === "paused"
-                ? "Acceso hasta"
-                : "Próximo cobro"}
+                ? "Disponible hasta"
+                : "Renovación"}
             </p>
             <p className="mt-1 font-semibold">
               {formatFullDate(subscription.currentPeriodEnd)}
@@ -265,11 +259,8 @@ export function BillingSettingsSection({
             <div className="flex gap-3 items-start">
               <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
               <div className="flex-1">
-                <p className="font-semibold text-foreground">
-                  Descuento especial activo
-                </p>
+                <p className="font-semibold text-foreground">Promo Activa</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Estás pagando{" "}
                   <span className="font-bold text-foreground">
                     ${subscription.discountCode.overridePrice}/mes
                   </span>{" "}
@@ -295,7 +286,7 @@ export function BillingSettingsSection({
             <RefreshCw
               className={`mr-2 h-4 w-4 ${isPendingSync ? "animate-spin" : ""}`}
             />
-            {isPendingSync ? "Verificando..." : "Verificar estado de pago"}
+            {isPendingSync ? "Verificando..." : "Actualizar estado"}
           </Button>
 
           {subscription.status === "paused" ? (

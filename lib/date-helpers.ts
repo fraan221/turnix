@@ -183,7 +183,7 @@ export function isDateInThisMonth(date: Date): boolean {
  */
 export function formatDistanceFromNow(date: Date | string): string {
   const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
 
   const intervals: { [key: string]: number } = {
@@ -308,5 +308,5 @@ export function formatBookingDateForNotification(bookingDate: Date): string {
     timeZone,
   }).format(bookingDate);
 
-  return `el día ${formattedDate}`;
+  return `el ${formattedDate}`;
 }

@@ -224,9 +224,27 @@ export default function BarberCalendar({
     const handleNewBooking = () => {
       router.refresh();
     };
+
+    const handleRealtimeUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.bookingId && customEvent.detail?.status) {
+        handleOptimisticUpdate(
+          customEvent.detail.bookingId,
+          customEvent.detail.status,
+        );
+        router.refresh(); // Ensure consistency
+      }
+    };
+
     window.addEventListener("new-booking-event", handleNewBooking);
+    window.addEventListener("booking-realtime-update", handleRealtimeUpdate);
+
     return () => {
       window.removeEventListener("new-booking-event", handleNewBooking);
+      window.removeEventListener(
+        "booking-realtime-update",
+        handleRealtimeUpdate,
+      );
     };
   }, [router]);
 

@@ -6,14 +6,16 @@ import { validateWebhookSignature } from "@/lib/mercadopago/webhook-security";
 import { broadcastToUser } from "@/lib/supabase-server";
 import prisma from "@/lib/prisma";
 import { decryptToken } from "@/lib/mercadopago/oauth";
+import { sendPushNotification } from "@/lib/push";
+import {
+  formatTime,
+  formatBookingDateForNotification,
+} from "@/lib/date-helpers";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
 });
 
-// Support multiple webhook secrets for different MP apps
-// - MERCADOPAGO_WEBHOOK_SECRET: for subscriptions (turnix-suscripciones)
-// - MERCADOPAGO_WEBHOOK_SECRET_PAGOS: for deposits (turnix-pagos)
 const WEBHOOK_SECRETS = [
   process.env.MERCADOPAGO_WEBHOOK_SECRET,
   process.env.MERCADOPAGO_WEBHOOK_SECRET_PAGOS,
@@ -32,10 +34,6 @@ export async function POST(req: NextRequest) {
 
     console.log(`Evento: ${topic} | ID: ${resourceId}`);
 
-    // =========================================================================
-    // SIGNATURE VALIDATION (Security Observation #2)
-    // Validates against multiple secrets to support both MP apps
-    // =========================================================================
     if (WEBHOOK_SECRETS.length > 0 && signature && requestId) {
       let isValid = false;
 
@@ -65,26 +63,15 @@ export async function POST(req: NextRequest) {
       console.warn("Webhook sin firma segura validada");
     }
 
-    // =========================================================================
-    // SUBSCRIPTION PREAPPROVAL (unchanged)
-    // =========================================================================
     if (topic === "subscription_preapproval") {
       console.log(`Evento de Suscripción. Sincronizando ID: ${resourceId}...`);
       await syncSubscriptionStatus(resourceId);
-    }
-
-    // =========================================================================
-    // PAYMENT HANDLING
-    // =========================================================================
-    else if (topic === "payment") {
+    } else if (topic === "payment") {
       console.log(`Pago detectado ${resourceId}. Analizando...`);
 
-      // First, try to find if this is a deposit payment by checking the body's external_reference
-      // or by finding a booking that might be waiting for this payment
       const bodyExternalRef =
         body.data?.external_reference || body.external_reference;
 
-      // Try to find the booking by external_reference (which is the bookingId)
       let booking = bodyExternalRef
         ? await prisma.booking.findUnique({
             where: { id: bodyExternalRef },
@@ -92,13 +79,11 @@ export async function POST(req: NextRequest) {
           })
         : null;
 
-      // If no external_reference, try finding by pending payment with matching time window
       if (!booking) {
-        // Look for recent pending bookings that might match this payment
         const recentPendingBookings = await prisma.booking.findMany({
           where: {
             paymentStatus: "PENDING",
-            createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) }, // Last 15 min
+            createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
           },
           include: { barbershop: { include: { mpCredentials: true } } },
           orderBy: { createdAt: "desc" },
@@ -109,7 +94,6 @@ export async function POST(req: NextRequest) {
           `[Deposit] Pending bookings found: ${recentPendingBookings.length}`,
         );
 
-        // Try each barbershop's token to find the payment
         for (const pendingBooking of recentPendingBookings) {
           console.log(`[Deposit] Checking booking ${pendingBooking.id}`);
           if (!pendingBooking.barbershop.mpCredentials) {
@@ -142,7 +126,6 @@ export async function POST(req: NextRequest) {
               `[Deposit] Payment fetched. External Ref: ${paymentData.external_reference} | Pending ID: ${pendingBooking.id}`,
             );
 
-            // Check if external_reference matches this booking
             if (paymentData.external_reference === pendingBooking.id) {
               console.log(`[Deposit] MATCH FOUND!`);
               booking = pendingBooking;
@@ -150,20 +133,17 @@ export async function POST(req: NextRequest) {
             }
           } catch (err: any) {
             console.log(`[Deposit] Token failed: ${err.message}`);
-            // Token doesn't have access to this payment, try next
             continue;
           }
         }
       }
 
-      // If we found a booking with barbershop credentials, handle as deposit
       if (booking?.barbershop?.mpCredentials) {
         const creds = booking.barbershop.mpCredentials;
 
         if (creds?.accessToken) {
           console.log(`[Deposit] Pago de seña para booking: ${booking.id}`);
 
-          // Idempotency check
           const existingPayment = await prisma.booking.findFirst({
             where: { mercadopagoPaymentId: String(resourceId) },
           });
@@ -173,7 +153,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true }, { status: 200 });
           }
 
-          // Use barbershop's token to get payment details
           const decryptedToken = decryptToken(creds.accessToken);
           const barbershopClient = new MercadoPagoConfig({
             accessToken: decryptedToken,
@@ -192,19 +171,64 @@ export async function POST(req: NextRequest) {
                 barber: true,
                 barbershop: true,
                 client: true,
+                service: true,
               },
             });
 
             console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
 
-            // Broadcast real-time update to barber
+            revalidatePath("/dashboard");
+
+            console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
+
+            const startTime = new Date(updatedBooking.startTime);
+            const formattedTime = formatTime(startTime);
+            const relativeDateString =
+              formatBookingDateForNotification(startTime);
+
+            const notificationMessage = `¡Turno señado! ${updatedBooking.client.name} reservó "${updatedBooking.service?.name || "Servicio"}" para ${relativeDateString} a las ${formattedTime}hs.`;
+
+            const barberNotification = await prisma.notification.create({
+              data: {
+                userId: updatedBooking.barberId,
+                message: notificationMessage,
+                clientId: updatedBooking.clientId,
+              },
+            });
+
+            await sendPushNotification(updatedBooking.barberId, {
+              title: "¡Nuevo Turno Señado! 💸",
+              body: notificationMessage,
+              url: "/dashboard/notifications",
+            });
+
             await broadcastToUser(updatedBooking.barberId, "booking-paid", {
               bookingId: updatedBooking.id,
               clientName: updatedBooking.client.name,
+              message: notificationMessage,
+              notificationId: barberNotification.id,
             });
 
-            // Also notify barbershop owner if different from barber
-            if (updatedBooking.barbershop.ownerId !== updatedBooking.barberId) {
+            if (
+              updatedBooking.barbershop.teamsEnabled &&
+              updatedBooking.barbershop.ownerId !== updatedBooking.barberId
+            ) {
+              const ownerMessage = `Turno señado: ${updatedBooking.client.name} reservó con ${updatedBooking.barber.name} para ${relativeDateString} a las ${formattedTime}hs.`;
+
+              const ownerNotification = await prisma.notification.create({
+                data: {
+                  userId: updatedBooking.barbershop.ownerId,
+                  message: ownerMessage,
+                  clientId: updatedBooking.clientId,
+                },
+              });
+
+              await sendPushNotification(updatedBooking.barbershop.ownerId, {
+                title: "Nuevo Turno Señado (Equipo)",
+                body: ownerMessage,
+                url: "/dashboard/notifications",
+              });
+
               await broadcastToUser(
                 updatedBooking.barbershop.ownerId,
                 "booking-paid",
@@ -212,11 +236,12 @@ export async function POST(req: NextRequest) {
                   bookingId: updatedBooking.id,
                   clientName: updatedBooking.client.name,
                   barberName: updatedBooking.barber.name,
+                  message: ownerMessage,
+                  notificationId: ownerNotification.id,
                 },
               );
             }
 
-            // Revalidate calendar cache
             revalidatePath("/dashboard");
 
             console.log(
@@ -234,9 +259,6 @@ export async function POST(req: NextRequest) {
           }
         }
       } else {
-        // =====================================================================
-        // SUBSCRIPTION PAYMENT FLOW (existing logic - UNCHANGED)
-        // =====================================================================
         try {
           const paymentClient = new Payment(client);
           const paymentData = await paymentClient.get({ id: resourceId });

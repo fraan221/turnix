@@ -1,69 +1,36 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
-type BroadcastEvent =
-  | "new-notification"
-  | "team-joined"
-  | "team-removed"
-  | "booking-created"
-  | "booking-updated";
+type BroadcastEvent = {
+  event: string;
+  payload: any;
+};
 
-interface UseBroadcastOptions<T> {
-  userId: string;
-  event: BroadcastEvent;
-  onMessage: (payload: T) => void;
-  enabled?: boolean;
-}
-
-export function useBroadcast<T>({
-  userId,
-  event,
-  onMessage,
-  enabled = true,
-}: UseBroadcastOptions<T>) {
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const onMessageRef = useRef(onMessage);
+export function useBroadcast(
+  userId: string | undefined,
+  onEvent: (event: string, payload: any) => void,
+) {
+  const router = useRouter();
 
   useEffect(() => {
-    onMessageRef.current = onMessage;
-  }, [onMessage]);
-
-  useEffect(() => {
-    if (!userId || !enabled) return;
+    if (!userId) return;
 
     const supabase = getSupabaseBrowserClient();
-    const channelName = `user:${userId}`;
 
-    const channel = supabase.channel(channelName);
+    const channel = supabase
+      .channel(`user:${userId}`)
+      .on("broadcast", { event: "*" }, (payload) => {
+        onEvent(payload.event, payload.payload);
 
-    (
-      channel as unknown as {
-        on: (
-          type: string,
-          filter: { event: string },
-          callback: (payload: { payload: T }) => void,
-        ) => RealtimeChannel;
-      }
-    ).on("broadcast", { event }, (payload: { payload: T }) => {
-      onMessageRef.current(payload.payload);
-    });
-
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        console.log(`[Supabase] Subscribed to broadcast: ${channelName}`);
-      }
-    });
-
-    channelRef.current = channel;
+        router.refresh();
+      })
+      .subscribe();
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      supabase.removeChannel(channel);
     };
-  }, [userId, event, enabled]);
+  }, [userId, router, onEvent]);
 }
