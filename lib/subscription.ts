@@ -1,4 +1,5 @@
 import type { Session } from "next-auth";
+import { isActiveStatus } from "@/lib/mercadopago/subscription-types";
 
 const GRACE_PERIOD_DAYS = 2;
 
@@ -14,7 +15,7 @@ export function hasActiveSubscription(session: Session | null): boolean {
     return false;
   }
 
-  if (user.subscription.status !== "authorized") {
+  if (!isActiveStatus(user.subscription.status)) {
     return false;
   }
 

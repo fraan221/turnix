@@ -79,7 +79,7 @@ export async function createDepositPreference(
         payer: {
           name: booking.client.name,
           phone: {
-            number: booking.client.phone.replace(/\D/g, ""), // Only digits
+            number: booking.client.phone.replace(/\D/g, ""),
           },
         },
 

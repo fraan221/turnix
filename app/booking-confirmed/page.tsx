@@ -68,7 +68,7 @@ export default function BookingConfirmedPage({
     startTime,
     teamsEnabled,
     payment,
-    booking, // We need the booking ID to cancel it
+    booking,
   } = searchParams;
 
   const [retryPath, setRetryPath] = useState("/");

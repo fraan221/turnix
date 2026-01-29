@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { isActiveStatus } from "@/lib/mercadopago/subscription-types";
 
 const GRACE_PERIOD_DAYS = 2;
 
@@ -117,7 +118,7 @@ export const selectHasAccess = (state: SubscriptionState) => {
     return false;
   }
 
-  if (state.status !== "authorized" && state.status !== "paused") {
+  if (!isActiveStatus(state.status)) {
     return false;
   }
 

@@ -328,11 +328,13 @@ export function BookingDetailsDialogContent({
           </p>
         </div>
       )}
-      {isFutureBooking && view === "details" && !booking.paymentStatus && (
-        <div className="p-3 text-xs text-center rounded-md border text-primary">
-          Este es un turno futuro y aún no puede ser marcado como completado.
-        </div>
-      )}
+      {isFutureBooking &&
+        view === "details" &&
+        booking.paymentStatus !== "PENDING" && (
+          <div className="p-3 text-xs text-center rounded-md border text-primary">
+            Este es un turno futuro y aún no puede ser marcado como completado.
+          </div>
+        )}
       {renderContent()}
     </>
   );

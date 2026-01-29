@@ -47,7 +47,7 @@ export const getUserForSettings = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
       subscription: {
@@ -91,6 +91,21 @@ export const getUserForSettings = cache(async () => {
       },
     },
   });
+
+  if (!user) return null;
+
+  // Convert Prisma Decimal to number for Client Component serialization
+  return {
+    ...user,
+    ownedBarbershop: user.ownedBarbershop
+      ? {
+          ...user.ownedBarbershop,
+          depositAmount: user.ownedBarbershop.depositAmount
+            ? Number(user.ownedBarbershop.depositAmount)
+            : null,
+        }
+      : null,
+  };
 });
 
 /**

@@ -4,11 +4,6 @@ import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 
-type BroadcastEvent = {
-  event: string;
-  payload: any;
-};
-
 export function useBroadcast(
   userId: string | undefined,
   onEvent: (event: string, payload: any) => void,

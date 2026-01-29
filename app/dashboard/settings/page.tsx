@@ -27,8 +27,7 @@ async function SettingsPageContent() {
             ? {
                 depositEnabled: ownedBarbershop.depositEnabled,
                 depositAmountType: ownedBarbershop.depositAmountType,
-                depositAmount:
-                  ownedBarbershop.depositAmount?.toString() ?? null,
+                depositAmount: ownedBarbershop.depositAmount,
                 mpCredentials: ownedBarbershop.mpCredentials,
               }
             : {}),

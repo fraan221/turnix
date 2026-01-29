@@ -74,8 +74,6 @@ export async function getBarberAvailability(
         barberId: barberId,
         startTime: { gte: startOfDayUTC, lt: endOfDayUTC },
         status: { not: "CANCELLED" },
-        // Note: Pending payment bookings ARE included to block the slot
-        // They will be cleaned up by cron after 15 minutes if unpaid
       },
       include: { service: { select: { durationInMinutes: true } } },
     }),
@@ -138,7 +136,6 @@ export async function getBarberAvailability(
       }
     }
 
-    // Build list of occupied intervals within this shift
     const occupiedIntervals: { start: Date; end: Date }[] = [];
 
     for (const booking of bookings) {
@@ -148,7 +145,6 @@ export async function getBarberAvailability(
       const bookingEnd = new Date(
         bookingStart.getTime() + durationInMinutes * 60000,
       );
-      // Only include if it overlaps with this shift
       if (bookingEnd > dayStartTime && bookingStart < dayEndTime) {
         occupiedIntervals.push({ start: bookingStart, end: bookingEnd });
       }
@@ -157,16 +153,13 @@ export async function getBarberAvailability(
     for (const block of timeBlocks) {
       const blockStart = new Date(block.startTime);
       const blockEnd = new Date(block.endTime);
-      // Only include if it overlaps with this shift
       if (blockEnd > dayStartTime && blockStart < dayEndTime) {
         occupiedIntervals.push({ start: blockStart, end: blockEnd });
       }
     }
 
-    // Sort occupied intervals by start time
     occupiedIntervals.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    // Generate slots using back-to-back scheduling
     let slotStart = new Date(currentTime);
 
     while (
@@ -175,7 +168,6 @@ export async function getBarberAvailability(
     ) {
       const slotEnd = new Date(slotStart.getTime() + totalDuration * 60000);
 
-      // Find all intervals that overlap with this slot and get the latest end time
       const overlappingIntervals = occupiedIntervals.filter(
         (interval) => slotStart < interval.end && slotEnd > interval.start,
       );
@@ -187,10 +179,8 @@ export async function getBarberAvailability(
       });
 
       if (isAvailable) {
-        // Slot is available, move by service duration
         slotStart = new Date(slotStart.getTime() + totalDuration * 60000);
       } else {
-        // Slot overlaps, snap to the latest end time among all overlapping intervals
         const latestEndTime = Math.max(
           ...overlappingIntervals.map((interval) => interval.end.getTime()),
         );
@@ -496,7 +486,6 @@ export async function cancelFailedBooking(bookingId: string) {
       return { error: "Reserva no encontrada" };
     }
 
-    // Only cancel if it's still pending (avoid cancelling if it was somehow paid in the meantime)
     if (booking.paymentStatus === "PENDING") {
       await prisma.booking.update({
         where: { id: bookingId },

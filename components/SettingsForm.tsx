@@ -165,13 +165,10 @@ export default function SettingsForm({
   );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
 
-  // Deposit settings state
   const [depositEnabled, setDepositEnabled] = useState(
     user.barbershop?.depositEnabled ?? false,
   );
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [depositAmountType, setDepositAmountType] = useState<"fixed">("fixed");
-  /* eslint-enable @typescript-eslint/no-unused-vars */
   const [depositAmount, setDepositAmount] = useState<string>(
     user.barbershop?.depositAmount?.toString() ?? "",
   );
@@ -416,7 +413,6 @@ export default function SettingsForm({
           };
 
           setDepositEnabled(updatedBarbershop.depositEnabled ?? false);
-          // We enforce "fixed" on the frontend, even if backend returns percentage (legacy)
           setDepositAmountType("fixed");
           setDepositAmount(updatedBarbershop.depositAmount?.toString() ?? "");
         }

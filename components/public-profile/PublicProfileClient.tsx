@@ -36,7 +36,6 @@ export function PublicProfileClient({
   const router = useRouter();
   const pathname = usePathname();
 
-  // Helper to update URL params
   const updateParams = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
@@ -49,7 +48,6 @@ export function PublicProfileClient({
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // Derived state from URL
   const stepParam = searchParams.get("step");
   const barberIdParam = searchParams.get("barberId");
   const serviceIdParam = searchParams.get("serviceId");
@@ -97,7 +95,7 @@ export function PublicProfileClient({
     updateParams({
       barberId,
       step: "1",
-      serviceId: null, // Clear forward state
+      serviceId: null,
       date: null,
     });
   };
@@ -106,7 +104,7 @@ export function PublicProfileClient({
     updateParams({
       serviceId,
       step: "2",
-      date: null, // Clear forward state
+      date: null,
     });
   };
 
@@ -121,7 +119,6 @@ export function PublicProfileClient({
     const minStep = hasMultipleBarbers ? 0 : 1;
     const prevStep = Math.max(minStep, step - 1);
 
-    // Logic to clear params when going back
     const updates: Record<string, string | null> = {
       step: prevStep.toString(),
     };

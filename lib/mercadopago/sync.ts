@@ -1,6 +1,7 @@
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { isAuthorizedStatus } from "@/lib/mercadopago/subscription-types";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -9,7 +10,7 @@ const client = new MercadoPagoConfig({
 const preapprovalClient = new PreApproval(client);
 
 export async function syncSubscriptionStatus(
-  mercadopagoSubscriptionId: string
+  mercadopagoSubscriptionId: string,
 ) {
   console.log(`Iniciando sincronización para ID: ${mercadopagoSubscriptionId}`);
 
@@ -20,7 +21,7 @@ export async function syncSubscriptionStatus(
 
     if (!mpSubscription) {
       console.error(
-        `No se encontró la suscripción ${mercadopagoSubscriptionId} en MP.`
+        `No se encontró la suscripción ${mercadopagoSubscriptionId} en MP.`,
       );
       return null;
     }
@@ -33,12 +34,28 @@ export async function syncSubscriptionStatus(
     }
 
     console.log(
-      `[Sync] User: ${userId} | Estado MP: ${mpSubscription.status} | Prox Pago: ${mpSubscription.next_payment_date}`
+      `[Sync] User: ${userId} | Estado MP: ${mpSubscription.status} | Prox Pago: ${mpSubscription.next_payment_date}`,
     );
 
     const nextPaymentDate = mpSubscription.next_payment_date
       ? new Date(mpSubscription.next_payment_date)
       : undefined;
+
+    const existing = await prisma.subscription.findUnique({
+      where: { userId: userId },
+      select: { status: true, currentPeriodEnd: true },
+    });
+
+    const isSameStatus = existing?.status === mpSubscription.status;
+    const isSamePeriodEnd =
+      existing?.currentPeriodEnd?.getTime() === nextPaymentDate?.getTime();
+
+    if (existing && isSameStatus && isSamePeriodEnd) {
+      console.log(
+        `[Sync] Estado idéntico (${mpSubscription.status}), saltando actualización.`,
+      );
+      return existing;
+    }
 
     const subscription = await prisma.subscription.upsert({
       where: { userId: userId },
@@ -56,7 +73,7 @@ export async function syncSubscriptionStatus(
       },
     });
 
-    if (mpSubscription.status === "authorized") {
+    if (isAuthorizedStatus(mpSubscription.status)) {
       await prisma.user.update({
         where: { id: userId },
         data: { trialEndsAt: null },

@@ -57,11 +57,58 @@ export function PaymentsSection({
     return formatPrice(depositAmount);
   });
 
-  // ... (useEffect for searchParams remains same)
+  useEffect(() => {
+    if (toastShownRef.current) return;
 
-  // ... (useEffect for initialMpConnected remains same)
+    const mpConnected = searchParams.get("mp_connected");
+    const mpError = searchParams.get("mp_error");
 
-  // ... (useEffect for initialMpConnected remains same)
+    if (mpConnected === "true") {
+      toast.success("¡Mercado Pago conectado!", {
+        description: "Ya podés empezar a cobrar señas.",
+      });
+      setIsConnected(true);
+      setIsLoadingStatus(false);
+      toastShownRef.current = true;
+      router.replace("/dashboard/settings?section=payments");
+    } else if (mpError) {
+      const errorMessages: Record<string, string> = {
+        already_connected: "Ya tenés una cuenta de Mercado Pago conectada.",
+        invalid_state: "Sesión inválida. Intentalo de nuevo.",
+        no_code: "No se recibió autorización de Mercado Pago.",
+        token_exchange_failed: "Error al conectar con Mercado Pago.",
+      };
+      toast.error("Error al conectar", {
+        description: errorMessages[mpError] || "Ocurrió un error inesperado.",
+      });
+      toastShownRef.current = true;
+      router.replace("/dashboard/settings?section=payments");
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    setIsConnected(initialMpConnected);
+  }, [initialMpConnected]);
+
+  useEffect(() => {
+    if (initialMpConnected) {
+      setIsLoadingStatus(false);
+      return;
+    }
+
+    const checkStatus = async () => {
+      try {
+        const status = await getMercadoPagoStatus();
+        setIsConnected(status.connected);
+      } catch (error) {
+        console.error("Error checking MP status:", error);
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+
+    checkStatus();
+  }, [initialMpConnected]);
 
   const handleConnect = () => {
     setIsConnecting(true);

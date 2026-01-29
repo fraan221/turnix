@@ -20,10 +20,6 @@ interface ConnectionCodeViewProps {
   connectionCode: string;
 }
 
-interface TeamJoinedPayload {
-  message: string;
-}
-
 export function ConnectionCodeView({
   connectionCode,
 }: ConnectionCodeViewProps) {
@@ -44,11 +40,10 @@ export function ConnectionCodeView({
     }
   }, [showLoader, update, router]);
 
-  useBroadcast<TeamJoinedPayload>({
-    userId: session?.user?.id ?? "",
-    event: "team-joined",
-    enabled: !!session?.user?.id,
-    onMessage: handleTeamJoined,
+  useBroadcast(session?.user?.id, (event, _payload) => {
+    if (event === "team-joined") {
+      handleTeamJoined();
+    }
   });
 
   useEffect(() => {
@@ -66,7 +61,7 @@ export function ConnectionCodeView({
         window.location.href = "/dashboard";
       }, 500);
     }
-  }, [session, router, hideLoader]);
+  }, [session, hideLoader]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(connectionCode);

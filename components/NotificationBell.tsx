@@ -29,15 +29,13 @@ export function NotificationBell() {
     }
   }, []);
 
-  useBroadcast<NotificationPayload>({
-    userId: session?.user?.id ?? "",
-    event: "new-notification",
-    enabled: !!session?.user?.id,
-    onMessage: (notification) => {
+  useBroadcast(session?.user?.id, (event, payload) => {
+    if (event === "new-notification") {
+      const notification = payload as NotificationPayload;
       toast.info(notification.message);
       setUnreadCount((prev) => prev + 1);
       window.dispatchEvent(new Event("new-booking-event"));
-    },
+    }
   });
 
   useEffect(() => {
