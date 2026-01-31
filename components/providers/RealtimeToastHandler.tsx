@@ -1,16 +1,36 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useBroadcast } from "@/hooks/use-broadcast";
 import { toast } from "sonner";
-import { CheckCircle2, Calendar } from "lucide-react";
+import { CheckCircle2, Calendar, UserX } from "lucide-react";
+import { useRef } from "react";
 
 export function RealtimeToastHandler() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
+  const isRedirecting = useRef(false);
 
   useBroadcast(userId, (event, payload) => {
     console.log("[Broadcast Received]", event, payload);
+
+    if (event === "team-removed") {
+      if (isRedirecting.current) return;
+      isRedirecting.current = true;
+
+      toast.message("Has sido eliminado del equipo", {
+        description:
+          "El dueño de la barbería te ha removido. Serás redirigido al inicio de sesión.",
+        icon: <UserX className="w-5 h-5" />,
+        duration: 5000,
+      });
+
+      setTimeout(() => {
+        signOut({ callbackUrl: "/login" });
+      }, 2000);
+
+      return;
+    }
 
     if (event === "booking-paid") {
       const { clientName, bookingId } = payload;

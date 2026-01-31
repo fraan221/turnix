@@ -43,7 +43,7 @@ export async function syncSubscriptionStatus(
 
     const existing = await prisma.subscription.findUnique({
       where: { userId: userId },
-      select: { status: true, currentPeriodEnd: true },
+      select: { status: true, currentPeriodEnd: true, pendingSince: true },
     });
 
     const isSameStatus = existing?.status === mpSubscription.status;
@@ -57,6 +57,17 @@ export async function syncSubscriptionStatus(
       return existing;
     }
 
+    const isEnteringPending =
+      mpSubscription.status === "pending" && existing?.status !== "pending";
+    const isLeavingPending =
+      mpSubscription.status !== "pending" && existing?.status === "pending";
+
+    const pendingSinceValue = isEnteringPending
+      ? new Date()
+      : isLeavingPending
+        ? null
+        : undefined;
+
     const subscription = await prisma.subscription.upsert({
       where: { userId: userId },
       create: {
@@ -64,11 +75,15 @@ export async function syncSubscriptionStatus(
         mercadopagoSubscriptionId: mpSubscription.id!,
         status: mpSubscription.status!,
         currentPeriodEnd: nextPaymentDate || new Date(),
+        pendingSince: mpSubscription.status === "pending" ? new Date() : null,
       },
       update: {
         mercadopagoSubscriptionId: mpSubscription.id!,
         status: mpSubscription.status!,
         ...(nextPaymentDate && { currentPeriodEnd: nextPaymentDate }),
+        ...(pendingSinceValue !== undefined && {
+          pendingSince: pendingSinceValue,
+        }),
         updatedAt: new Date(),
       },
     });

@@ -12,10 +12,13 @@ interface SubscribePageProps {
   };
 }
 
-export default async function SubscribePage({ searchParams }: SubscribePageProps) {
+export default async function SubscribePage({
+  searchParams,
+}: SubscribePageProps) {
   const user = await getCurrentUser();
   const reason = searchParams.reason;
   const isProactiveSubscription = reason === "trial";
+  const isPaymentFailed = reason === "payment_failed";
 
   return (
     <main className="flex relative flex-col justify-center items-center p-4 min-h-screen bg-gray-50 dark:bg-black">
@@ -37,6 +40,10 @@ export default async function SubscribePage({ searchParams }: SubscribePageProps
               <div className="p-3 rounded-full bg-primary/10">
                 <Clock className="w-8 h-8 text-primary" />
               </div>
+            ) : isPaymentFailed ? (
+              <div className="p-3 bg-red-100 rounded-full">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
             ) : (
               <div className="p-3 bg-orange-100 rounded-full">
                 <AlertCircle className="w-8 h-8 text-orange-600" />
@@ -48,12 +55,16 @@ export default async function SubscribePage({ searchParams }: SubscribePageProps
             <h1 className="text-3xl font-bold tracking-tight font-heading">
               {isProactiveSubscription
                 ? "Tu prueba está por terminar"
-                : "Tu prueba gratuita finalizó"}
+                : isPaymentFailed
+                  ? "Problema con tu pago"
+                  : "Tu prueba gratuita finalizó"}
             </h1>
             <p className="mx-auto max-w-md text-base text-muted-foreground">
               {isProactiveSubscription
                 ? "Suscribite ahora para seguir gestionando tu barbería sin interrupciones."
-                : "Necesitás el Plan PRO para volver a acceder a tu agenda, clientes y todos tus datos."}
+                : isPaymentFailed
+                  ? "No pudimos procesar tu pago. Actualizá tu método de pago para recuperar el acceso."
+                  : "Necesitás el Plan PRO para volver a acceder a tu agenda, clientes y todos tus datos."}
             </p>
           </div>
         </div>

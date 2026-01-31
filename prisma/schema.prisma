@@ -230,10 +230,11 @@ enum Role {
 }
 
 model Subscription {
-  id                        String   @id @default(cuid())
-  mercadopagoSubscriptionId String   @unique
+  id                        String    @id @default(cuid())
+  mercadopagoSubscriptionId String    @unique
   status                    String
   currentPeriodEnd          DateTime
+  pendingSince              DateTime?
 
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique

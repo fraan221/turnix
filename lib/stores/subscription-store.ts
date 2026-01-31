@@ -3,10 +3,12 @@ import { devtools } from "zustand/middleware";
 import { isActiveStatus } from "@/lib/mercadopago/subscription-types";
 
 const GRACE_PERIOD_DAYS = 2;
+const PENDING_GRACE_PERIOD_DAYS = 3;
 
 interface SubscriptionData {
   status: string | null;
   currentPeriodEnd: Date | null;
+  pendingSince?: Date | null;
 }
 
 interface HydrateData {
@@ -17,6 +19,7 @@ interface HydrateData {
 interface SubscriptionState {
   status: string | null;
   currentPeriodEnd: Date | null;
+  pendingSince: Date | null;
   trialEndsAt: Date | null;
   isHydrated: boolean;
 
@@ -31,6 +34,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     (set) => ({
       status: null,
       currentPeriodEnd: null,
+      pendingSince: null,
       trialEndsAt: null,
       isHydrated: false,
 
@@ -40,6 +44,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             status: data.subscription?.status || null,
             currentPeriodEnd: data.subscription?.currentPeriodEnd
               ? new Date(data.subscription.currentPeriodEnd)
+              : null,
+            pendingSince: data.subscription?.pendingSince
+              ? new Date(data.subscription.pendingSince)
               : null,
             trialEndsAt: data.trialEndsAt ? new Date(data.trialEndsAt) : null,
             isHydrated: true,
@@ -67,6 +74,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             currentPeriodEnd: data.currentPeriodEnd
               ? new Date(data.currentPeriodEnd)
               : null,
+            pendingSince: data.pendingSince
+              ? new Date(data.pendingSince)
+              : null,
             trialEndsAt:
               data.status === "authorized" ? null : state.trialEndsAt,
           }),
@@ -80,6 +90,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           {
             status: null,
             currentPeriodEnd: null,
+            pendingSince: null,
             trialEndsAt: null,
             isHydrated: false,
           },
@@ -100,6 +111,9 @@ export const selectTrialEndsAt = (state: SubscriptionState) =>
 export const selectCurrentPeriodEnd = (state: SubscriptionState) =>
   state.currentPeriodEnd;
 
+export const selectPendingSince = (state: SubscriptionState) =>
+  state.pendingSince;
+
 export const selectIsHydrated = (state: SubscriptionState) => state.isHydrated;
 
 export const selectIsPro = (state: SubscriptionState) =>
@@ -116,6 +130,14 @@ export const selectHasAccess = (state: SubscriptionState) => {
   }
   if (!state.status || !state.currentPeriodEnd) {
     return false;
+  }
+
+  if (state.status === "pending" && state.pendingSince) {
+    const pendingGraceEnd = new Date(state.pendingSince);
+    pendingGraceEnd.setDate(
+      pendingGraceEnd.getDate() + PENDING_GRACE_PERIOD_DAYS,
+    );
+    return pendingGraceEnd.getTime() > Date.now();
   }
 
   if (!isActiveStatus(state.status)) {

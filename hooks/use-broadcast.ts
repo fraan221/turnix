@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
 
 export function useBroadcast(
   userId: string | undefined,
   onEvent: (event: string, payload: any) => void,
 ) {
-  const router = useRouter();
+  const onEventRef = useRef(onEvent);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     if (!userId) return;
@@ -18,14 +21,12 @@ export function useBroadcast(
     const channel = supabase
       .channel(`user:${userId}`)
       .on("broadcast", { event: "*" }, (payload) => {
-        onEvent(payload.event, payload.payload);
-
-        router.refresh();
+        onEventRef.current(payload.event, payload.payload);
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, router, onEvent]);
+  }, [userId]);
 }
