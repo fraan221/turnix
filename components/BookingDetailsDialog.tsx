@@ -32,7 +32,8 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Loader2 } from "lucide-react";
 
-export type BookingWithDetails = Booking & {
+export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
+  depositAmount: number | string | null;
   service: Service | null;
   client: Client;
 };
@@ -316,11 +317,24 @@ export function BookingDetailsDialogContent({
           <span className="font-semibold">{booking.client.name}</span>.
         </DialogDescription>
       </DialogHeader>
-      {isFutureBooking && view === "details" && (
-        <div className="p-3 text-xs text-center rounded-md border text-primary">
-          Este es un turno futuro y aún no puede ser marcado como completado.
+      {booking.paymentStatus === "PENDING" && view === "details" && (
+        <div className="p-3 text-sm bg-amber-50 rounded-md border border-amber-300 dark:bg-amber-950/30 dark:border-amber-800">
+          <p className="font-semibold text-amber-800 dark:text-amber-200">
+            ⏳ Esperando pago de seña
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            Este turno se cancelará automáticamente si el cliente no paga en los
+            próximos minutos.
+          </p>
         </div>
       )}
+      {isFutureBooking &&
+        view === "details" &&
+        booking.paymentStatus !== "PENDING" && (
+          <div className="p-3 text-xs text-center rounded-md border text-primary">
+            Este es un turno futuro y aún no puede ser marcado como completado.
+          </div>
+        )}
       {renderContent()}
     </>
   );

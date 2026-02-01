@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 interface SubscriptionInfo {
   status: string | null;
   currentPeriodEnd: Date | null;
+  pendingSince: Date | null;
 }
 
 interface BarberShopSessionInfo {

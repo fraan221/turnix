@@ -224,9 +224,27 @@ export default function BarberCalendar({
     const handleNewBooking = () => {
       router.refresh();
     };
+
+    const handleRealtimeUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.bookingId && customEvent.detail?.status) {
+        handleOptimisticUpdate(
+          customEvent.detail.bookingId,
+          customEvent.detail.status,
+        );
+        router.refresh();
+      }
+    };
+
     window.addEventListener("new-booking-event", handleNewBooking);
+    window.addEventListener("booking-realtime-update", handleRealtimeUpdate);
+
     return () => {
       window.removeEventListener("new-booking-event", handleNewBooking);
+      window.removeEventListener(
+        "booking-realtime-update",
+        handleRealtimeUpdate,
+      );
     };
   }, [router]);
 
@@ -294,7 +312,9 @@ export default function BarberCalendar({
       let eventColor = "#3b82f6";
       let eventClassName = "cursor-pointer";
 
-      if (booking.status === "COMPLETED") {
+      if (booking.paymentStatus === "PENDING") {
+        eventColor = "#f59e0b";
+      } else if (booking.status === "COMPLETED") {
         eventColor = "#22c55e";
       }
 

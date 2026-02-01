@@ -6,8 +6,8 @@ import { LogoutForm } from "@/components/LogoutButton";
 
 export default function SubscriptionInactivePage() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md mx-4">
+    <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="mx-4 w-full max-w-md">
         <CardHeader className="items-center">
           <div className="p-3 mb-4 bg-orange-100 rounded-full">
             <Pause className="w-8 h-8 text-orange-600" />
@@ -29,7 +29,7 @@ export default function SubscriptionInactivePage() {
             Mientras tanto, podés cerrar esta ventana y volver más tarde cuando
             esté todo solucionado.
           </p>
-          <LogoutForm className="w-full mt-6" />
+          <LogoutForm className="mt-6 w-full" />
         </CardContent>
       </Card>
     </div>

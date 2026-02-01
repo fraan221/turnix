@@ -91,7 +91,7 @@ export function ShareProfileButton({ slug, logoUrl }: ShareProfileButtonProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2 items-center">
             <Input
               readOnly
               value={profileUrl}
@@ -101,12 +101,12 @@ export function ShareProfileButton({ slug, logoUrl }: ShareProfileButtonProps) {
             <Button size="sm" onClick={copyToClipboard} className="shrink-0">
               {isCopied ? (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="w-4 h-4" />
                   Copiado
                 </>
               ) : (
                 <>
-                  <Link className="w-4 h-4 mr-2" />
+                  <Link className="w-4 h-4" />
                   Copiar
                 </>
               )}
@@ -115,10 +115,10 @@ export function ShareProfileButton({ slug, logoUrl }: ShareProfileButtonProps) {
 
           <Separator />
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col gap-4 items-center">
             <div
               ref={qrCodeRef}
-              className="p-4 bg-white border rounded-lg shadow-sm"
+              className="p-4 bg-white rounded-lg border shadow-sm"
             >
               <QRCodeCanvas
                 value={profileUrl}
@@ -129,7 +129,7 @@ export function ShareProfileButton({ slug, logoUrl }: ShareProfileButtonProps) {
               />
             </div>
             <Button onClick={downloadQRCode} className="w-full">
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="mr-2 w-4 h-4" />
               Descargar QR
             </Button>
           </div>

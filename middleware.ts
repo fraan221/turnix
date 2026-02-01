@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
-import { hasActiveSubscription } from "@/lib/subscription";
+import { hasActiveSubscription, isPaymentFailure } from "@/lib/subscription";
 import { Role } from "@prisma/client";
 
 const { auth } = NextAuth(authConfig);
@@ -15,7 +15,7 @@ export default auth(async (req) => {
   const isOnBillingPage = nextUrl.pathname.startsWith("/dashboard/billing");
   const isOnSubscribePage = nextUrl.pathname.startsWith("/subscribe");
   const isOnSubscriptionInactivePage = nextUrl.pathname.startsWith(
-    "/subscription-inactive"
+    "/subscription-inactive",
   );
   const isOnCompleteProfile = nextUrl.pathname.startsWith("/complete-profile");
   const isOnConnectPage = nextUrl.pathname.startsWith("/dashboard/connect");
@@ -58,10 +58,15 @@ export default auth(async (req) => {
 
       if (!isOnSubscribePage && !isOnSubscriptionInactivePage) {
         if (session.user.role === Role.OWNER) {
-          return NextResponse.redirect(new URL("/subscribe", nextUrl));
+          const reason = isPaymentFailure(session)
+            ? "payment_failed"
+            : undefined;
+          const url = new URL("/subscribe", nextUrl);
+          if (reason) url.searchParams.set("reason", reason);
+          return NextResponse.redirect(url);
         }
         return NextResponse.redirect(
-          new URL("/subscription-inactive", nextUrl)
+          new URL("/subscription-inactive", nextUrl),
         );
       }
     } else {

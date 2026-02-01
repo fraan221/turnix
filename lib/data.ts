@@ -47,7 +47,7 @@ export const getUserForSettings = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
       subscription: {
@@ -67,6 +67,12 @@ export const getUserForSettings = cache(async () => {
           image: true,
           address: true,
           description: true,
+          depositEnabled: true,
+          depositAmountType: true,
+          depositAmount: true,
+          mpCredentials: {
+            select: { id: true },
+          },
         },
       },
       teamMembership: {
@@ -85,6 +91,21 @@ export const getUserForSettings = cache(async () => {
       },
     },
   });
+
+  if (!user) return null;
+
+  // Convert Prisma Decimal to number for Client Component serialization
+  return {
+    ...user,
+    ownedBarbershop: user.ownedBarbershop
+      ? {
+          ...user.ownedBarbershop,
+          depositAmount: user.ownedBarbershop.depositAmount
+            ? Number(user.ownedBarbershop.depositAmount)
+            : null,
+        }
+      : null,
+  };
 });
 
 /**
@@ -222,7 +243,7 @@ export const getCachedBarberProfile = (slug: string) =>
     {
       tags: [`barber-profile:${slug}`],
       revalidate: 3600,
-    }
+    },
   )();
 
 /**
@@ -232,10 +253,10 @@ export const getCachedBarberProfile = (slug: string) =>
 export const getBarberAvailability = async (
   barberId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ) => {
   console.log(
-    `[Real-Time] Obteniendo disponibilidad para barbero: ${barberId}`
+    `[Real-Time] Obteniendo disponibilidad para barbero: ${barberId}`,
   );
   const bookings = await prisma.booking.findMany({
     where: {

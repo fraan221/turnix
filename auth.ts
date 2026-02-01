@@ -94,14 +94,39 @@ const config: NextAuthConfig = {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           include: {
-            ownedBarbershop: true,
+            ownedBarbershop: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                image: true,
+                teamsEnabled: true,
+                address: true,
+                description: true,
+              },
+            },
             teamMembership: {
               include: {
                 barbershop: {
-                  include: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    image: true,
+                    teamsEnabled: true,
+                    address: true,
+                    description: true,
                     owner: {
-                      include: {
-                        subscription: true,
+                      select: {
+                        id: true,
+                        trialEndsAt: true,
+                        subscription: {
+                          select: {
+                            status: true,
+                            currentPeriodEnd: true,
+                            pendingSince: true,
+                          },
+                        },
                       },
                     },
                   },
@@ -118,26 +143,33 @@ const config: NextAuthConfig = {
           token.name = dbUser.name;
           token.picture = dbUser.image;
 
-          // Default to user's own data
           token.trialEndsAt = dbUser.trialEndsAt;
           token.subscription = dbUser.subscription
             ? {
                 status: dbUser.subscription.status,
                 currentPeriodEnd: dbUser.subscription.currentPeriodEnd,
+                pendingSince: dbUser.subscription.pendingSince,
               }
             : null;
 
-          token.teamMembership = dbUser.teamMembership;
+          token.teamMembership = dbUser.teamMembership
+            ? {
+                id: dbUser.teamMembership.id,
+                barbershopId: dbUser.teamMembership.barbershopId,
+                userId: dbUser.teamMembership.userId,
+              }
+            : null;
 
           if (dbUser.ownedBarbershop) {
             token.barbershop = dbUser.ownedBarbershop;
           } else if (dbUser.teamMembership?.barbershop) {
-            token.barbershop = dbUser.teamMembership.barbershop;
+            const { owner, ...barbershopData } =
+              dbUser.teamMembership.barbershop;
+            token.barbershop = barbershopData;
           } else {
             token.barbershop = null;
           }
 
-          // Override for BARBER role to use Owner's subscription data
           if (
             token.role === Role.BARBER &&
             dbUser.teamMembership?.barbershop?.owner
@@ -148,24 +180,29 @@ const config: NextAuthConfig = {
               ? {
                   status: owner.subscription.status,
                   currentPeriodEnd: owner.subscription.currentPeriodEnd,
+                  pendingSince: owner.subscription.pendingSince,
                 }
               : null;
             token.trialEndsAt = owner.trialEndsAt;
           }
         }
       } else {
-        // Token refresh logic - need to re-fetch to ensure data is fresh
-        // We need to know the role to decide what to fetch, checking token.role
         if (token.role === Role.BARBER) {
-          // For barbers, we need to find their team -> barbershop -> owner
           const team = await prisma.team.findUnique({
             where: { userId: userId },
-            include: {
+            select: {
               barbershop: {
-                include: {
+                select: {
                   owner: {
-                    include: {
-                      subscription: true,
+                    select: {
+                      trialEndsAt: true,
+                      subscription: {
+                        select: {
+                          status: true,
+                          currentPeriodEnd: true,
+                          pendingSince: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -179,21 +216,21 @@ const config: NextAuthConfig = {
               ? {
                   status: owner.subscription.status,
                   currentPeriodEnd: owner.subscription.currentPeriodEnd,
+                  pendingSince: owner.subscription.pendingSince,
                 }
               : null;
             token.trialEndsAt = owner.trialEndsAt;
           } else {
-            // Fallback if relation is broken, though shouldn't happen for active barber
             token.subscription = null;
             token.trialEndsAt = null;
           }
         } else {
-          // For OWNER or others, fetch their own data
           const subscription = await prisma.subscription.findUnique({
             where: { userId: userId },
             select: {
               status: true,
               currentPeriodEnd: true,
+              pendingSince: true,
             },
           });
 
@@ -206,6 +243,7 @@ const config: NextAuthConfig = {
             ? {
                 status: subscription.status,
                 currentPeriodEnd: subscription.currentPeriodEnd,
+                pendingSince: subscription.pendingSince,
               }
             : null;
 

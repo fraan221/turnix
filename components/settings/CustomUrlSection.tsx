@@ -33,17 +33,13 @@ export function CustomUrlSection({
   return (
     <SettingsCard
       icon={LinkIcon}
-      title={readOnly ? "URL de la barbería" : "URL personalizada"}
-      description={
-        readOnly
-          ? "Compartí esta dirección con tus clientes"
-          : "Tu dirección única para compartir con clientes"
-      }
+      title={readOnly ? "Enlace Barbería" : "Enlace Personalizado"}
+      description="Tu dirección pública"
     >
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="slug" className="text-sm font-medium">
-            {readOnly ? "URL pública" : "Tu URL en Turnix"}
+            URL
           </Label>
           <div className="flex flex-col sm:flex-row">
             <span className="inline-flex items-center px-3 h-10 text-sm rounded-t-md border border-b-0 shrink-0 border-input bg-muted text-muted-foreground sm:rounded-l-md sm:rounded-t-none sm:border-b sm:border-r-0">
@@ -55,7 +51,7 @@ export function CustomUrlSection({
               value={slug}
               onChange={(e) =>
                 onSlugChange?.(
-                  e.target.value.toLowerCase().replace(/\s+/g, "-")
+                  e.target.value.toLowerCase().replace(/\s+/g, "-"),
                 )
               }
               className="rounded-t-none focus-visible:ring-offset-0 read-only:cursor-not-allowed read-only:bg-muted/50 sm:rounded-l-none sm:rounded-r-none sm:rounded-t focus-visible:ring-ring"
@@ -80,12 +76,12 @@ export function CustomUrlSection({
                     <Clipboard className="w-4 h-4" />
                   )}
                   <span className="ml-2 sm:hidden">
-                    {isCopied ? "Copiado" : "Copiar URL"}
+                    {isCopied ? "Copiado" : "Copiar"}
                   </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="hidden sm:block">
-                <p>Copiar URL pública</p>
+                <p>Copiar URL</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -93,22 +89,9 @@ export function CustomUrlSection({
           {!readOnly && (
             <div className="p-3 rounded-md border border-muted bg-muted/50">
               <p className="text-xs leading-relaxed text-muted-foreground">
-                {isConfigured ? (
-                  <>
-                    <span className="font-medium text-foreground">
-                      Tu URL está configurada.
-                    </span>{" "}
-                    Esta acción se completa una única vez y no se puede cambiar.
-                  </>
-                ) : (
-                  <>
-                    <span className="font-medium text-foreground">
-                      Elegí con cuidado.
-                    </span>{" "}
-                    Una vez guardada, tu URL no se puede cambiar. Usá solo
-                    minúsculas y guiones medios (-).
-                  </>
-                )}
+                {isConfigured
+                  ? "URL configurada permanentemente."
+                  : "Elegí bien. No podrás cambiarlo después."}
               </p>
             </div>
           )}

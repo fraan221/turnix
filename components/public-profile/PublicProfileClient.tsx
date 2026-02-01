@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingWizard } from "@/components/booking/BookingWizard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,12 +32,51 @@ export function PublicProfileClient({
   const hasMultipleBarbers = allBarbers.length > 1;
   const allServices = barbershop.services;
 
-  const [step, setStep] = useState(hasMultipleBarbers ? 0 : 1);
-  const [selectedBarber, setSelectedBarber] = useState<User | null>(
-    !hasMultipleBarbers ? allBarbers[0] : null
-  );
-  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
-  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const stepParam = searchParams.get("step");
+  const barberIdParam = searchParams.get("barberId");
+  const serviceIdParam = searchParams.get("serviceId");
+  const dateParam = searchParams.get("date");
+
+  const selectedBarber = useMemo(() => {
+    if (!hasMultipleBarbers) return allBarbers[0];
+    return allBarbers.find((b) => b.id === barberIdParam) || null;
+  }, [allBarbers, hasMultipleBarbers, barberIdParam]);
+
+  const selectedServiceId = serviceIdParam || "";
+
+  const selectedDateTime = useMemo(() => {
+    return dateParam ? new Date(dateParam) : null;
+  }, [dateParam]);
+
+  const step = useMemo(() => {
+    if (stepParam) return parseInt(stepParam);
+    if (selectedDateTime) return 3;
+    if (selectedServiceId) return 2;
+    if (selectedBarber) return 1;
+    return hasMultipleBarbers ? 0 : 1;
+  }, [
+    stepParam,
+    selectedDateTime,
+    selectedServiceId,
+    selectedBarber,
+    hasMultipleBarbers,
+  ]);
 
   const barberServices = useMemo(() => {
     if (!selectedBarber) return [];
@@ -48,39 +88,57 @@ export function PublicProfileClient({
       selectedServiceId
         ? barberServices.filter((s) => s.id === selectedServiceId)
         : [],
-    [barberServices, selectedServiceId]
+    [barberServices, selectedServiceId],
   );
 
   const handleBarberSelect = (barberId: string) => {
-    const barber = allBarbers.find((b) => b.id === barberId);
-    if (barber) {
-      setSelectedBarber(barber);
-      setSelectedServiceId("");
-      setStep(1);
-    }
+    updateParams({
+      barberId,
+      step: "1",
+      serviceId: null,
+      date: null,
+    });
   };
 
   const handleNextFromStep1 = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    setStep(2);
+    updateParams({
+      serviceId,
+      step: "2",
+      date: null,
+    });
   };
 
   const handleNextFromStep2 = (dateTime: Date) => {
-    setSelectedDateTime(dateTime);
-    setStep(3);
+    updateParams({
+      date: dateTime.toISOString(),
+      step: "3",
+    });
   };
 
   const handleBack = () => {
     const minStep = hasMultipleBarbers ? 0 : 1;
-    setStep((prev) => Math.max(minStep, prev - 1));
+    const prevStep = Math.max(minStep, step - 1);
+
+    const updates: Record<string, string | null> = {
+      step: prevStep.toString(),
+    };
+    if (prevStep < 3) updates.date = null;
+    if (prevStep < 2) updates.serviceId = null;
+    if (prevStep < 1 && hasMultipleBarbers) updates.barberId = null;
+
+    updateParams(updates);
+  };
+
+  const setStepManual = (newStep: number) => {
+    updateParams({ step: newStep.toString() });
   };
 
   return (
-    <div className="w-full max-w-4xl space-y-8">
+    <div className="space-y-8 w-full max-w-4xl">
       <Card>
-        <CardHeader className="flex flex-col items-center justify-center p-6 space-y-4 text-center rounded-lg bg-card">
+        <CardHeader className="flex flex-col justify-center items-center p-6 space-y-4 text-center rounded-lg bg-card">
           {barbershop.image && (
-            <div className="relative w-24 h-24 overflow-hidden rounded-full">
+            <div className="overflow-hidden relative w-24 h-24 rounded-full">
               <Image
                 src={barbershop.image}
                 alt={`Foto de ${barbershop.name}`}
@@ -94,8 +152,8 @@ export function PublicProfileClient({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="reservas" className="w-full border rounded-lg">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="reservas" className="w-full rounded-lg border">
+            <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="reservas">Reservas</TabsTrigger>
               <TabsTrigger value="informacion">Información</TabsTrigger>
             </TabsList>
@@ -116,7 +174,7 @@ export function PublicProfileClient({
                     handleNextFromStep1={handleNextFromStep1}
                     handleNextFromStep2={handleNextFromStep2}
                     handleBack={handleBack}
-                    setStep={setStep}
+                    setStep={setStepManual}
                   />
                 </motion.div>
               </TabsContent>

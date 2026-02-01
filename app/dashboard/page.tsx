@@ -5,13 +5,14 @@ import { Role } from "@prisma/client";
 import { ConnectionCodeView } from "@/components/team/ConnectionCodeView";
 import dynamic from "next/dynamic";
 import BarberCalendarSkeleton from "@/components/BarberCalendarSkeleton";
+import { BookingWithDetails } from "@/components/BookingDetailsDialog";
 
 const BarberCalendarWrapper = dynamic(
   () => import("@/components/BarberCalendar"),
   {
     ssr: false,
     loading: () => <BarberCalendarSkeleton />,
-  }
+  },
 );
 
 async function CalendarDataWrapper({
@@ -31,9 +32,14 @@ async function CalendarDataWrapper({
     }),
   ]);
 
+  const serializedBookings: BookingWithDetails[] = bookings.map((booking) => ({
+    ...booking,
+    depositAmount: booking.depositAmount ? Number(booking.depositAmount) : null,
+  }));
+
   return (
     <BarberCalendarWrapper
-      bookings={bookings}
+      bookings={serializedBookings}
       services={services}
       teamMembers={teamMembers}
       selectedBarberId={targetBarberId}

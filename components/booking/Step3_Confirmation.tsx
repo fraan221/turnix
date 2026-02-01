@@ -20,11 +20,15 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { createPublicBooking } from "@/actions/public.actions";
-import { ArrowLeft, Loader2, CalendarPlus } from "lucide-react";
+import { createDepositPreference } from "@/actions/payment.actions";
+import { ArrowLeft, Loader2, CalendarPlus, CreditCard } from "lucide-react";
 
 type CreateBookingState = {
   success?: string | null;
   error?: string | null;
+  requiresPayment?: boolean;
+  bookingId?: string;
+  depositAmount?: number;
   bookingDetails?: {
     clientName: string;
     barberPhone: string;
@@ -44,13 +48,23 @@ interface Step3ConfirmationProps {
   hasMultipleBarbers: boolean;
 }
 
-function SubmitButton() {
+function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
   const { pending } = useFormStatus();
+
+  if (isRedirecting) {
+    return (
+      <Button className="w-full" disabled>
+        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+        Redirigiendo a Mercado Pago...
+      </Button>
+    );
+  }
+
   return (
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
           Reservando...
         </>
       ) : (
@@ -69,11 +83,12 @@ export function Step3_Confirmation({
   hasMultipleBarbers,
 }: Step3ConfirmationProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
 
   const [state, formAction] = useFormState<CreateBookingState, FormData>(
     createPublicBooking,
-    null
+    null,
   );
 
   const serviceIds = useMemo(() => {
@@ -81,6 +96,31 @@ export function Step3_Confirmation({
   }, [selectedServices]);
 
   useEffect(() => {
+    async function handlePaymentRedirect(bookingId: string) {
+      try {
+        setIsRedirecting(true);
+        const result = await createDepositPreference(bookingId);
+
+        if (result.success && result.initPoint) {
+          window.location.href = result.initPoint;
+        } else {
+          toast.error("Error al iniciar el pago", {
+            description: result.error || "Intenta nuevamente más tarde",
+          });
+          setIsRedirecting(false);
+        }
+      } catch (error) {
+        console.error("Payment redirect error:", error);
+        toast.error("Error inesperado al iniciar el pago");
+        setIsRedirecting(false);
+      }
+    }
+
+    if (state?.requiresPayment && state.bookingId) {
+      handlePaymentRedirect(state.bookingId);
+      return;
+    }
+
     if (state?.success && state.bookingDetails) {
       const queryParams = new URLSearchParams({
         client: state.bookingDetails.clientName,
@@ -106,7 +146,7 @@ export function Step3_Confirmation({
           Revisa los detalles de tu turno y completa tus datos para finalizar.
         </p>
       </div>
-      <div className="p-4 space-y-4 border rounded-lg">
+      <div className="p-4 space-y-4 rounded-lg border">
         <div>
           <h3 className="mb-2 font-semibold">Servicio</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
@@ -137,7 +177,7 @@ export function Step3_Confirmation({
           </p>
         </div>
       </div>
-      <div className="flex justify-between gap-2">
+      <div className="flex gap-2 justify-between">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
@@ -181,7 +221,7 @@ export function Step3_Confirmation({
                   required
                 />
               </div>
-              <SubmitButton />
+              <SubmitButton isRedirecting={isRedirecting} />
             </form>
           </DialogContent>
         </Dialog>

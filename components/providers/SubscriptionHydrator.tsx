@@ -24,6 +24,9 @@ export function SubscriptionHydrator() {
               currentPeriodEnd: session.user.subscription.currentPeriodEnd
                 ? new Date(session.user.subscription.currentPeriodEnd)
                 : null,
+              pendingSince: session.user.subscription.pendingSince
+                ? new Date(session.user.subscription.pendingSince)
+                : null,
             }
           : null,
         trialEndsAt: session.user.trialEndsAt
@@ -55,6 +58,9 @@ export function SubscriptionHydrator() {
                 status: session.user.subscription.status,
                 currentPeriodEnd: session.user.subscription.currentPeriodEnd
                   ? new Date(session.user.subscription.currentPeriodEnd)
+                  : null,
+                pendingSince: session.user.subscription.pendingSince
+                  ? new Date(session.user.subscription.pendingSince)
                   : null,
               }
             : null,

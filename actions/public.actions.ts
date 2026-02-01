@@ -136,7 +136,6 @@ export async function getBarberAvailability(
       }
     }
 
-    // Build list of occupied intervals within this shift
     const occupiedIntervals: { start: Date; end: Date }[] = [];
 
     for (const booking of bookings) {
@@ -146,7 +145,6 @@ export async function getBarberAvailability(
       const bookingEnd = new Date(
         bookingStart.getTime() + durationInMinutes * 60000,
       );
-      // Only include if it overlaps with this shift
       if (bookingEnd > dayStartTime && bookingStart < dayEndTime) {
         occupiedIntervals.push({ start: bookingStart, end: bookingEnd });
       }
@@ -155,22 +153,21 @@ export async function getBarberAvailability(
     for (const block of timeBlocks) {
       const blockStart = new Date(block.startTime);
       const blockEnd = new Date(block.endTime);
-      // Only include if it overlaps with this shift
       if (blockEnd > dayStartTime && blockStart < dayEndTime) {
         occupiedIntervals.push({ start: blockStart, end: blockEnd });
       }
     }
 
-    // Sort occupied intervals by start time
     occupiedIntervals.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    // Generate slots using back-to-back scheduling
     let slotStart = new Date(currentTime);
 
-    while (slotStart.getTime() + totalDuration * 60000 <= dayEndTime.getTime()) {
+    while (
+      slotStart.getTime() + totalDuration * 60000 <=
+      dayEndTime.getTime()
+    ) {
       const slotEnd = new Date(slotStart.getTime() + totalDuration * 60000);
 
-      // Find all intervals that overlap with this slot and get the latest end time
       const overlappingIntervals = occupiedIntervals.filter(
         (interval) => slotStart < interval.end && slotEnd > interval.start,
       );
@@ -182,10 +179,8 @@ export async function getBarberAvailability(
       });
 
       if (isAvailable) {
-        // Slot is available, move by service duration
         slotStart = new Date(slotStart.getTime() + totalDuration * 60000);
       } else {
-        // Slot overlaps, snap to the latest end time among all overlapping intervals
         const latestEndTime = Math.max(
           ...overlappingIntervals.map((interval) => interval.end.getTime()),
         );
@@ -282,7 +277,15 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
 
     const barbershop = await prisma.barbershop.findUnique({
       where: { id: barbershopId },
-      select: { teamsEnabled: true, ownerId: true },
+      select: {
+        teamsEnabled: true,
+        ownerId: true,
+        name: true,
+        depositEnabled: true,
+        depositAmountType: true,
+        depositAmount: true,
+        mpCredentials: { select: { id: true } },
+      },
     });
 
     if (!barbershop) {
@@ -309,7 +312,71 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       return { error: "El servicio seleccionado ya no existe." };
     }
 
-    await prisma.booking.create({
+    const requiresDeposit =
+      barbershop.depositEnabled &&
+      !!barbershop.mpCredentials &&
+      barbershop.depositAmount;
+
+    let calculatedDeposit: number | null = null;
+    if (requiresDeposit && barbershop.depositAmount) {
+      if (barbershop.depositAmountType === "percentage") {
+        calculatedDeposit =
+          (service.price * Number(barbershop.depositAmount)) / 100;
+      } else {
+        calculatedDeposit = Number(barbershop.depositAmount);
+      }
+    }
+
+    const existingPendingBooking = await prisma.booking.findFirst({
+      where: {
+        barberId,
+        clientId: client.id,
+        startTime,
+        paymentStatus: "PENDING",
+        status: { not: "CANCELLED" },
+      },
+    });
+
+    if (existingPendingBooking) {
+      await prisma.booking.update({
+        where: { id: existingPendingBooking.id },
+        data: {
+          serviceId: serviceId,
+          priceAtBooking: service.price,
+          durationAtBooking: service.durationInMinutes,
+          barbershopId: barbershopId,
+          depositAmount:
+            requiresDeposit && calculatedDeposit
+              ? calculatedDeposit
+              : existingPendingBooking.depositAmount,
+          updatedAt: new Date(),
+        },
+      });
+
+      if (requiresDeposit && calculatedDeposit) {
+        return {
+          requiresPayment: true,
+          bookingId: existingPendingBooking.id,
+          depositAmount: calculatedDeposit,
+          barbershopName: barbershop.name,
+          serviceName: service.name,
+        };
+      }
+
+      return {
+        success: "¡Turno confirmado con éxito!",
+        bookingDetails: {
+          clientName: client.name,
+          barberPhone: barber.phone || "",
+          barberName: barber.name || "",
+          serviceName: service.name,
+          startTime: startTime.toISOString(),
+          teamsEnabled: barbershop.teamsEnabled,
+        },
+      };
+    }
+
+    const booking = await prisma.booking.create({
       data: {
         startTime,
         priceAtBooking: service.price,
@@ -318,8 +385,24 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         client: { connect: { id: client.id } },
         service: { connect: { id: serviceId } },
         barbershop: { connect: { id: barbershopId } },
+        ...(requiresDeposit && calculatedDeposit
+          ? {
+              depositAmount: calculatedDeposit,
+              paymentStatus: "PENDING",
+            }
+          : {}),
       },
     });
+
+    if (requiresDeposit && calculatedDeposit) {
+      return {
+        requiresPayment: true,
+        bookingId: booking.id,
+        depositAmount: calculatedDeposit,
+        barbershopName: barbershop.name,
+        serviceName: service.name,
+      };
+    }
 
     const formattedTime = formatTime(startTime);
     const relativeDateString = formatBookingDateForNotification(startTime);
@@ -333,7 +416,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     };
     await sendPushNotification(barberId, pushPayloadBarber);
 
-    const barberNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}".`;
+    const barberNotificationMessage = notificationBody;
     const barberNotification = await prisma.notification.create({
       data: {
         userId: barberId,
@@ -358,7 +441,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       };
       await sendPushNotification(barbershop.ownerId, pushPayloadOwner);
 
-      const ownerNotificationMessage = `Nuevo turno: ${clientName} reservó un "${service.name}" con ${barber.name}.`;
+      const ownerNotificationMessage = ownerNotificationBody;
       const ownerNotification = await prisma.notification.create({
         data: {
           userId: barbershop.ownerId,
@@ -389,5 +472,30 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     return {
       error: `No se pudo crear la reserva: ${error.message || error.toString()}`,
     };
+  }
+}
+
+export async function cancelFailedBooking(bookingId: string) {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { barbershop: true },
+    });
+
+    if (!booking) {
+      return { error: "Reserva no encontrada" };
+    }
+
+    if (booking.paymentStatus === "PENDING") {
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: "CANCELLED" },
+      });
+    }
+
+    return { success: true, barbershopSlug: booking.barbershop.slug };
+  } catch (error) {
+    console.error("Error cancelling failed booking:", error);
+    return { error: "Error al cancelar la reserva" };
   }
 }

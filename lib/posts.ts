@@ -4,7 +4,7 @@ import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { YouTubeEmbed } from "@/components/mdx-components";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, CreditCard, Sparkles, Bell } from "lucide-react";
 
 const postsDirectory = path.join(process.cwd(), "_posts");
 
@@ -47,6 +47,9 @@ export async function getPostData(slug: string) {
       AlertTitle,
       AlertDescription,
       Terminal,
+      CreditCard,
+      Sparkles,
+      Bell,
     },
     options: { parseFrontmatter: false },
   });

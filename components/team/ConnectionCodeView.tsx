@@ -20,10 +20,6 @@ interface ConnectionCodeViewProps {
   connectionCode: string;
 }
 
-interface TeamJoinedPayload {
-  message: string;
-}
-
 export function ConnectionCodeView({
   connectionCode,
 }: ConnectionCodeViewProps) {
@@ -32,8 +28,12 @@ export function ConnectionCodeView({
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
   const navigationTriggered = useRef(false);
+  const eventProcessed = useRef(false);
 
   const handleTeamJoined = useCallback(async () => {
+    if (eventProcessed.current) return;
+    eventProcessed.current = true;
+
     showLoader("¡Te han añadido a un equipo! Actualizando tu sesión...");
 
     try {
@@ -44,11 +44,10 @@ export function ConnectionCodeView({
     }
   }, [showLoader, update, router]);
 
-  useBroadcast<TeamJoinedPayload>({
-    userId: session?.user?.id ?? "",
-    event: "team-joined",
-    enabled: !!session?.user?.id,
-    onMessage: handleTeamJoined,
+  useBroadcast(session?.user?.id, (event, _payload) => {
+    if (event === "team-joined" && !eventProcessed.current) {
+      handleTeamJoined();
+    }
   });
 
   useEffect(() => {
@@ -66,7 +65,7 @@ export function ConnectionCodeView({
         window.location.href = "/dashboard";
       }, 500);
     }
-  }, [session, router, hideLoader]);
+  }, [session, hideLoader]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(connectionCode);
@@ -103,13 +102,13 @@ export function ConnectionCodeView({
             </p>
 
             <div className="relative">
-              <div className="flex justify-center items-center p-6 rounded-xl border-2 border-dashed sm:p-8 border-primary/30 bg-primary/5">
+              <div className="flex items-center justify-center p-6 border-2 border-dashed rounded-xl sm:p-8 border-primary/30 bg-primary/5">
                 <p className="font-mono text-4xl sm:text-5xl font-bold tracking-[0.3em] text-primary select-all">
                   {connectionCode}
                 </p>
               </div>
 
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <div className="absolute -translate-x-1/2 -top-3 left-1/2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-background border border-primary/20 rounded-full text-primary shadow-sm">
                   <Zap className="w-3 h-3" />
                   Código único
@@ -121,23 +120,23 @@ export function ConnectionCodeView({
           <Button
             size="lg"
             onClick={handleCopy}
-            className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg"
+            className="w-full h-12 text-base font-semibold transition-all shadow-md hover:shadow-lg"
           >
             {isCopied ? (
               <>
-                <ClipboardCheck className="mr-2 w-5 h-5" />
+                <ClipboardCheck className="w-5 h-5 mr-2" />
                 ¡Copiado!
               </>
             ) : (
               <>
-                <Clipboard className="mr-2 w-5 h-5" />
+                <Clipboard className="w-5 h-5 mr-2" />
                 Copiar Código
               </>
             )}
           </Button>
 
           <div className="pt-2 space-y-2">
-            <div className="p-3 rounded-lg border bg-muted/50 border-muted-foreground/10">
+            <div className="p-3 border rounded-lg bg-muted/50 border-muted-foreground/10">
               <p className="text-xs leading-relaxed text-center sm:text-sm text-muted-foreground">
                 💡 Tip: Podés enviar el código por WhatsApp o mostrarle la
                 pantalla directamente
