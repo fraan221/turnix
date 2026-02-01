@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Dialog,
   DialogContent,
@@ -33,9 +34,16 @@ export function WhatsNewDialog({
   blogSlug,
 }: WhatsNewDialogProps) {
   const [open, setOpen] = useState(false);
-  const storageKey = `${STORAGE_KEY_PREFIX}${version}`;
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+
+  const storageKey = userId
+    ? `${STORAGE_KEY_PREFIX}${version}_${userId}`
+    : null;
 
   useEffect(() => {
+    if (!storageKey) return;
+
     const hasSeen = localStorage.getItem(storageKey);
     if (!hasSeen) {
       const timer = setTimeout(() => setOpen(true), 500);
@@ -44,7 +52,9 @@ export function WhatsNewDialog({
   }, [storageKey]);
 
   const handleDismiss = () => {
-    localStorage.setItem(storageKey, "true");
+    if (storageKey) {
+      localStorage.setItem(storageKey, "true");
+    }
     setOpen(false);
   };
 
@@ -52,7 +62,7 @@ export function WhatsNewDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex justify-center items-center mx-auto mb-2 w-12 h-12 rounded-full bg-primary/10">
+          <div className="flex items-center justify-center w-12 h-12 mx-auto mb-2 rounded-full bg-primary/10">
             <Sparkles className="w-6 h-6 text-primary" />
           </div>
           <DialogTitle className="text-xl text-center">{title}</DialogTitle>
@@ -63,7 +73,7 @@ export function WhatsNewDialog({
 
         <ul className="my-4 space-y-3">
           {items.map((item, index) => (
-            <li key={index} className="flex gap-3 items-start">
+            <li key={index} className="flex items-start gap-3">
               <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                 <Check className="w-4 h-4 text-green-600" />
               </div>
@@ -75,10 +85,11 @@ export function WhatsNewDialog({
         {blogSlug && (
           <Link
             href={`/blog/${blogSlug}`}
-            className="flex gap-1 justify-center items-center text-sm text-primary hover:underline"
+            className="flex items-center justify-center gap-1 text-sm text-primary hover:underline"
+            target="_blank"
           >
             Leer más en el blog
-            <ExternalLink className="ml-1 w-4 h-4" />
+            <ExternalLink className="w-4 h-4 ml-1" />
           </Link>
         )}
 
