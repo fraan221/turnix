@@ -29,6 +29,7 @@ type CreateBookingState = {
   requiresPayment?: boolean;
   bookingId?: string;
   depositAmount?: number;
+  slotTaken?: boolean;
   bookingDetails?: {
     clientName: string;
     barberPhone: string;
@@ -54,7 +55,7 @@ function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
   if (isRedirecting) {
     return (
       <Button className="w-full" disabled>
-        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         Redirigiendo a Mercado Pago...
       </Button>
     );
@@ -64,7 +65,7 @@ function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           Reservando...
         </>
       ) : (
@@ -135,8 +136,14 @@ export function Step3_Confirmation({
     }
     if (state?.error) {
       toast.error("Error al reservar", { description: state.error });
+
+      if (state.slotTaken) {
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      }
     }
-  }, [state, router]);
+  }, [state, router, onBack]);
 
   return (
     <div className="space-y-6">
@@ -146,7 +153,7 @@ export function Step3_Confirmation({
           Revisa los detalles de tu turno y completa tus datos para finalizar.
         </p>
       </div>
-      <div className="p-4 space-y-4 rounded-lg border">
+      <div className="p-4 space-y-4 border rounded-lg">
         <div>
           <h3 className="mb-2 font-semibold">Servicio</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
@@ -177,7 +184,7 @@ export function Step3_Confirmation({
           </p>
         </div>
       </div>
-      <div className="flex gap-2 justify-between">
+      <div className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
