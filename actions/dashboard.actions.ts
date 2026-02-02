@@ -482,55 +482,54 @@ export async function createBooking(
     }
 
     const newBookingEndTime = new Date(
-      startTime.getTime() + (serviceForBooking.durationInMinutes ?? 60) * 60000,
+      startTime.getTime() + serviceDuration * 60000,
     );
 
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        barberId: barberId,
-        status: { not: "CANCELLED" },
-        startTime: {
-          gte: getStartOfDay(startTime),
-          lt: getEndOfDay(startTime),
-        },
-      },
-      include: {
-        service: {
-          select: {
-            durationInMinutes: true,
-          },
-        },
-      },
-    });
-
-    const overlappingBooking = existingBookings.find((existing) => {
-      const existingStartTime = existing.startTime;
-      const existingEndTime = new Date(
-        existingStartTime.getTime() +
-          (existing.service?.durationInMinutes ?? 60) * 60000,
-      );
-
-      return (
-        startTime < existingEndTime && existingStartTime < newBookingEndTime
-      );
-    });
-
-    if (overlappingBooking) {
-      return {
-        success: null,
-        error:
-          "El horario seleccionado se solapa con otro turno. Por favor, elige otro horario.",
-      };
-    }
-
-    let client: Client;
     let finalClientName: string;
 
     await prisma.$transaction(async (tx) => {
+      const existingBookings = await tx.booking.findMany({
+        where: {
+          barberId: barberId,
+          status: { not: "CANCELLED" },
+          startTime: {
+            gte: getStartOfDay(startTime),
+            lt: getEndOfDay(startTime),
+          },
+        },
+        include: {
+          service: {
+            select: {
+              durationInMinutes: true,
+            },
+          },
+        },
+      });
+
+      const overlappingBooking = existingBookings.find((existing) => {
+        const existingStartTime = existing.startTime;
+        const existingDuration =
+          existing.durationAtBooking ??
+          existing.service?.durationInMinutes ??
+          60;
+        const existingEndTime = new Date(
+          existingStartTime.getTime() + existingDuration * 60000,
+        );
+
+        return (
+          startTime < existingEndTime && existingStartTime < newBookingEndTime
+        );
+      });
+
+      if (overlappingBooking) {
+        throw new Error("SLOT_TAKEN");
+      }
+
       const existingClient = await tx.client.findUnique({
         where: { phone: clientPhone },
       });
 
+      let client: Client;
       if (existingClient) {
         client = existingClient;
         finalClientName = existingClient.name;
@@ -566,8 +565,17 @@ export async function createBooking(
         bookedClientName: finalClientName!,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error al crear el turno:", error);
+
+    if (error.message === "SLOT_TAKEN") {
+      return {
+        success: null,
+        error:
+          "El horario seleccionado se solapa con otro turno. Por favor, elige otro horario.",
+      };
+    }
+
     return {
       success: null,
       error: "No se pudo crear el turno. La operación fue revertida.",
@@ -793,22 +801,10 @@ export async function updateBookingTime(
     const dayOfWeek = newStartTime.getDay();
     const barberId = bookingToMove.barberId;
 
-    const [workingHours, otherBookings, timeBlocks] = await Promise.all([
+    const [workingHours, timeBlocks] = await Promise.all([
       prisma.workingHours.findUnique({
         where: { barberId_dayOfWeek: { barberId, dayOfWeek } },
         include: { blocks: true },
-      }),
-      prisma.booking.findMany({
-        where: {
-          id: { not: bookingId },
-          barberId: barberId,
-          status: { not: "CANCELLED" },
-          startTime: {
-            gte: getStartOfDay(newStartTime),
-            lt: getEndOfDay(newStartTime),
-          },
-        },
-        include: { service: { select: { durationInMinutes: true } } },
       }),
       prisma.timeBlock.findMany({
         where: {
@@ -819,9 +815,7 @@ export async function updateBookingTime(
       }),
     ]);
 
-    // 3. VALIDACIONES EN CASCADA
-
-    // --- Validación 1: Horario Laboral ---
+    // VALIDACIÓN 1: Horario Laboral (no cambia durante la transacción)
     const isWithinWorkingHours =
       workingHours?.isWorking &&
       workingHours.blocks.some((shift) => {
@@ -842,7 +836,7 @@ export async function updateBookingTime(
       return { error: "El nuevo horario está fuera de la jornada laboral." };
     }
 
-    // --- Validación 2: Bloqueos de Tiempo ---
+    // VALIDACIÓN 2: Bloqueos de Tiempo (raramente cambian)
     const overlapsWithTimeBlock = timeBlocks.some(
       (block) => newStartTime < block.endTime && newEndTime > block.startTime,
     );
@@ -853,38 +847,58 @@ export async function updateBookingTime(
       };
     }
 
-    // --- Validación 3: Otros Turnos ---
-    const overlapsWithBooking = otherBookings.some((existingBooking) => {
-      const existingStartTime = existingBooking.startTime;
-      const existingDuration =
-        existingBooking.durationAtBooking ??
-        existingBooking.service?.durationInMinutes ??
-        60;
-      const existingEndTime = new Date(
-        existingStartTime.getTime() + existingDuration * 60000,
-      );
+    // TRANSACCIÓN: Verificar solapamiento y actualizar atómicamente
+    await prisma.$transaction(async (tx) => {
+      // Verificar otros bookings DENTRO de la transacción
+      const otherBookings = await tx.booking.findMany({
+        where: {
+          id: { not: bookingId },
+          barberId: barberId,
+          status: { not: "CANCELLED" },
+          startTime: {
+            gte: getStartOfDay(newStartTime),
+            lt: getEndOfDay(newStartTime),
+          },
+        },
+        include: { service: { select: { durationInMinutes: true } } },
+      });
 
-      return newStartTime < existingEndTime && newEndTime > existingStartTime;
-    });
+      const overlapsWithBooking = otherBookings.some((existingBooking) => {
+        const existingStartTime = existingBooking.startTime;
+        const existingDuration =
+          existingBooking.durationAtBooking ??
+          existingBooking.service?.durationInMinutes ??
+          60;
+        const existingEndTime = new Date(
+          existingStartTime.getTime() + existingDuration * 60000,
+        );
 
-    if (overlapsWithBooking) {
-      return { error: "El nuevo horario se superpone con otro turno." };
-    }
+        return newStartTime < existingEndTime && newEndTime > existingStartTime;
+      });
 
-    // 4. ACTUALIZAR O FALLAR
-    // Si todas las validaciones pasaron, procedemos a actualizar.
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: {
-        startTime: newStartTime,
-      },
+      if (overlapsWithBooking) {
+        throw new Error("SLOT_TAKEN");
+      }
+
+      // Si no hay solapamiento, actualizar
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          startTime: newStartTime,
+        },
+      });
     });
 
     revalidatePath("/dashboard");
 
     return { success: "Turno reprogramado con éxito." };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error al actualizar el turno:", error);
+
+    if (error.message === "SLOT_TAKEN") {
+      return { error: "El nuevo horario se superpone con otro turno." };
+    }
+
     return { error: "No se pudo mover el turno. Inténtalo de nuevo." };
   }
 }

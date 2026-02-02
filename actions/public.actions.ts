@@ -327,36 +327,109 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }
     }
 
-    const existingPendingBooking = await prisma.booking.findFirst({
-      where: {
-        barberId,
-        clientId: client.id,
-        startTime,
-        paymentStatus: "PENDING",
-        status: { not: "CANCELLED" },
-      },
-    });
+    const serviceDuration = service.durationInMinutes || 60;
 
-    if (existingPendingBooking) {
-      await prisma.booking.update({
-        where: { id: existingPendingBooking.id },
-        data: {
-          serviceId: serviceId,
-          priceAtBooking: service.price,
-          durationAtBooking: service.durationInMinutes,
-          barbershopId: barbershopId,
-          depositAmount:
-            requiresDeposit && calculatedDeposit
-              ? calculatedDeposit
-              : existingPendingBooking.depositAmount,
-          updatedAt: new Date(),
+    const result = await prisma.$transaction(async (tx) => {
+      const existingPendingBooking = await tx.booking.findFirst({
+        where: {
+          barberId,
+          clientId: client.id,
+          startTime,
+          paymentStatus: "PENDING",
+          status: { not: "CANCELLED" },
         },
       });
 
+      if (existingPendingBooking) {
+        await tx.booking.update({
+          where: { id: existingPendingBooking.id },
+          data: {
+            serviceId: serviceId,
+            priceAtBooking: service.price,
+            durationAtBooking: service.durationInMinutes,
+            barbershopId: barbershopId,
+            depositAmount:
+              requiresDeposit && calculatedDeposit
+                ? calculatedDeposit
+                : existingPendingBooking.depositAmount,
+            updatedAt: new Date(),
+          },
+        });
+
+        return { type: "existing" as const, booking: existingPendingBooking };
+      }
+
+      const slotStart = startTime;
+      const slotEnd = new Date(startTime.getTime() + serviceDuration * 60000);
+
+      const conflictingBooking = await tx.booking.findFirst({
+        where: {
+          barberId,
+          status: { not: "CANCELLED" },
+          OR: [
+            { paymentStatus: null },
+            { paymentStatus: "PAID" },
+            {
+              paymentStatus: "PENDING",
+              createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+            },
+          ],
+          AND: [
+            {
+              startTime: { lt: slotEnd },
+            },
+            {
+              startTime: {
+                gte: new Date(slotStart.getTime() - 24 * 60 * 60 * 1000),
+              },
+            },
+          ],
+        },
+        include: {
+          service: { select: { durationInMinutes: true } },
+        },
+      });
+
+      if (conflictingBooking) {
+        const conflictDuration =
+          conflictingBooking.durationAtBooking ||
+          conflictingBooking.service?.durationInMinutes ||
+          60;
+        const conflictEnd = new Date(
+          conflictingBooking.startTime.getTime() + conflictDuration * 60000,
+        );
+
+        if (conflictingBooking.startTime < slotEnd && conflictEnd > slotStart) {
+          throw new Error("SLOT_TAKEN");
+        }
+      }
+
+      const newBooking = await tx.booking.create({
+        data: {
+          startTime,
+          priceAtBooking: service.price,
+          durationAtBooking: service.durationInMinutes,
+          barber: { connect: { id: barberId } },
+          client: { connect: { id: client.id } },
+          service: { connect: { id: serviceId } },
+          barbershop: { connect: { id: barbershopId } },
+          ...(requiresDeposit && calculatedDeposit
+            ? {
+                depositAmount: calculatedDeposit,
+                paymentStatus: "PENDING",
+              }
+            : {}),
+        },
+      });
+
+      return { type: "new" as const, booking: newBooking };
+    });
+
+    if (result.type === "existing") {
       if (requiresDeposit && calculatedDeposit) {
         return {
           requiresPayment: true,
-          bookingId: existingPendingBooking.id,
+          bookingId: result.booking.id,
           depositAmount: calculatedDeposit,
           barbershopName: barbershop.name,
           serviceName: service.name,
@@ -376,23 +449,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       };
     }
 
-    const booking = await prisma.booking.create({
-      data: {
-        startTime,
-        priceAtBooking: service.price,
-        durationAtBooking: service.durationInMinutes,
-        barber: { connect: { id: barberId } },
-        client: { connect: { id: client.id } },
-        service: { connect: { id: serviceId } },
-        barbershop: { connect: { id: barbershopId } },
-        ...(requiresDeposit && calculatedDeposit
-          ? {
-              depositAmount: calculatedDeposit,
-              paymentStatus: "PENDING",
-            }
-          : {}),
-      },
-    });
+    const booking = result.booking;
 
     if (requiresDeposit && calculatedDeposit) {
       return {
@@ -469,6 +526,15 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     };
   } catch (error: any) {
     console.error("Error creating booking:", error);
+
+    if (error.message === "SLOT_TAKEN") {
+      return {
+        error:
+          "¡Ups! Este horario acaba de ser reservado por otro cliente. Por favor, elegí otro horario.",
+        slotTaken: true,
+      };
+    }
+
     return {
       error: `No se pudo crear la reserva: ${error.message || error.toString()}`,
     };

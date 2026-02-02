@@ -87,7 +87,7 @@ const BookingDetailsSkeleton = () => (
         <Skeleton className="w-11/12 h-4" />
         <Skeleton className="w-full h-4" />
       </div>
-      <div className="flex gap-2 justify-between pt-4">
+      <div className="flex justify-between gap-2 pt-4">
         <Skeleton className="w-32 h-10" />
         <Skeleton className="w-48 h-10" />
       </div>
@@ -115,7 +115,7 @@ function SubmitButton() {
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           Agendando...
         </>
       ) : (
@@ -262,6 +262,8 @@ export default function BarberCalendar({
       }
 
       toast.error("Error al agendar", { description: errorMessage });
+
+      router.refresh();
     }
 
     if (state?.success) {
@@ -269,7 +271,7 @@ export default function BarberCalendar({
       setCreateModalOpen(false);
       formRef.current?.reset();
     }
-  }, [state]);
+  }, [state, router]);
 
   useEffect(() => {
     setOptimisticBookings(bookings);
@@ -351,7 +353,7 @@ export default function BarberCalendar({
       dayGridMonth: {
         titleFormat: { month: "long" },
         dayCellContent: (arg: any) => (
-          <div className="flex flex-col justify-center items-center h-full">
+          <div className="flex flex-col items-center justify-center h-full">
             <span className="text-xs text-muted-foreground">
               {arg.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
             </span>
@@ -399,12 +401,12 @@ export default function BarberCalendar({
   return (
     <>
       <div
-        className="mx-auto max-w-7xl bg-white"
+        className="mx-auto bg-white max-w-7xl"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-2 items-center">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
             {!isMobile && (
               <>
                 <Button variant="secondary" size="icon" onClick={handlePrev}>
