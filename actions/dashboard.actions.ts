@@ -566,9 +566,10 @@ export async function createBooking(
       },
     };
   } catch (error: any) {
-    console.error("Error al crear el turno:", error);
-
     if (error.message === "SLOT_TAKEN") {
+      console.warn(
+        "[Booking] Se detectó solapamiento de turnos al crear desde dashboard. Lanzando error SLOT_TAKEN...",
+      );
       return {
         success: null,
         error:
@@ -576,6 +577,7 @@ export async function createBooking(
       };
     }
 
+    console.error("[Booking] Error al crear turno desde dashboard:", error);
     return {
       success: null,
       error: "No se pudo crear el turno. La operación fue revertida.",
@@ -893,12 +895,14 @@ export async function updateBookingTime(
 
     return { success: "Turno reprogramado con éxito." };
   } catch (error: any) {
-    console.error("Error al actualizar el turno:", error);
-
     if (error.message === "SLOT_TAKEN") {
+      console.warn(
+        "[Booking] Se detectó solapamiento de turnos al mover turno. Lanzando error SLOT_TAKEN...",
+      );
       return { error: "El nuevo horario se superpone con otro turno." };
     }
 
+    console.error("[Booking] Error al mover turno:", error);
     return { error: "No se pudo mover el turno. Inténtalo de nuevo." };
   }
 }

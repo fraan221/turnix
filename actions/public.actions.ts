@@ -525,9 +525,10 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       },
     };
   } catch (error: any) {
-    console.error("Error creating booking:", error);
-
     if (error.message === "SLOT_TAKEN") {
+      console.warn(
+        "[Booking] Se detectó solapamiento de turnos. Otro cliente reservó el mismo horario primero. Lanzando error SLOT_TAKEN...",
+      );
       return {
         error:
           "¡Ups! Este horario acaba de ser reservado por otro cliente. Por favor, elegí otro horario.",
@@ -535,6 +536,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       };
     }
 
+    console.error("[Booking] Error al crear reserva:", error);
     return {
       error: `No se pudo crear la reserva: ${error.message || error.toString()}`,
     };
