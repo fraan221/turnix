@@ -4,12 +4,13 @@ import prisma from "@/lib/prisma";
 import { exchangeCodeForTokens, encryptToken } from "@/lib/mercadopago/oauth";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state");
   const error = searchParams.get("error");
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!;
+  // Use request origin as fallback if env var is not set
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
 
   if (error) {
     console.error("[OAuth Callback] MP returned error:", error);

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies, headers } from "next/headers";
 import crypto from "crypto";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
@@ -7,13 +7,17 @@ import { getAuthorizationUrl } from "@/lib/mercadopago/oauth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Get base URL from request or env
+  const { origin } = new URL(request.url);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.redirect(
-        new URL("/login?error=unauthorized", process.env.NEXT_PUBLIC_APP_URL!),
+        new URL("/login?error=unauthorized", baseUrl),
       );
     }
 
@@ -24,10 +28,7 @@ export async function GET() {
 
     if (!barbershop) {
       return NextResponse.redirect(
-        new URL(
-          "/dashboard/settings?error=no_barbershop",
-          process.env.NEXT_PUBLIC_APP_URL!,
-        ),
+        new URL("/dashboard/settings?error=no_barbershop", baseUrl),
       );
     }
 
@@ -55,10 +56,7 @@ export async function GET() {
   } catch (error) {
     console.error("[OAuth] Error initiating OAuth flow:", error);
     return NextResponse.redirect(
-      new URL(
-        "/dashboard/settings?error=oauth_init_failed",
-        process.env.NEXT_PUBLIC_APP_URL!,
-      ),
+      new URL("/dashboard/settings?error=oauth_init_failed", baseUrl),
     );
   }
 }
