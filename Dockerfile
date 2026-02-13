@@ -17,8 +17,8 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV production
 
-RUN addgroup --system --node-group && adduser --system --node-user
-USER node
+RUN addgroup -S node-group && adduser -S node-user -G node-group
+USER node-user
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
