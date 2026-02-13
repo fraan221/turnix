@@ -34,12 +34,9 @@ import { useLoader } from "@/context/LoaderContext";
 
 const RegisterSchema = z
   .object({
-    role: z
-      .string()
-      .min(1, { message: "Por favor, selecciona un rol." })
-      .refine((val) => val === "OWNER" || val === "BARBER", {
-        message: "Rol no válido.",
-      }),
+    role: z.enum(["OWNER", "BARBER"], {
+      message: "Por favor, selecciona un rol.",
+    }),
     name: z
       .string()
       .min(3, { message: "El nombre debe tener al menos 3 caracteres." })
