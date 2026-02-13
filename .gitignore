@@ -30,3 +30,6 @@ test-results/
 .vscode
 .github
 dev.sh
+
+# OpenCode config (may contain sensitive MCP configurations)
+opencode.json
