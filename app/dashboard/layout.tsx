@@ -8,7 +8,7 @@ import { WhatsNewDialog } from "@/components/WhatsNewDialog";
 
 import { PushNotificationProvider } from "@/components/providers/PushNotificationProvider";
 import { SubscriptionHydrator } from "@/components/providers/SubscriptionHydrator";
-import { RealtimeToastHandler } from "@/components/providers/RealtimeToastHandler";
+import { PusherHandler } from "@/components/PusherHandler";
 
 export default function DashboardLayout({
   children,
@@ -22,7 +22,7 @@ export default function DashboardLayout({
         <PushNotificationProvider>
           <SubscriptionHydrator />
           <SubscriptionStatusHandler />
-          <RealtimeToastHandler />
+          <PusherHandler />
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog

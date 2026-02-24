@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { useBroadcast } from "@/hooks/use-broadcast";
 import { useLoader } from "@/context/LoaderContext";
+import { pusherClient } from "@/lib/pusher-client";
 import {
   Card,
   CardContent,
@@ -44,11 +44,24 @@ export function ConnectionCodeView({
     }
   }, [showLoader, update, router]);
 
-  useBroadcast(session?.user?.id, (event, _payload) => {
-    if (event === "team-joined" && !eventProcessed.current) {
-      handleTeamJoined();
-    }
-  });
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = pusherClient.subscribe(`user-${session.user.id}`);
+
+    const onTeamJoined = () => {
+      if (!eventProcessed.current) {
+        handleTeamJoined();
+      }
+    };
+
+    channel.bind("team-joined", onTeamJoined);
+
+    return () => {
+      channel.unbind("team-joined");
+      pusherClient.unsubscribe(`user-${session.user.id}`);
+    };
+  }, [session?.user?.id, handleTeamJoined]);
 
   useEffect(() => {
     if (session?.user?.teamMembership && !navigationTriggered.current) {

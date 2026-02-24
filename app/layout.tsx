@@ -68,7 +68,7 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           inter.variable,
-          montserrat.variable
+          montserrat.variable,
         )}
       >
         <SessionProvider>
@@ -78,8 +78,8 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
           </LoaderProvider>
         </SessionProvider>
 
-        <SpeedInsights />
-        <Analytics />
+        {/* <SpeedInsights /> */}
+        {/* <Analytics /> */}
       </body>
     </html>
   );

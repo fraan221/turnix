@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import { broadcastToUser } from "@/lib/supabase-server";
+import { pusherServer } from "@/lib/pusher";
 
 type TeamActionState = {
   success?: string | null;
@@ -104,7 +104,7 @@ export async function linkBarberToShop(
       });
     });
 
-    await broadcastToUser(barberToLink.id, "team-joined", {
+    await pusherServer.trigger(`user-${barberToLink.id}`, "team-joined", {
       message: "¡Te han añadido a un equipo!",
     });
 
@@ -233,7 +233,7 @@ export async function removeTeamMember(
       });
     });
 
-    await broadcastToUser(memberIdToRemove, "team-removed", {
+    await pusherServer.trigger(`user-${memberIdToRemove}`, "team-removed", {
       message: "Has sido eliminado del equipo.",
     });
 

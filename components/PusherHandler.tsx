@@ -1,0 +1,56 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { pusherClient } from "@/lib/pusher-client";
+import { toast } from "sonner";
+import { CheckCircle2, UserX } from "lucide-react";
+
+export function PusherHandler() {
+  const { data: session } = useSession();
+  const hasBeenTriggered = useRef(false);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = pusherClient.subscribe(`user-${session.user.id}`);
+
+    const handleTeamRemoved = () => {
+      if (hasBeenTriggered.current) return;
+      hasBeenTriggered.current = true;
+
+      toast.info("Has sido eliminado de tu equipo.", {
+        description: "Por seguridad, tu sesión se cerrará.",
+        icon: <UserX className="w-5 h-5" />,
+      });
+
+      setTimeout(() => {
+        signOut({ callbackUrl: "/login" });
+      }, 2000);
+    };
+
+    const handleBookingPaid = (payload: any) => {
+      const { clientName, bookingId } = payload;
+      toast.success("¡Nuevo Turno Señado! 💸", {
+        description: `${clientName} ha pagado la seña.`,
+        icon: <CheckCircle2 className="w-5 h-5" />,
+      });
+      window.dispatchEvent(
+        new CustomEvent("booking-realtime-update", {
+          detail: { bookingId, status: "PAID" },
+        })
+      );
+    };
+
+    channel.bind("team-removed", handleTeamRemoved);
+    channel.bind("booking-paid", handleBookingPaid);
+
+    return () => {
+      channel.unbind("team-removed");
+      channel.unbind("booking-paid");
+      pusherClient.unsubscribe(`user-${session.user.id}`);
+    };
+  }, [session]);
+
+  return null;
+}

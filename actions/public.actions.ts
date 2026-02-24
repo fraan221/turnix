@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { broadcastToUser } from "@/lib/supabase-server";
+import { pusherServer } from "@/lib/pusher";
 import {
   getEndOfDay,
   getStartOfDay,
@@ -482,10 +482,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       },
     });
 
-    await broadcastToUser(barberId, "new-notification", {
-      id: barberNotification.id,
-      message: barberNotification.message,
-    });
+    await pusherServer.trigger(
+      `notifications_${barberId}`,
+      "new-notification",
+      {
+        id: barberNotification.id,
+        message: barberNotification.message,
+      }
+    );
 
     const isEmployeeBooking = barber.id !== barbershop.ownerId;
     if (barbershop.teamsEnabled && isEmployeeBooking) {
@@ -507,10 +511,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         },
       });
 
-      await broadcastToUser(barbershop.ownerId, "new-notification", {
-        id: ownerNotification.id,
-        message: ownerNotification.message,
-      });
+      await pusherServer.trigger(
+        `notifications_${barbershop.ownerId}`,
+        "new-notification",
+        {
+          id: ownerNotification.id,
+          message: ownerNotification.message,
+        }
+      );
     }
 
     return {

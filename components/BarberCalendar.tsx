@@ -60,7 +60,6 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { BookingWithDetails } from "./BookingDetailsDialog";
 import { BarberSelector } from "./BarberSelector";
-import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useSession } from "next-auth/react";
 
 const BookingDetailsDialogContent = lazy(() =>
@@ -151,16 +150,6 @@ export default function BarberCalendar({
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [calendarTitle, setCalendarTitle] = useState("");
   const [optimisticBookings, setOptimisticBookings] = useState(bookings);
-
-  const targetBarberId = selectedBarberId || session?.user?.id || "";
-  useRealtimeSubscription<Booking>({
-    userId: targetBarberId,
-    table: "Booking",
-    enabled: !!targetBarberId,
-    onInsert: () => router.refresh(),
-    onUpdate: () => router.refresh(),
-    onDelete: () => router.refresh(),
-  });
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;

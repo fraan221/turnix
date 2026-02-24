@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import { upload } from "@vercel/blob/client";
+import { uploadToR2 } from "@/lib/upload-client";
 
 import {
   PersonalInfoSection,
@@ -324,23 +324,11 @@ export default function SettingsForm({
       let barbershopImageUrl = null;
 
       if (croppedImageRef.current) {
-        const ext = croppedImageRef.current.name.split(".").pop();
-        const filename = `avatar-${Date.now()}.${ext}`;
-        const blob = await upload(filename, croppedImageRef.current, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-        });
-        avatarUrl = blob.url;
+        avatarUrl = await uploadToR2(croppedImageRef.current);
       }
 
       if (croppedBarbershopImageRef.current) {
-        const ext = croppedBarbershopImageRef.current.name.split(".").pop();
-        const filename = `barbershop-${Date.now()}.${ext}`;
-        const blob = await upload(filename, croppedBarbershopImageRef.current, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-        });
-        barbershopImageUrl = blob.url;
+        barbershopImageUrl = await uploadToR2(croppedBarbershopImageRef.current);
       }
 
       if (avatarUrl) {

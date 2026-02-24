@@ -3,7 +3,7 @@ import { MercadoPagoConfig, Payment } from "mercadopago";
 import { revalidatePath } from "next/cache";
 import { syncSubscriptionStatus } from "@/lib/mercadopago/sync";
 import { validateWebhookSignature } from "@/lib/mercadopago/webhook-security";
-import { broadcastToUser } from "@/lib/supabase-server";
+import { pusherServer } from "@/lib/pusher";
 import prisma from "@/lib/prisma";
 import { decryptToken } from "@/lib/mercadopago/oauth";
 import { sendPushNotification } from "@/lib/push";
@@ -202,12 +202,16 @@ export async function POST(req: NextRequest) {
               url: "/dashboard/notifications",
             });
 
-            await broadcastToUser(updatedBooking.barberId, "booking-paid", {
-              bookingId: updatedBooking.id,
-              clientName: updatedBooking.client.name,
-              message: notificationMessage,
-              notificationId: barberNotification.id,
-            });
+            await pusherServer.trigger(
+              `user-${updatedBooking.barberId}`,
+              "booking-paid",
+              {
+                bookingId: updatedBooking.id,
+                clientName: updatedBooking.client.name,
+                message: notificationMessage,
+                notificationId: barberNotification.id,
+              }
+            );
 
             if (
               updatedBooking.barbershop.teamsEnabled &&
@@ -229,8 +233,8 @@ export async function POST(req: NextRequest) {
                 url: "/dashboard/notifications",
               });
 
-              await broadcastToUser(
-                updatedBooking.barbershop.ownerId,
+              await pusherServer.trigger(
+                `user-${updatedBooking.barbershop.ownerId}`,
                 "booking-paid",
                 {
                   bookingId: updatedBooking.id,
@@ -238,7 +242,7 @@ export async function POST(req: NextRequest) {
                   barberName: updatedBooking.barber.name,
                   message: ownerMessage,
                   notificationId: ownerNotification.id,
-                },
+                }
               );
             }
 

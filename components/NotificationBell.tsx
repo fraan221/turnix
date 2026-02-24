@@ -11,7 +11,7 @@ import {
   getNotifications,
   markNotificationsAsRead,
 } from "@/actions/notification.actions";
-import { useBroadcast } from "@/hooks/use-broadcast";
+import { pusherClient } from "@/lib/pusher-client";
 
 interface NotificationPayload {
   id: string;
@@ -29,23 +29,29 @@ export function NotificationBell() {
     }
   }, []);
 
-  useBroadcast(session?.user?.id, (event, payload) => {
-    if (event === "new-notification") {
-      const notification = payload as NotificationPayload;
-      toast.info(notification.message);
-      setUnreadCount((prev) => prev + 1);
-      window.dispatchEvent(new Event("new-booking-event"));
-    }
-  });
-
   useEffect(() => {
     fetchUnreadCount();
     window.addEventListener("notificationsUpdated", fetchUnreadCount);
 
+    if (!session?.user?.id) {
+      return;
+    }
+
+    const channelName = `notifications_${session.user.id}`;
+    const channel = pusherClient.subscribe(channelName);
+
+    channel.bind("new-notification", (newNotification: NotificationPayload) => {
+      toast.info(newNotification.message);
+      setUnreadCount((prev) => prev + 1);
+      window.dispatchEvent(new Event("new-booking-event"));
+    });
+
     return () => {
+      channel.unbind("new-notification");
+      pusherClient.unsubscribe(channelName);
       window.removeEventListener("notificationsUpdated", fetchUnreadCount);
     };
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, session?.user?.id]);
 
   const handleBellClick = () => {
     if (unreadCount > 0) {
