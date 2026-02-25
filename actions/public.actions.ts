@@ -482,14 +482,19 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       },
     });
 
-    await pusherServer.trigger(
-      `notifications_${barberId}`,
-      "new-notification",
-      {
-        id: barberNotification.id,
-        message: barberNotification.message,
-      }
-    );
+    try {
+      await pusherServer.trigger(
+        `notifications_${barberId}`,
+        "new-notification",
+        {
+          id: barberNotification.id,
+          message: barberNotification.message,
+        }
+      );
+      console.log("NOTIFICACION PUSHER ENVIADA CON EXITO AL BARBERO");
+    } catch (error) {
+      console.error("ERROR CRITICO ENVIANDO PUSHER AL BARBERO:", error);
+    }
 
     const isEmployeeBooking = barber.id !== barbershop.ownerId;
     if (barbershop.teamsEnabled && isEmployeeBooking) {
@@ -511,14 +516,19 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         },
       });
 
-      await pusherServer.trigger(
-        `notifications_${barbershop.ownerId}`,
-        "new-notification",
-        {
-          id: ownerNotification.id,
-          message: ownerNotification.message,
-        }
-      );
+      try {
+        await pusherServer.trigger(
+          `notifications_${barbershop.ownerId}`,
+          "new-notification",
+          {
+            id: ownerNotification.id,
+            message: ownerNotification.message,
+          }
+        );
+        console.log("NOTIFICACION PUSHER ENVIADA CON EXITO AL OWNER");
+      } catch (error) {
+        console.error("ERROR CRITICO ENVIANDO PUSHER AL OWNER:", error);
+      }
     }
 
     return {
