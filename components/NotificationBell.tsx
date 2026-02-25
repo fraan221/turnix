@@ -33,6 +33,12 @@ export function NotificationBell() {
     fetchUnreadCount();
     window.addEventListener("notificationsUpdated", fetchUnreadCount);
 
+    return () => {
+      window.removeEventListener("notificationsUpdated", fetchUnreadCount);
+    };
+  }, [fetchUnreadCount]);
+
+  useEffect(() => {
     if (!session?.user?.id) {
       return;
     }
@@ -51,9 +57,10 @@ export function NotificationBell() {
 
     return () => {
       channel.unbind("new-notification", handleNewNotification);
-      window.removeEventListener("notificationsUpdated", fetchUnreadCount);
+      // Solo desuscribirse cuando el componente se desmonte del todo o el ID de usuario cambie
+      pusherClient.unsubscribe(channelName);
     };
-  }, [fetchUnreadCount, session?.user?.id]);
+  }, [session?.user?.id]);
 
   const handleBellClick = () => {
     if (unreadCount > 0) {

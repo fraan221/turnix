@@ -49,7 +49,7 @@ export function PusherHandler() {
     return () => {
       channel.unbind("team-removed", handleTeamRemoved);
       channel.unbind("booking-paid", handleBookingPaid);
-      // Solo nos desuscribimos si el ID realmente cambia, no en re-renders aleatorios
+      pusherClient.unsubscribe(`user-${userId}`);
     };
   }, [session?.user?.id]);
 
