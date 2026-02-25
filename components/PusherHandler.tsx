@@ -11,9 +11,10 @@ export function PusherHandler() {
   const hasBeenTriggered = useRef(false);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    const userId = session?.user?.id;
+    if (!userId) return;
 
-    const channel = pusherClient.subscribe(`user-${session.user.id}`);
+    const channel = pusherClient.subscribe(`user-${userId}`);
 
     const handleTeamRemoved = () => {
       if (hasBeenTriggered.current) return;
@@ -46,11 +47,11 @@ export function PusherHandler() {
     channel.bind("booking-paid", handleBookingPaid);
 
     return () => {
-      channel.unbind("team-removed");
-      channel.unbind("booking-paid");
-      pusherClient.unsubscribe(`user-${session.user.id}`);
+      channel.unbind("team-removed", handleTeamRemoved);
+      channel.unbind("booking-paid", handleBookingPaid);
+      // Solo nos desuscribimos si el ID realmente cambia, no en re-renders aleatorios
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   return null;
 }

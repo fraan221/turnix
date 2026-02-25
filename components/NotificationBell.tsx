@@ -40,15 +40,17 @@ export function NotificationBell() {
     const channelName = `notifications_${session.user.id}`;
     const channel = pusherClient.subscribe(channelName);
 
-    channel.bind("new-notification", (newNotification: NotificationPayload) => {
+    const handleNewNotification = (newNotification: NotificationPayload) => {
+      console.log("NOTIFICACION RECIBIDA EN PUSHER FRONTEND:", newNotification);
       toast.info(newNotification.message);
       setUnreadCount((prev) => prev + 1);
       window.dispatchEvent(new Event("new-booking-event"));
-    });
+    };
+
+    channel.bind("new-notification", handleNewNotification);
 
     return () => {
-      channel.unbind("new-notification");
-      pusherClient.unsubscribe(channelName);
+      channel.unbind("new-notification", handleNewNotification);
       window.removeEventListener("notificationsUpdated", fetchUnreadCount);
     };
   }, [fetchUnreadCount, session?.user?.id]);
