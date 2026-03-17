@@ -51,7 +51,11 @@ export async function getPostData(slug: string) {
       Sparkles,
       Bell,
     },
-    options: { parseFrontmatter: false },
+    options: {
+      parseFrontmatter: false,
+      blockJS: true,
+      blockDangerousJS: true,
+    },
   });
 
   return {
