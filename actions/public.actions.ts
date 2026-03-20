@@ -7,6 +7,8 @@ import {
   getStartOfDay,
   formatTime,
   formatBookingDateForNotification,
+  getArgentinaDayOfWeek,
+  createArgentinaDate,
 } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
@@ -39,7 +41,7 @@ export async function getBarberAvailability(
   date: Date,
   totalDuration: number,
 ): Promise<BarberAvailability> {
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = getArgentinaDayOfWeek(date);
 
   const barber = await prisma.user.findUnique({
     where: { id: barberId },
@@ -105,8 +107,7 @@ export async function getBarberAvailability(
     todayInArgentinaString === selectedDateInArgentinaString;
 
   const createDateInArgentina = (timeString: string): Date => {
-    const isoString = `${selectedDateInArgentinaString}T${timeString}:00-03:00`;
-    return new Date(isoString);
+    return createArgentinaDate(selectedDateInArgentinaString, timeString);
   };
 
   const lastShift = shifts[shifts.length - 1];

@@ -5,7 +5,13 @@ import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
-import { getStartOfDay, getEndOfDay } from "@/lib/date-helpers";
+import {
+  getStartOfDay,
+  getEndOfDay,
+  getArgentinaDayOfWeek,
+  getArgentinaMinutesOfDay,
+  parseTimeToMinutes,
+} from "@/lib/date-helpers";
 import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
@@ -324,11 +330,6 @@ export async function completeOnboarding() {
   }
 }
 
-const timeToMinutes = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return hours * 60 + minutes;
-};
-
 export async function createBooking(
   prevState: any,
   formData: FormData,
@@ -413,7 +414,7 @@ export async function createBooking(
   }
 
   try {
-    const dayOfWeek = startTime.getDay();
+    const dayOfWeek = getArgentinaDayOfWeek(startTime);
 
     const [workingHours, serviceForBooking] = await Promise.all([
       prisma.workingHours.findUnique({
@@ -452,7 +453,7 @@ export async function createBooking(
       hour12: false,
       timeZone: "America/Argentina/Buenos_Aires",
     });
-    const bookingTimeInMinutes = timeToMinutes(bookingTimeStr);
+    const bookingTimeInMinutes = parseTimeToMinutes(bookingTimeStr);
 
     const serviceDuration = serviceForBooking.durationInMinutes ?? 60;
     const bookingEndTimeInMinutes = bookingTimeInMinutes + serviceDuration;
@@ -461,8 +462,8 @@ export async function createBooking(
     let validBlock = null;
 
     for (const block of workingHours.blocks) {
-      const blockStartMinutes = timeToMinutes(block.startTime);
-      const blockEndMinutes = timeToMinutes(block.endTime);
+      const blockStartMinutes = parseTimeToMinutes(block.startTime);
+      const blockEndMinutes = parseTimeToMinutes(block.endTime);
 
       if (
         bookingTimeInMinutes >= blockStartMinutes &&
@@ -800,7 +801,7 @@ export async function updateBookingTime(
     const newEndTime = new Date(
       newStartTime.getTime() + serviceDuration * 60000,
     );
-    const dayOfWeek = newStartTime.getDay();
+    const dayOfWeek = getArgentinaDayOfWeek(newStartTime);
     const barberId = bookingToMove.barberId;
 
     const [workingHours, timeBlocks] = await Promise.all([
@@ -818,20 +819,19 @@ export async function updateBookingTime(
     ]);
 
     // VALIDACIÓN 1: Horario Laboral (no cambia durante la transacción)
+    const newStartMinutes = getArgentinaMinutesOfDay(newStartTime);
+    const newEndMinutes = getArgentinaMinutesOfDay(newEndTime);
+
     const isWithinWorkingHours =
       workingHours?.isWorking &&
       workingHours.blocks.some((shift) => {
-        const shiftStart = new Date(newStartTime);
-        const [startHours, startMinutes] = shift.startTime
-          .split(":")
-          .map(Number);
-        shiftStart.setHours(startHours, startMinutes, 0, 0);
+        const shiftStartMinutes = parseTimeToMinutes(shift.startTime);
+        const shiftEndMinutes = parseTimeToMinutes(shift.endTime);
 
-        const shiftEnd = new Date(newStartTime);
-        const [endHours, endMinutes] = shift.endTime.split(":").map(Number);
-        shiftEnd.setHours(endHours, endMinutes, 0, 0);
-
-        return newStartTime >= shiftStart && newEndTime <= shiftEnd;
+        return (
+          newStartMinutes >= shiftStartMinutes &&
+          newEndMinutes <= shiftEndMinutes
+        );
       });
 
     if (!isWithinWorkingHours) {

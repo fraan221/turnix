@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   deleteClient,
+  updateBookingTime,
   updateBookingStatus,
   updateClientNotes,
 } from "@/actions/dashboard.actions";
@@ -44,7 +45,7 @@ interface BookingDetailsDialogContentProps {
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
 }
 
-type DialogView = "details" | "addNote" | "confirmDeleteClient";
+type DialogView = "details" | "addNote" | "confirmDeleteClient" | "editTime";
 
 const statusMap = {
   [BookingStatus.SCHEDULED]: { text: "Agendado", color: "text-blue-600" },
@@ -61,14 +62,52 @@ export function BookingDetailsDialogContent({
   const [isCancelling, startCancelling] = useTransition();
   const [isNoteSaving, startNoteSaving] = useTransition();
   const [isClientDeleting, startClientDeleting] = useTransition();
+  const [isTimeUpdating, startTimeUpdating] = useTransition();
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
+  const [editingTime, setEditingTime] = useState("");
 
   useEffect(() => {
     setView("details");
     setNote(booking.client.notes || "");
+    setEditingTime(
+      new Date(booking.startTime).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
+    );
   }, [booking.id, booking.client.notes]);
+
+  const handleTimeChange = () => {
+    if (!editingTime) {
+      toast.error("Error", {
+        description: "Seleccioná una hora válida.",
+      });
+      return;
+    }
+
+    const [hours, minutes] = editingTime.split(":").map(Number);
+    const newStartTime = new Date(booking.startTime);
+    newStartTime.setHours(hours, minutes, 0, 0);
+
+    startTimeUpdating(async () => {
+      const result = await updateBookingTime(booking.id, newStartTime);
+
+      if (result?.error) {
+        toast.error("Error al cambiar horario", {
+          description: result.error,
+        });
+        return;
+      }
+
+      toast.success("Horario actualizado", {
+        description: result.success || "Turno reprogramado con éxito.",
+      });
+      onClose();
+    });
+  };
 
   const handleStatusChange = (newStatus: BookingStatus) => {
     onOptimisticUpdate(booking.id, newStatus);
@@ -159,10 +198,17 @@ export function BookingDetailsDialogContent({
         </p>
       </div>
       {booking.status === BookingStatus.SCHEDULED && (
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setView("editTime")}
+          >
+            Cambiar horario
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isCancelling}>
+              <Button variant="destructive" disabled={isCancelling} className="w-full">
                 {isCancelling && (
                   <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 )}
@@ -197,6 +243,7 @@ export function BookingDetailsDialogContent({
               <Button
                 variant="default"
                 disabled={isCompleting || isFutureBooking}
+                className="w-full"
               >
                 {isCompleting && (
                   <Loader2 className="mr-2 w-4 h-4 animate-spin" />
@@ -228,6 +275,45 @@ export function BookingDetailsDialogContent({
           </AlertDialog>
         </DialogFooter>
       )}
+    </div>
+  );
+
+  const renderEditTimeView = () => (
+    <div className="space-y-4">
+      <div className="space-y-1 text-sm">
+        <p>
+          <strong>Cliente:</strong> {booking.client.name}
+        </p>
+        <p>
+          <strong>Fecha:</strong>{" "}
+          <span className="capitalize">{formatLongDate(booking.startTime)}</span>
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="newTime">Nueva hora</Label>
+        <input
+          id="newTime"
+          type="time"
+          step={300}
+          value={editingTime}
+          onChange={(e) => setEditingTime(e.target.value)}
+          className="flex px-3 py-2 mt-1 w-full h-10 text-sm rounded-md border bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Podés ajustar el turno en incrementos de 5 minutos.
+        </p>
+      </div>
+
+      <DialogFooter className="gap-2">
+        <Button variant="ghost" onClick={() => setView("details")}>
+          Volver
+        </Button>
+        <Button onClick={handleTimeChange} disabled={isTimeUpdating}>
+          {isTimeUpdating && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+          Guardar horario
+        </Button>
+      </DialogFooter>
     </div>
   );
 
@@ -302,6 +388,8 @@ export function BookingDetailsDialogContent({
         return renderAddNoteView();
       case "confirmDeleteClient":
         return renderConfirmDeleteClientView();
+      case "editTime":
+        return renderEditTimeView();
       case "details":
       default:
         return renderDetailsView();

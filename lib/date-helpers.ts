@@ -1,4 +1,98 @@
-const timeZone = "America/Argentina/Buenos_Aires";
+export const ARGENTINA_TIMEZONE = "America/Argentina/Buenos_Aires";
+const timeZone = ARGENTINA_TIMEZONE;
+
+function parseOffsetToMinutes(offset: string): number {
+  const normalized = offset.replace("GMT", "");
+  const sign = normalized.startsWith("-") ? -1 : 1;
+  const [hoursPart, minutesPart = "00"] = normalized
+    .replace(/^[+-]/, "")
+    .split(":");
+
+  const hours = Number(hoursPart);
+  const minutes = Number(minutesPart);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return -180;
+  }
+
+  return sign * (hours * 60 + minutes);
+}
+
+function getTimeZoneOffsetMinutes(date: Date, targetTimeZone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: targetTimeZone,
+    timeZoneName: "shortOffset",
+  });
+
+  const offsetPart = formatter
+    .formatToParts(date)
+    .find((part) => part.type === "timeZoneName")?.value;
+
+  if (!offsetPart) {
+    return -180;
+  }
+
+  return parseOffsetToMinutes(offsetPart);
+}
+
+export function parseTimeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function getArgentinaDayOfWeek(date: Date): number {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone,
+  }).format(date);
+
+  const dayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+
+  return dayMap[weekday] ?? date.getDay();
+}
+
+export function getArgentinaMinutesOfDay(date: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone,
+  }).formatToParts(date);
+
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(
+    parts.find((part) => part.type === "minute")?.value ?? 0,
+  );
+
+  return hour * 60 + minute;
+}
+
+export function createArgentinaDate(
+  dateInArgentina: string,
+  time: string,
+): Date {
+  const [year, month, day] = dateInArgentina.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  const firstOffset = getTimeZoneOffsetMinutes(utcGuess, timeZone);
+  const firstPass = new Date(utcGuess.getTime() - firstOffset * 60000);
+  const secondOffset = getTimeZoneOffsetMinutes(firstPass, timeZone);
+
+  if (secondOffset !== firstOffset) {
+    return new Date(utcGuess.getTime() - secondOffset * 60000);
+  }
+
+  return firstPass;
+}
 
 /**
  * Devuelve el inicio del día para una fecha dada (00:00:00).
@@ -23,7 +117,7 @@ export function getEndOfDay(date: Date): Date {
  */
 export function getStartOfWeek(date: Date): Date {
   const newDate = new Date(date);
-  const day = newDate.getDay(); // Domingo = 0, Lunes = 1, ...
+  const day = getArgentinaDayOfWeek(newDate); // Domingo = 0, Lunes = 1, ...
   const diff = newDate.getDate() - day + (day === 0 ? -6 : 1); // Ajusta para que el Lunes sea el primer día
   const startOfWeek = new Date(newDate.setDate(diff));
   return getStartOfDay(startOfWeek);

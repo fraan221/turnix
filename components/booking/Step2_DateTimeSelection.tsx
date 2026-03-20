@@ -8,7 +8,7 @@ import {
   getBarberAvailability,
   BarberAvailability,
 } from "@/actions/public.actions";
-import { formatFullDate } from "@/lib/date-helpers";
+import { createArgentinaDate, formatFullDate } from "@/lib/date-helpers";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import TimeSlotsSkeleton from "@/components/skeletons/TimeSlotsSkeleton";
 import { cn } from "@/lib/utils";
@@ -66,9 +66,10 @@ export function Step2_DateTimeSelection({
 
   const handleNextClick = () => {
     if (date && selectedSlot) {
-      const dateString = date.toISOString().split("T")[0];
-      const isoString = `${dateString}T${selectedSlot}:00-03:00`;
-      const finalDate = new Date(isoString);
+      const dateString = date.toLocaleDateString("en-CA", {
+        timeZone: "America/Argentina/Buenos_Aires",
+      });
+      const finalDate = createArgentinaDate(dateString, selectedSlot);
       onNext(finalDate);
     }
   };

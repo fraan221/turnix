@@ -467,6 +467,8 @@ export default function BarberCalendar({
           allDaySlot={false}
           locale="es"
           height="auto"
+          slotDuration="00:15:00"
+          snapDuration="00:05:00"
           slotMinTime="08:00:00"
           slotMaxTime="23:00:00"
           nowIndicator={true}
@@ -478,7 +480,7 @@ export default function BarberCalendar({
         open={!!selectedBooking}
         onOpenChange={(isOpen) => !isOpen && setSelectedBooking(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-[640px]">
           {selectedBooking && (
             <Suspense fallback={<BookingDetailsSkeleton />}>
               <BookingDetailsDialogContent
