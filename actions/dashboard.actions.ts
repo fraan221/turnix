@@ -311,6 +311,72 @@ export async function updateBookingStatus(
   }
 }
 
+export async function bulkUpdateBookingStatus(
+  bookingIds: string[],
+  newStatus: BookingStatus,
+): Promise<{ success: string; count: number } | { error: string }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
+
+  if (!bookingIds.length) {
+    return { error: "No se seleccionaron turnos." };
+  }
+
+  try {
+    // Fetch all bookings to verify permissions
+    const bookings = await prisma.booking.findMany({
+      where: { id: { in: bookingIds } },
+      include: {
+        barbershop: {
+          select: { ownerId: true },
+        },
+      },
+    });
+
+    if (bookings.length !== bookingIds.length) {
+      return { error: "Algunos turnos no fueron encontrados." };
+    }
+
+    // Verify user has permission for ALL bookings
+    const unauthorized = bookings.some((booking) => {
+      const isAssignedBarber = booking.barberId === user.id;
+      const isOwner = booking.barbershop.ownerId === user.id;
+      return !isAssignedBarber && !isOwner;
+    });
+
+    if (unauthorized) {
+      return {
+        error: "No tenés permiso para modificar algunos de estos turnos.",
+      };
+    }
+
+    // Batch update all bookings
+    const result = await prisma.booking.updateMany({
+      where: { id: { in: bookingIds } },
+      data: { status: newStatus },
+    });
+
+    revalidatePath("/dashboard");
+
+    const statusTextMap = {
+      [BookingStatus.SCHEDULED]: "agendados",
+      [BookingStatus.COMPLETED]: "completados",
+      [BookingStatus.CANCELLED]: "cancelados",
+    };
+    const friendlyStatus = statusTextMap[newStatus];
+
+    return {
+      success: `Se marcaron ${result.count} turnos como ${friendlyStatus}.`,
+      count: result.count,
+    };
+  } catch (error) {
+    console.error("Error al actualizar turnos en lote:", error);
+    return { error: "No se pudieron actualizar los turnos." };
+  }
+}
+
 export async function completeOnboarding() {
   const user = await getCurrentUser();
   if (!user) {
