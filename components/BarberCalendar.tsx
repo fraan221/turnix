@@ -64,9 +64,11 @@ import { BarberSelector } from "./BarberSelector";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useSession } from "next-auth/react";
 import { BulkConfirmFAB } from "./bulk-confirm/BulkConfirmFAB";
+import { DayUnconfirmedBadge } from "./bulk-confirm/DayUnconfirmedBadge";
 import {
   useBulkSelectionStore,
   selectIsSelectionMode,
+  selectSelectedDate,
   selectSelectedBookingIds,
   selectSelectedCount,
 } from "@/lib/stores/bulk-selection-store";
@@ -117,6 +119,13 @@ interface BarberCalendarProps {
   selectedBarberId?: string;
 }
 
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -162,15 +171,15 @@ export default function BarberCalendar({
 
   // Bulk selection store
   const isSelectionMode = useBulkSelectionStore(selectIsSelectionMode);
+  const selectedDate = useBulkSelectionStore(selectSelectedDate);
   const selectedBookingIds = useBulkSelectionStore(selectSelectedBookingIds);
   const selectedCount = useBulkSelectionStore(selectSelectedCount);
   const toggleBooking = useBulkSelectionStore((s) => s.toggleBooking);
 
   // Compute unconfirmed bookings (SCHEDULED and past)
-  const { unconfirmedIds, todayUnconfirmedIds } = useMemo(() => {
+  const unconfirmedByDate = useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const byDate = new Map<string, string[]>();
 
     const unconfirmed = optimisticBookings.filter(
       (b) =>
@@ -178,16 +187,20 @@ export default function BarberCalendar({
         new Date(b.startTime) < now,
     );
 
-    const todayUnconfirmed = unconfirmed.filter((b) => {
-      const startTime = new Date(b.startTime);
-      return startTime >= todayStart && startTime < todayEnd;
-    });
+    for (const booking of unconfirmed) {
+      const dateKey = getDateKey(new Date(booking.startTime));
+      const existing = byDate.get(dateKey) ?? [];
+      existing.push(booking.id);
+      byDate.set(dateKey, existing);
+    }
 
-    return {
-      unconfirmedIds: unconfirmed.map((b) => b.id),
-      todayUnconfirmedIds: todayUnconfirmed.map((b) => b.id),
-    };
+    return byDate;
   }, [optimisticBookings]);
+
+  const selectedDateUnconfirmedIds = useMemo(() => {
+    if (!selectedDate) return [];
+    return unconfirmedByDate.get(selectedDate) ?? [];
+  }, [selectedDate, unconfirmedByDate]);
 
   const targetBarberId = selectedBarberId || session?.user?.id || "";
   useRealtimeSubscription<Booking>({
@@ -351,6 +364,10 @@ export default function BarberCalendar({
       const isPastScheduled =
         booking.status === BookingStatus.SCHEDULED &&
         new Date(booking.startTime) < new Date();
+      const bookingDateKey = getDateKey(new Date(booking.startTime));
+      const isSelectableInSelectionMode =
+        isPastScheduled &&
+        (selectedDate ? bookingDateKey === selectedDate : true);
       const isSelected = selectedBookingIds.has(booking.id);
 
       let eventColor = "#3b82f6";
@@ -364,9 +381,11 @@ export default function BarberCalendar({
 
       // In selection mode, highlight selected events
       if (isSelectionMode && isPastScheduled) {
-        if (isSelected) {
+        if (isSelectableInSelectionMode && isSelected) {
           eventColor = "#0ea5e9";
           eventClassName = "cursor-pointer ring-2 ring-sky-400 ring-offset-1";
+        } else if (!isSelectableInSelectionMode) {
+          eventClassName = "cursor-not-allowed opacity-50";
         } else {
           eventClassName = "cursor-pointer opacity-70";
         }
@@ -380,7 +399,13 @@ export default function BarberCalendar({
         backgroundColor: eventColor,
         borderColor: eventColor,
         className: eventClassName,
-        extendedProps: { ...booking, isPastScheduled, isSelected },
+        extendedProps: {
+          ...booking,
+          isPastScheduled,
+          isSelected,
+          bookingDateKey,
+          isSelectableInSelectionMode,
+        },
       };
     });
 
@@ -396,15 +421,22 @@ export default function BarberCalendar({
   const handleEventClick = (clickInfo: EventClickArg) => {
     const bookingData = clickInfo.event.extendedProps as BookingWithDetails & {
       isPastScheduled?: boolean;
+      isSelectableInSelectionMode?: boolean;
     };
 
     // In selection mode, toggle selection for past scheduled bookings
     if (isSelectionMode) {
-      if (bookingData.isPastScheduled) {
-        toggleBooking(bookingData.id);
-      } else {
+      if (!bookingData.isPastScheduled) {
         toast.info("Solo podés seleccionar turnos pasados sin confirmar.");
+        return;
       }
+
+      if (!bookingData.isSelectableInSelectionMode) {
+        toast.info("Solo podés seleccionar turnos del día elegido.");
+        return;
+      }
+
+      toggleBooking(bookingData.id);
       return;
     }
 
@@ -451,10 +483,18 @@ export default function BarberCalendar({
         titleFormat: { month: "long" },
         dayHeaderFormat: { weekday: "long" },
         dayHeaderContent: (arg: any) => {
+          const dateKey = getDateKey(arg.date);
+          const unconfirmedCount = unconfirmedByDate.get(dateKey)?.length ?? 0;
+
           return (
-            <span className="text-base font-normal">
-              {arg.date.toLocaleDateString("es-AR", { weekday: "long" })}
-            </span>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-base font-normal">
+                {arg.date.toLocaleDateString("es-AR", { weekday: "long" })}
+              </span>
+              {!isSelectionMode && unconfirmedCount > 0 && (
+                <DayUnconfirmedBadge date={dateKey} count={unconfirmedCount} />
+              )}
+            </div>
           );
         },
       },
@@ -469,8 +509,10 @@ export default function BarberCalendar({
     eventContent: (arg: any) => {
       const isPastScheduled = arg.event.extendedProps?.isPastScheduled;
       const isSelected = arg.event.extendedProps?.isSelected;
+      const isSelectableInSelectionMode =
+        arg.event.extendedProps?.isSelectableInSelectionMode;
 
-      if (!isSelectionMode || !isPastScheduled) {
+      if (!isSelectionMode || !isPastScheduled || !isSelectableInSelectionMode) {
         return {
           html: `<div class=\"fc-event-main-frame\"><div class=\"fc-event-title-container\"><div class=\"fc-event-title\">${arg.event.title}</div></div></div>`,
         };
@@ -532,10 +574,13 @@ export default function BarberCalendar({
         {isSelectionMode && (
           <div className="p-3 mb-4 text-sm rounded-lg border bg-sky-50 border-sky-200 text-sky-900">
             <p className="font-semibold">
-              Modo selección activo: {selectedCount} turno{selectedCount === 1 ? "" : "s"} seleccionado{selectedCount === 1 ? "" : "s"}.
+              {selectedDate
+                ? `Modo selección activo para ${new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-AR")}`
+                : "Modo selección activo"}
+              : {selectedCount} turno{selectedCount === 1 ? "" : "s"} seleccionado{selectedCount === 1 ? "" : "s"}.
             </p>
             <p className="mt-1 text-xs">
-              Tocá los turnos pasados sin confirmar para sumarlos o quitarlos.
+              Tocá los turnos pasados sin confirmar de ese día para sumarlos o quitarlos.
             </p>
           </div>
         )}
@@ -700,9 +745,7 @@ export default function BarberCalendar({
 
       {/* Bulk Confirmation FAB */}
       <BulkConfirmFAB
-        unconfirmedCount={unconfirmedIds.length}
-        unconfirmedIds={unconfirmedIds}
-        todayUnconfirmedIds={todayUnconfirmedIds}
+        dayUnconfirmedIds={selectedDateUnconfirmedIds}
       />
     </>
   );

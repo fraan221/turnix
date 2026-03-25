@@ -3,9 +3,8 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCheck, X, Loader2, ListChecks } from "lucide-react";
+import { CheckCheck, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   useBulkSelectionStore,
   selectIsSelectionMode,
@@ -17,28 +16,20 @@ import { BookingStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
 
 interface BulkConfirmFABProps {
-  unconfirmedCount: number;
-  unconfirmedIds: string[];
-  todayUnconfirmedIds: string[];
+  dayUnconfirmedIds: string[];
 }
 
-export function BulkConfirmFAB({
-  unconfirmedCount,
-  unconfirmedIds,
-  todayUnconfirmedIds,
-}: BulkConfirmFABProps) {
+export function BulkConfirmFAB({ dayUnconfirmedIds }: BulkConfirmFABProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const isSelectionMode = useBulkSelectionStore(selectIsSelectionMode);
   const selectedCount = useBulkSelectionStore(selectSelectedCount);
   const selectedBookingIds = useBulkSelectionStore(selectSelectedBookingIds);
-  const enterSelectionMode = useBulkSelectionStore((s) => s.enterSelectionMode);
   const exitSelectionMode = useBulkSelectionStore((s) => s.exitSelectionMode);
   const selectAll = useBulkSelectionStore((s) => s.selectAll);
 
-  // Don't show FAB if no unconfirmed bookings
-  if (unconfirmedCount === 0 && !isSelectionMode) {
+  if (!isSelectionMode) {
     return null;
   }
 
@@ -64,33 +55,9 @@ export function BulkConfirmFAB({
     });
   };
 
-  const handleSelectToday = () => {
-    selectAll(todayUnconfirmedIds);
-  };
-
   const handleSelectAll = () => {
-    selectAll(unconfirmedIds);
+    selectAll(dayUnconfirmedIds);
   };
-
-  // Collapsed state - just show the FAB with count
-  if (!isSelectionMode) {
-    return (
-      <Button
-        onClick={enterSelectionMode}
-        size="lg"
-        className={cn(
-          "fixed right-4 bottom-4 z-50 gap-2 shadow-lg",
-          "md:right-6 md:bottom-6",
-        )}
-      >
-        <ListChecks className="size-5" />
-        <span className="hidden sm:inline">Confirmar turnos</span>
-        <Badge variant="secondary" className="ml-1">
-          {unconfirmedCount}
-        </Badge>
-      </Button>
-    );
-  }
 
   // Selection mode - show action bar
   return (
@@ -104,23 +71,13 @@ export function BulkConfirmFAB({
     >
       {/* Quick select buttons */}
       <div className="flex gap-2">
-        {todayUnconfirmedIds.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSelectToday}
-            disabled={isPending}
-          >
-            Solo hoy ({todayUnconfirmedIds.length})
-          </Button>
-        )}
         <Button
           variant="outline"
           size="sm"
           onClick={handleSelectAll}
           disabled={isPending}
         >
-          Todos ({unconfirmedIds.length})
+          Todos ({dayUnconfirmedIds.length})
         </Button>
       </div>
 

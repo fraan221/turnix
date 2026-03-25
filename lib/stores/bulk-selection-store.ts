@@ -9,10 +9,12 @@ import { devtools } from "zustand/middleware";
 interface BulkSelectionState {
   isSelectionMode: boolean;
   selectedBookingIds: Set<string>;
+  selectedDate: string | null;
 }
 
 interface BulkSelectionActions {
   enterSelectionMode: () => void;
+  enterSelectionModeForDate: (date: string) => void;
   exitSelectionMode: () => void;
   toggleBooking: (id: string) => void;
   selectAll: (ids: string[]) => void;
@@ -26,13 +28,29 @@ export const useBulkSelectionStore = create<BulkSelectionStore>()(
     (set) => ({
       isSelectionMode: false,
       selectedBookingIds: new Set(),
+      selectedDate: null,
 
       enterSelectionMode: () =>
         set({ isSelectionMode: true }, false, "enterSelectionMode"),
 
+      enterSelectionModeForDate: (date) =>
+        set(
+          {
+            isSelectionMode: true,
+            selectedBookingIds: new Set(),
+            selectedDate: date,
+          },
+          false,
+          "enterSelectionModeForDate",
+        ),
+
       exitSelectionMode: () =>
         set(
-          { isSelectionMode: false, selectedBookingIds: new Set() },
+          {
+            isSelectionMode: false,
+            selectedBookingIds: new Set(),
+            selectedDate: null,
+          },
           false,
           "exitSelectionMode",
         ),
@@ -74,3 +92,6 @@ export const selectIsSelected = (id: string) => (state: BulkSelectionStore) =>
 
 export const selectSelectedBookingIds = (state: BulkSelectionStore) =>
   state.selectedBookingIds;
+
+export const selectSelectedDate = (state: BulkSelectionStore) =>
+  state.selectedDate;
