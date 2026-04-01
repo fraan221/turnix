@@ -46,7 +46,7 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
   }
 
   return (
-    <Card className="max-w-4xl mx-auto mt-6">
+    <Card>
       <CardHeader>
         <CardTitle>Mejores Clientes</CardTitle>
       </CardHeader>
@@ -69,7 +69,7 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/dashboard/clients/${client.id}`)}
                 >
-                  <TableCell className="font-medium text-muted-foreground">
+                  <TableCell className="font-medium text-muted-foreground tabular-nums">
                     {index + 1}
                   </TableCell>
                   <TableCell>
@@ -87,10 +87,10 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>{client.phone}</TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium tabular-nums">
                     {client.visitsCount}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  <TableCell className="text-right text-muted-foreground tabular-nums">
                     {formatPrice(client.totalSpent)}
                   </TableCell>
                 </TableRow>

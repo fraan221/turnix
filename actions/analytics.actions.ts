@@ -30,6 +30,10 @@ export type AnalyticsData = {
   completedBookings: number;
   cancelledBookings: number;
   chartData: ChartDataPoint[];
+  topServices: {
+    name: string | null;
+    count: number;
+  }[];
   error?: string;
 };
 
@@ -283,10 +287,29 @@ const getBarbershopAnalytics = cache(
 
       const chartPromise = prisma.$queryRaw<ChartDataPoint[]>(chartQuery);
 
-      const [completedBookings, cancelledBookingsCount, rawChartData] =
+      const topServicesPromise = prisma.booking.groupBy({
+        by: ["serviceId"],
+        where: {
+          barbershopId,
+          status: BookingStatus.COMPLETED,
+          startTime: { gte: startDate, lte: endDate },
+        },
+        _count: {
+          serviceId: true,
+        },
+        orderBy: {
+          _count: {
+            serviceId: "desc",
+          },
+        },
+        take: 5,
+      });
+
+      const [completedBookings, cancelledBookingsCount, topServices, rawChartData] =
         await Promise.all([
           completedBookingsPromise,
           cancelledBookingsCountPromise,
+          topServicesPromise,
           chartPromise,
         ]);
 
@@ -299,11 +322,36 @@ const getBarbershopAnalytics = cache(
 
       const chartData = formatChartDataByPeriod(rawChartData, period);
 
+      const serviceIds = topServices
+        .map((item) => item.serviceId)
+        .filter(Boolean) as string[];
+
+      const serviceDetails =
+        serviceIds.length > 0
+          ? await prisma.service.findMany({
+              where: {
+                id: { in: serviceIds },
+              },
+              select: {
+                id: true,
+                name: true,
+              },
+            })
+          : [];
+
+      const serviceMap = new Map(serviceDetails.map((s) => [s.id, s.name]));
+
+      const formattedTopServices = topServices.map((item) => ({
+        name: serviceMap.get(item.serviceId ?? "") || "Servicio eliminado",
+        count: item._count.serviceId,
+      }));
+
       return {
         totalRevenue,
         completedBookings: completedBookingsCount,
         cancelledBookings: cancelledBookingsCount,
         chartData,
+        topServices: formattedTopServices,
         error: undefined,
       };
     } catch (error) {
@@ -313,6 +361,7 @@ const getBarbershopAnalytics = cache(
         completedBookings: 0,
         cancelledBookings: 0,
         chartData: [],
+        topServices: [],
         error: "No se pudieron cargar los datos de la base de datos.",
       };
     }
@@ -333,6 +382,7 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
       completedBookings: 0,
       cancelledBookings: 0,
       chartData: [],
+      topServices: [],
       error: user ? "No autorizado para ver estadísticas." : "No autenticado",
     };
   }
@@ -344,6 +394,7 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
       completedBookings: 0,
       cancelledBookings: 0,
       chartData: [],
+      topServices: [],
       error: "Barbería no encontrada para el usuario.",
     };
   }
@@ -763,6 +814,217 @@ export async function getClientMetrics(
 
   return getBarbershopClientMetrics(
     barbershopId,
+    period,
+    startDate,
+    endDate,
+    prevStartDate,
+    prevEndDate,
+  );
+}
+
+const getBarberClientMetrics = cache(
+  async (
+    barberId: string,
+    _period: Period,
+    startDate: Date,
+    endDate: Date,
+    prevStartDate: Date,
+    prevEndDate: Date,
+  ): Promise<ClientMetricsData> => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [
+        newClientsCount,
+        prevNewClientsCount,
+        totalClientsCount,
+        currentBookings,
+        prevBookingsGrouped,
+        inactiveClientsCount,
+      ] = await Promise.all([
+        prisma.client.count({
+          where: {
+            bookings: { some: { barberId } },
+            createdAt: { gte: startDate, lte: endDate },
+          },
+        }),
+        prisma.client.count({
+          where: {
+            bookings: { some: { barberId } },
+            createdAt: { gte: prevStartDate, lte: prevEndDate },
+          },
+        }),
+        prisma.client.count({
+          where: {
+            bookings: { some: { barberId } },
+          },
+        }),
+        prisma.booking.findMany({
+          where: {
+            barberId,
+            startTime: { gte: startDate, lte: endDate },
+            status: BookingStatus.COMPLETED,
+          },
+          select: {
+            clientId: true,
+            priceAtBooking: true,
+            service: { select: { price: true } },
+            client: { select: { id: true, name: true, phone: true } },
+          },
+        }),
+        prisma.booking.groupBy({
+          by: ["clientId"],
+          where: {
+            barberId,
+            startTime: { gte: prevStartDate, lte: prevEndDate },
+            status: BookingStatus.COMPLETED,
+          },
+          _count: { id: true },
+        }),
+        prisma.client.count({
+          where: {
+            bookings: { some: { barberId } },
+            AND: {
+              NOT: {
+                bookings: {
+                  some: {
+                    barberId,
+                    startTime: { gte: thirtyDaysAgo },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      const clientStatsMap = new Map<
+        string,
+        { count: number; totalSpent: number; client: { id: string; name: string; phone: string } }
+      >();
+
+      for (const b of currentBookings) {
+        if (!b.client) continue;
+        const spent = b.priceAtBooking ?? b.service?.price ?? 0;
+        const existing = clientStatsMap.get(b.clientId);
+        if (existing) {
+          existing.count++;
+          existing.totalSpent += spent;
+        } else {
+          clientStatsMap.set(b.clientId, {
+            count: 1,
+            totalSpent: spent,
+            client: b.client,
+          });
+        }
+      }
+
+      const clientsArray = Array.from(clientStatsMap.values());
+      let returningClientsCount = 0;
+      let vipClientsCount = 0;
+
+      for (const c of clientsArray) {
+        if (c.count >= 2) returningClientsCount++;
+        if (c.count >= 5) vipClientsCount++;
+      }
+
+      const totalWithBookings = clientsArray.length;
+      const retentionRate =
+        totalWithBookings > 0
+          ? (returningClientsCount / totalWithBookings) * 100
+          : 0;
+      const averageVisitsPerClient =
+        totalWithBookings > 0 ? currentBookings.length / totalWithBookings : 0;
+
+      let prevReturning = 0;
+      for (const b of prevBookingsGrouped) {
+        if (b._count.id >= 2) prevReturning++;
+      }
+      const prevTotalWithBookings = prevBookingsGrouped.length;
+      const prevRetentionRate =
+        prevTotalWithBookings > 0
+          ? (prevReturning / prevTotalWithBookings) * 100
+          : 0;
+
+      const topClients = clientsArray
+        .sort((a, b) => b.count - a.count || b.totalSpent - a.totalSpent)
+        .slice(0, 20)
+        .map((c) => ({
+          id: c.client.id,
+          name: c.client.name,
+          phone: c.client.phone,
+          visitsCount: c.count,
+          totalSpent: c.totalSpent,
+          isVip: c.count >= 5,
+        }));
+
+      return {
+        newClientsCount,
+        newClientsChange: calculatePercentageChange(
+          newClientsCount,
+          prevNewClientsCount,
+        ),
+        totalClientsCount,
+        returningClientsCount,
+        retentionRate,
+        retentionRateChange: retentionRate - prevRetentionRate,
+        vipClientsCount,
+        topClients,
+        inactiveClientsCount,
+        averageVisitsPerClient,
+      };
+    } catch (error) {
+      console.error("Error en la consulta de métricas de clientes de barbero:", error);
+      return {
+        newClientsCount: 0,
+        newClientsChange: 0,
+        totalClientsCount: 0,
+        returningClientsCount: 0,
+        retentionRate: 0,
+        retentionRateChange: 0,
+        vipClientsCount: 0,
+        topClients: [],
+        inactiveClientsCount: 0,
+        averageVisitsPerClient: 0,
+        error: "No se pudieron cargar las métricas de clientes.",
+      };
+    }
+  },
+  ["getBarberClientMetrics"],
+  {
+    revalidate: 300,
+    tags: ["barber-client-metrics"],
+  },
+);
+
+export async function getBarberClientMetricsData(
+  period: Period = "month",
+): Promise<ClientMetricsData> {
+  const user = await getUserForSettings();
+
+  if (!user || user.role !== Role.BARBER) {
+    return {
+      newClientsCount: 0,
+      newClientsChange: 0,
+      totalClientsCount: 0,
+      returningClientsCount: 0,
+      retentionRate: 0,
+      retentionRateChange: 0,
+      vipClientsCount: 0,
+      topClients: [],
+      inactiveClientsCount: 0,
+      averageVisitsPerClient: 0,
+      error: user ? "No autorizado para ver estadísticas." : "No autenticado",
+    };
+  }
+
+  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { start: prevStartDate, end: prevEndDate } =
+    getPreviousPeriodRange(period);
+
+  return getBarberClientMetrics(
+    user.id,
     period,
     startDate,
     endDate,

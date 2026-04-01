@@ -10,6 +10,7 @@ import type { AnalyticsData, ClientMetricsData, Period } from "@/actions/analyti
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
 import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
+import { TopServicesCard } from "@/components/analytics/TopServicesCard";
 import { ClientInsightsPanel } from "@/components/analytics/ClientInsightsPanel";
 
 interface AnalyticsDashboardProps {
@@ -94,7 +95,10 @@ export default function AnalyticsDashboard({
           period={currentPeriod}
         />
 
-        <TopClientsTable clients={clientMetrics.topClients} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TopClientsTable clients={clientMetrics.topClients} />
+          <TopServicesCard services={initialData.topServices} />
+        </div>
       </section>
     </div>
   );
