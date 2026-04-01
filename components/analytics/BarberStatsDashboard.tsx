@@ -82,7 +82,7 @@ export default function BarberStatsDashboard({
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <IncomeOverTimeChart data={initialData.chartData} />
+        <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
       </div>
 
       <Card className="max-w-4xl mx-auto">

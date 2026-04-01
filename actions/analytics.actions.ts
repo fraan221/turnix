@@ -58,11 +58,10 @@ function formatChartDataByPeriod(
   rawChartData: ChartDataPoint[],
   period: Period,
 ): ChartDataPoint[] {
-  const chartDataMap = new Map<string, number>(
-    rawChartData.map((item) => [String(item.name), item.total]),
-  );
-
   if (period === "day") {
+    const chartDataMap = new Map<string, number>(
+      rawChartData.map((item) => [String(item.name), item.total]),
+    );
     const chartData: ChartDataPoint[] = [];
 
     for (let i = 0; i < 24; i++) {
@@ -74,15 +73,18 @@ function formatChartDataByPeriod(
   }
 
   if (period === "week") {
+    const chartDataMap = new Map<string, number>(
+      rawChartData.map((item) => [String(item.name), item.total]),
+    );
     const chartData: ChartDataPoint[] = [];
     const weekDays = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-      "Domingo",
+      "Lun",
+      "Mar",
+      "Mié",
+      "Jue",
+      "Vie",
+      "Sáb",
+      "Dom",
     ];
 
     for (let i = 1; i <= 7; i++) {
@@ -93,7 +95,38 @@ function formatChartDataByPeriod(
     return chartData;
   }
 
-  return rawChartData.map((d) => ({ ...d, name: String(d.name) }));
+  const groupedData = new Map<string, number>();
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+  for (const item of rawChartData) {
+    const [yearStr, monthStr, dayStr] = String(item.name).split("-");
+    if (!yearStr || !monthStr || !dayStr) continue;
+    
+    const month = parseInt(monthStr, 10) - 1;
+    const day = parseInt(dayStr, 10);
+    
+    let groupKey = String(item.name);
+
+    if (period === "month") {
+      groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
+    } else if (period === "quarter") {
+      const weekOfMonth = Math.ceil(day / 7);
+      groupKey = `Sem ${weekOfMonth} ${months[month]}`;
+    } else if (period === "year") {
+      groupKey = months[month];
+    } else if (period === "all") {
+      groupKey = `${months[month]} ${yearStr.slice(-2)}`;
+    }
+
+    groupedData.set(groupKey, (groupedData.get(groupKey) || 0) + item.total);
+  }
+
+  const result: ChartDataPoint[] = [];
+  Array.from(groupedData.entries()).forEach(([name, total]) => {
+    result.push({ name, total });
+  });
+
+  return result;
 }
 
 function getDateRangeForPeriod(period: Period) {
@@ -240,11 +273,11 @@ const getBarbershopAnalytics = cache(
         chartQuery = Prisma.sql`
           ${baseCTE}
           SELECT
-            TO_CHAR(local_time, 'DD/MM') AS name,
+            TO_CHAR(DATE_TRUNC('day', local_time), 'YYYY-MM-DD') AS name,
             SUM(price)::float AS total
           FROM "BookingsInLocalTime"
-          GROUP BY name
-          ORDER BY name ASC;
+          GROUP BY DATE_TRUNC('day', local_time)
+          ORDER BY DATE_TRUNC('day', local_time) ASC;
         `;
       }
 
@@ -382,11 +415,11 @@ const getBarberAnalytics = cache(
         chartQuery = Prisma.sql`
           ${baseCTE}
           SELECT
-            TO_CHAR(local_time, 'DD/MM') AS name,
+            TO_CHAR(DATE_TRUNC('day', local_time), 'YYYY-MM-DD') AS name,
             SUM(price)::float AS total
           FROM "BookingsInLocalTime"
-          GROUP BY name
-          ORDER BY name ASC;
+          GROUP BY DATE_TRUNC('day', local_time)
+          ORDER BY DATE_TRUNC('day', local_time) ASC;
         `;
       }
 

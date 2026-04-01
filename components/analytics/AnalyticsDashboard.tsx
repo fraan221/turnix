@@ -7,7 +7,6 @@ import { formatPrice } from "@/lib/utils";
 import { DollarSign, CheckCircle, XCircle } from "lucide-react";
 import React from "react";
 import type { AnalyticsData, ClientMetricsData, Period } from "@/actions/analytics.actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
 import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
@@ -50,15 +49,13 @@ export default function AnalyticsDashboard({
   return (
     <div className="mx-auto space-y-6 max-w-7xl">
       <section className="space-y-4">
-        <Card>
-          <CardHeader className="flex items-center justify-between gap-2 sm:flex-row xs:flex-col">
-            <CardTitle>Tu facturación</CardTitle>
-            <PeriodDropdown
-              currentPeriod={currentPeriod}
-              onPeriodChange={handlePeriodChange}
-            />
-          </CardHeader>
-        </Card>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-xl font-semibold tracking-tight">Tu facturación</h2>
+          <PeriodDropdown
+            currentPeriod={currentPeriod}
+            onPeriodChange={handlePeriodChange}
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
@@ -81,15 +78,13 @@ export default function AnalyticsDashboard({
           />
         </div>
 
-        <IncomeOverTimeChart data={initialData.chartData} />
+        <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
       </section>
 
       <section className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tus clientes</CardTitle>
-          </CardHeader>
-        </Card>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-xl font-semibold tracking-tight">Tus clientes</h2>
+        </div>
 
         <ClientMetricsCards metrics={clientMetrics} period={currentPeriod} />
 
