@@ -247,14 +247,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     return { error: validatedFields.error.issues[0].message };
   }
 
-    const {
-      barberId,
-      clientName,
-      clientPhone,
-      startTime: startTimeISO,
-      serviceIds,
-      acceptPolicy,
-    } = validatedFields.data;
+  const {
+    barberId,
+    clientName,
+    clientPhone,
+    startTime: startTimeISO,
+    serviceIds,
+    acceptPolicy,
+  } = validatedFields.data;
   const serviceId = serviceIds.split(",")[0];
   const startTime = new Date(startTimeISO);
 

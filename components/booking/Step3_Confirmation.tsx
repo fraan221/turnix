@@ -113,8 +113,11 @@ export function Step3_Confirmation({
   }, [selectedServices]);
 
   const isFormReady = useMemo(() => {
-    const hasName = clientName.trim().length > 0;
-    const hasPhone = clientPhone.trim().length > 0;
+    const isValidName = (name: string) => name.trim().length > 0;
+    const isValidPhone = (phone: string) => phone.trim().length > 0;
+
+    const hasName = isValidName(clientName);
+    const hasPhone = isValidPhone(clientPhone);
     const policyIsValid = !cancellationPolicy || policyAccepted;
 
     return hasName && hasPhone && policyIsValid;
