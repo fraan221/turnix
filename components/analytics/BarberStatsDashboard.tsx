@@ -3,9 +3,9 @@
 import type { Period, PersonalStatsData } from "@/actions/analytics.actions";
 import { IncomeOverTimeChart } from "@/components/analytics/IncomeOverTimeChart";
 import { StatCard } from "@/components/analytics/StatCard";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, formatPrice } from "@/lib/utils";
+import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
+import { formatPrice } from "@/lib/utils";
 import { DollarSign, Scissors, Users, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import React from "react";
@@ -13,37 +13,6 @@ import React from "react";
 interface BarberStatsDashboardProps {
   initialData: PersonalStatsData;
 }
-
-const PeriodSelector: React.FC<{
-  currentPeriod: Period;
-  onPeriodChange: (period: Period) => void;
-}> = ({ currentPeriod, onPeriodChange }) => {
-  const periods: { value: Period; label: string }[] = [
-    { value: "day", label: "Hoy" },
-    { value: "week", label: "Esta Semana" },
-    { value: "month", label: "Este Mes" },
-  ];
-
-  return (
-    <div className="flex items-center p-1 space-x-1 border rounded-lg bg-muted">
-      {periods.map((period) => (
-        <Button
-          key={period.value}
-          variant={currentPeriod === period.value ? "default" : "ghost"}
-          onClick={() => onPeriodChange(period.value)}
-          className={cn(
-            "w-full transition-all duration-150",
-            currentPeriod === period.value
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "hover:bg-background/50",
-          )}
-        >
-          {period.label}
-        </Button>
-      ))}
-    </div>
-  );
-};
 
 export default function BarberStatsDashboard({
   initialData,
@@ -68,6 +37,9 @@ export default function BarberStatsDashboard({
     day: "en las últimas 24 horas",
     week: "en los últimos 7 días",
     month: "en los últimos 30 días",
+    quarter: "en los últimos 3 meses",
+    year: "este año",
+    all: "en total",
   };
 
   return (
@@ -75,7 +47,7 @@ export default function BarberStatsDashboard({
       <Card>
         <CardHeader className="flex items-center justify-between gap-2 sm:flex-row xs:flex-col">
           <CardTitle>Mis estadísticas</CardTitle>
-          <PeriodSelector
+          <PeriodDropdown
             currentPeriod={currentPeriod}
             onPeriodChange={handlePeriodChange}
           />

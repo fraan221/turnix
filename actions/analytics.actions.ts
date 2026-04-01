@@ -10,10 +10,15 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
+  getStartOfQuarter,
+  getEndOfQuarter,
+  getStartOfYear,
+  getEndOfYear,
+  getAllTimeStart,
 } from "@/lib/date-helpers";
 import { unstable_cache as cache } from "next/cache";
 
-export type Period = "day" | "week" | "month";
+export type Period = "day" | "week" | "month" | "quarter" | "year" | "all";
 
 export type ChartDataPoint = {
   name: string;
@@ -25,6 +30,27 @@ export type AnalyticsData = {
   completedBookings: number;
   cancelledBookings: number;
   chartData: ChartDataPoint[];
+  error?: string;
+};
+
+export type ClientMetricsData = {
+  newClientsCount: number;
+  newClientsChange: number;
+  totalClientsCount: number;
+  returningClientsCount: number;
+  retentionRate: number;
+  retentionRateChange: number;
+  vipClientsCount: number;
+  topClients: {
+    id: string;
+    name: string;
+    phone: string;
+    visitsCount: number;
+    totalSpent: number;
+    isVip: boolean;
+  }[];
+  inactiveClientsCount: number;
+  averageVisitsPerClient: number;
   error?: string;
 };
 
@@ -89,6 +115,62 @@ function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfMonth(now),
         endDate: getEndOfMonth(now),
       };
+    case "quarter":
+      return {
+        startDate: getStartOfQuarter(now),
+        endDate: getEndOfQuarter(now),
+      };
+    case "year":
+      return {
+        startDate: getStartOfYear(now),
+        endDate: getEndOfYear(now),
+      };
+    case "all":
+      return {
+        startDate: getAllTimeStart(),
+        endDate: getEndOfDay(now),
+      };
+    default:
+      return {
+        startDate: getStartOfWeek(now),
+        endDate: getEndOfWeek(now),
+      };
+  }
+}
+
+function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
+  const now = new Date();
+
+  switch (period) {
+    case "day": {
+      const start = getStartOfDay(now);
+      start.setDate(start.getDate() - 1);
+      return { start, end: getEndOfDay(start) };
+    }
+    case "week": {
+      const start = getStartOfWeek(now);
+      start.setDate(start.getDate() - 7);
+      return { start, end: getEndOfWeek(start) };
+    }
+    case "month": {
+      const start = getStartOfMonth(now);
+      start.setMonth(start.getMonth() - 1);
+      return { start, end: getEndOfMonth(start) };
+    }
+    case "quarter": {
+      const start = getStartOfQuarter(now);
+      start.setMonth(start.getMonth() - 3);
+      return { start, end: getEndOfQuarter(start) };
+    }
+    case "year": {
+      const start = getStartOfYear(now);
+      start.setFullYear(start.getFullYear() - 1);
+      return { start, end: getEndOfYear(start) };
+    }
+    case "all":
+    default:
+      // For all time, there is no previous period
+      return { start: getAllTimeStart(), end: getAllTimeStart() };
   }
 }
 
@@ -438,4 +520,220 @@ export async function getPersonalBarberStats(
   const { startDate, endDate } = getDateRangeForPeriod(period);
 
   return getBarberAnalytics(user.id, period, startDate, endDate);
+}
+
+function calculatePercentageChange(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+}
+
+const getBarbershopClientMetrics = cache(
+  async (
+    barbershopId: string,
+    _period: Period,
+    startDate: Date,
+    endDate: Date,
+    prevStartDate: Date,
+    prevEndDate: Date,
+  ): Promise<ClientMetricsData> => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [
+        newClientsCount,
+        prevNewClientsCount,
+        totalClientsCount,
+        currentBookings,
+        prevBookingsGrouped,
+        inactiveClientsCount,
+      ] = await Promise.all([
+        prisma.client.count({
+          where: { barbershopId, createdAt: { gte: startDate, lte: endDate } },
+        }),
+        prisma.client.count({
+          where: { barbershopId, createdAt: { gte: prevStartDate, lte: prevEndDate } },
+        }),
+        prisma.client.count({
+          where: { barbershopId },
+        }),
+        prisma.booking.findMany({
+          where: {
+            barbershopId,
+            startTime: { gte: startDate, lte: endDate },
+            status: BookingStatus.COMPLETED,
+          },
+          select: {
+            clientId: true,
+            priceAtBooking: true,
+            service: { select: { price: true } },
+            client: { select: { id: true, name: true, phone: true } },
+          },
+        }),
+        prisma.booking.groupBy({
+          by: ["clientId"],
+          where: {
+            barbershopId,
+            startTime: { gte: prevStartDate, lte: prevEndDate },
+            status: BookingStatus.COMPLETED,
+          },
+          _count: { id: true },
+        }),
+        prisma.client.count({
+          where: {
+            barbershopId,
+            bookings: { none: { startTime: { gte: thirtyDaysAgo } } },
+          },
+        }),
+      ]);
+
+      const clientStatsMap = new Map<
+        string,
+        { count: number; totalSpent: number; client: { id: string; name: string; phone: string } }
+      >();
+
+      for (const b of currentBookings) {
+        if (!b.client) continue;
+        const spent = b.priceAtBooking ?? b.service?.price ?? 0;
+        const existing = clientStatsMap.get(b.clientId);
+        if (existing) {
+          existing.count++;
+          existing.totalSpent += spent;
+        } else {
+          clientStatsMap.set(b.clientId, {
+            count: 1,
+            totalSpent: spent,
+            client: b.client,
+          });
+        }
+      }
+
+      const clientsArray = Array.from(clientStatsMap.values());
+      let returningClientsCount = 0;
+      let vipClientsCount = 0;
+
+      for (const c of clientsArray) {
+        if (c.count >= 2) returningClientsCount++;
+        if (c.count >= 5) vipClientsCount++;
+      }
+
+      const totalWithBookings = clientsArray.length;
+      const retentionRate =
+        totalWithBookings > 0
+          ? (returningClientsCount / totalWithBookings) * 100
+          : 0;
+      const averageVisitsPerClient =
+        totalWithBookings > 0 ? currentBookings.length / totalWithBookings : 0;
+
+      let prevReturning = 0;
+      for (const b of prevBookingsGrouped) {
+        if (b._count.id >= 2) prevReturning++;
+      }
+      const prevTotalWithBookings = prevBookingsGrouped.length;
+      const prevRetentionRate =
+        prevTotalWithBookings > 0
+          ? (prevReturning / prevTotalWithBookings) * 100
+          : 0;
+
+      const topClients = clientsArray
+        .sort((a, b) => b.count - a.count || b.totalSpent - a.totalSpent)
+        .slice(0, 20)
+        .map((c) => ({
+          id: c.client.id,
+          name: c.client.name,
+          phone: c.client.phone,
+          visitsCount: c.count,
+          totalSpent: c.totalSpent,
+          isVip: c.count >= 5,
+        }));
+
+      return {
+        newClientsCount,
+        newClientsChange: calculatePercentageChange(
+          newClientsCount,
+          prevNewClientsCount,
+        ),
+        totalClientsCount,
+        returningClientsCount,
+        retentionRate,
+        retentionRateChange: retentionRate - prevRetentionRate,
+        vipClientsCount,
+        topClients,
+        inactiveClientsCount,
+        averageVisitsPerClient,
+      };
+    } catch (error) {
+      console.error("Error en la consulta de métricas de clientes:", error);
+      return {
+        newClientsCount: 0,
+        newClientsChange: 0,
+        totalClientsCount: 0,
+        returningClientsCount: 0,
+        retentionRate: 0,
+        retentionRateChange: 0,
+        vipClientsCount: 0,
+        topClients: [],
+        inactiveClientsCount: 0,
+        averageVisitsPerClient: 0,
+        error: "No se pudieron cargar las métricas de clientes.",
+      };
+    }
+  },
+  ["getClientMetrics"],
+  {
+    revalidate: 300,
+    tags: ["client-metrics"],
+  },
+);
+
+export async function getClientMetrics(
+  period: Period = "month",
+): Promise<ClientMetricsData> {
+  const user = await getUserForSettings();
+
+  if (!user || user.role !== Role.OWNER) {
+    return {
+      newClientsCount: 0,
+      newClientsChange: 0,
+      totalClientsCount: 0,
+      returningClientsCount: 0,
+      retentionRate: 0,
+      retentionRateChange: 0,
+      vipClientsCount: 0,
+      topClients: [],
+      inactiveClientsCount: 0,
+      averageVisitsPerClient: 0,
+      error: user ? "No autorizado para ver estadísticas." : "No autenticado",
+    };
+  }
+
+  const barbershopId = user.ownedBarbershop?.id;
+  if (!barbershopId) {
+    return {
+      newClientsCount: 0,
+      newClientsChange: 0,
+      totalClientsCount: 0,
+      returningClientsCount: 0,
+      retentionRate: 0,
+      retentionRateChange: 0,
+      vipClientsCount: 0,
+      topClients: [],
+      inactiveClientsCount: 0,
+      averageVisitsPerClient: 0,
+      error: "Barbería no encontrada para el usuario.",
+    };
+  }
+
+  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { start: prevStartDate, end: prevEndDate } =
+    getPreviousPeriodRange(period);
+
+  return getBarbershopClientMetrics(
+    barbershopId,
+    period,
+    startDate,
+    endDate,
+    prevStartDate,
+    prevEndDate,
+  );
 }

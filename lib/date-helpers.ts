@@ -404,3 +404,51 @@ export function formatBookingDateForNotification(bookingDate: Date): string {
 
   return `el ${formattedDate}`;
 }
+
+/**
+ * Devuelve el inicio del trimestre (quarter) para una fecha dada.
+ */
+export function getStartOfQuarter(date: Date): Date {
+  const newDate = new Date(date);
+  const currentMonth = newDate.getMonth();
+  const startMonth = currentMonth - (currentMonth % 3);
+  newDate.setMonth(startMonth, 1);
+  return getStartOfDay(newDate);
+}
+
+/**
+ * Devuelve el final del trimestre (quarter) para una fecha dada.
+ */
+export function getEndOfQuarter(date: Date): Date {
+  const newDate = new Date(date);
+  const currentMonth = newDate.getMonth();
+  const endMonth = currentMonth - (currentMonth % 3) + 2;
+  newDate.setMonth(endMonth + 1, 0); // día 0 del mes siguiente = último día del trimestre
+  return getEndOfDay(newDate);
+}
+
+/**
+ * Devuelve el inicio del año para una fecha dada.
+ */
+export function getStartOfYear(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setMonth(0, 1);
+  return getStartOfDay(newDate);
+}
+
+/**
+ * Devuelve el final del año para una fecha dada.
+ */
+export function getEndOfYear(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setMonth(11, 31);
+  return getEndOfDay(newDate);
+}
+
+/**
+ * Devuelve una fecha de inicio "todo el tiempo" (muy antigua).
+ */
+export function getAllTimeStart(): Date {
+  return new Date('2020-01-01T00:00:00Z');
+}
+
