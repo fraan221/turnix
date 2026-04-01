@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -17,11 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { createPublicBooking } from "@/actions/public.actions";
 import { createDepositPreference } from "@/actions/payment.actions";
-import { ArrowLeft, Loader2, CalendarPlus, CreditCard } from "lucide-react";
+import { ArrowLeft, Loader2, CalendarPlus, Info } from "lucide-react";
 
 type CreateBookingState = {
   success?: string | null;
@@ -43,13 +45,21 @@ type CreateBookingState = {
 interface Step3ConfirmationProps {
   barberId: string;
   barberName: string;
+  barbershopName: string;
   selectedServices: Service[];
   selectedDateTime: Date;
+  cancellationPolicy: string | null;
   onBack: () => void;
   hasMultipleBarbers: boolean;
 }
 
-function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
+function SubmitButton({
+  isRedirecting,
+  isDisabled,
+}: {
+  isRedirecting: boolean;
+  isDisabled: boolean;
+}) {
   const { pending } = useFormStatus();
 
   if (isRedirecting) {
@@ -62,7 +72,7 @@ function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
   }
 
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type="submit" className="w-full" disabled={pending || isDisabled}>
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -78,13 +88,19 @@ function SubmitButton({ isRedirecting }: { isRedirecting: boolean }) {
 export function Step3_Confirmation({
   barberId,
   barberName,
+  barbershopName,
   selectedServices,
   selectedDateTime,
+  cancellationPolicy,
   onBack,
   hasMultipleBarbers,
 }: Step3ConfirmationProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showPolicyDialog, setShowPolicyDialog] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const router = useRouter();
 
   const [state, formAction] = useFormState<CreateBookingState, FormData>(
@@ -95,6 +111,14 @@ export function Step3_Confirmation({
   const serviceIds = useMemo(() => {
     return selectedServices.map((s) => s.id);
   }, [selectedServices]);
+
+  const isFormReady = useMemo(() => {
+    const hasName = clientName.trim().length > 0;
+    const hasPhone = clientPhone.trim().length > 0;
+    const policyIsValid = !cancellationPolicy || policyAccepted;
+
+    return hasName && hasPhone && policyIsValid;
+  }, [clientName, clientPhone, cancellationPolicy, policyAccepted]);
 
   useEffect(() => {
     async function handlePaymentRedirect(bookingId: string) {
@@ -134,6 +158,7 @@ export function Step3_Confirmation({
 
       router.push(`/booking-confirmed?${queryParams.toString()}`);
     }
+
     if (state?.error) {
       toast.error("Error al reservar", { description: state.error });
 
@@ -153,6 +178,7 @@ export function Step3_Confirmation({
           Revisa los detalles de tu turno y completa tus datos para finalizar.
         </p>
       </div>
+
       <div className="p-4 space-y-4 border rounded-lg">
         <div>
           <h3 className="mb-2 font-semibold">Servicio</h3>
@@ -160,13 +186,12 @@ export function Step3_Confirmation({
             {selectedServices.map((service) => (
               <li key={service.id} className="flex justify-between">
                 <span>{service.name}</span>
-                <span className="font-medium">
-                  {formatPrice(service.price)}
-                </span>
+                <span className="font-medium">{formatPrice(service.price)}</span>
               </li>
             ))}
           </ul>
         </div>
+
         {hasMultipleBarbers && (
           <>
             <Separator />
@@ -176,7 +201,9 @@ export function Step3_Confirmation({
             </div>
           </>
         )}
+
         <Separator />
+
         <div>
           <h3 className="font-semibold">Día y Hora</h3>
           <p className="text-sm text-muted-foreground">
@@ -184,6 +211,7 @@ export function Step3_Confirmation({
           </p>
         </div>
       </div>
+
       <div className="flex justify-between gap-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
@@ -196,6 +224,7 @@ export function Step3_Confirmation({
               Completar reserva
             </Button>
           </DialogTrigger>
+
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Finaliza tu reserva</DialogTitle>
@@ -203,35 +232,96 @@ export function Step3_Confirmation({
                 Completa tus datos para confirmar el turno.
               </DialogDescription>
             </DialogHeader>
+
             <form action={formAction} className="space-y-4">
               <input type="hidden" name="barberId" value={barberId} />
-              <input
-                type="hidden"
-                name="serviceIds"
-                value={serviceIds.join(",")}
-              />
+              <input type="hidden" name="serviceIds" value={serviceIds.join(",")} />
               <input
                 type="hidden"
                 name="startTime"
                 value={selectedDateTime.toISOString()}
               />
+
               <div>
                 <Label htmlFor="clientName">Nombre y Apellido</Label>
-                <Input id="clientName" name="clientName" required />
+                <Input
+                  id="clientName"
+                  name="clientName"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  required
+                />
               </div>
+
               <div>
                 <Label htmlFor="clientPhone">Número de Celular</Label>
                 <Input
                   id="clientPhone"
                   name="clientPhone"
                   type="tel"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
                   required
                 />
               </div>
-              <SubmitButton isRedirecting={isRedirecting} />
+
+              {cancellationPolicy && (
+                <div className="flex gap-2 items-start">
+                  <Checkbox
+                    id="acceptPolicy"
+                    name="acceptPolicy"
+                    checked={policyAccepted}
+                    onCheckedChange={(checked) =>
+                      setPolicyAccepted(checked === true)
+                    }
+                    className="mt-1"
+                  />
+                  <div className="grid gap-1.5">
+                    <Label
+                      htmlFor="acceptPolicy"
+                      className="text-sm font-normal leading-relaxed flex items-center gap-1.5"
+                    >
+                      Acepto las políticas de cancelación de turnos.
+                      <button
+                        type="button"
+                        onClick={() => setShowPolicyDialog(true)}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Ver política de cancelación"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </Label>
+                  </div>
+                </div>
+              )}
+
+              <SubmitButton
+                isRedirecting={isRedirecting}
+                isDisabled={!isFormReady}
+              />
             </form>
           </DialogContent>
         </Dialog>
+
+        {cancellationPolicy && (
+          <Dialog open={showPolicyDialog} onOpenChange={setShowPolicyDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Política de Cancelación</DialogTitle>
+              </DialogHeader>
+
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground max-h-[50vh] overflow-y-auto">
+                {cancellationPolicy}
+              </p>
+
+              <DialogFooter className="pt-2 border-t">
+                <p className="w-full text-xs text-right text-muted-foreground">
+                  {barbershopName}
+                </p>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );

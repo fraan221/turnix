@@ -28,6 +28,7 @@ async function SettingsPageContent() {
                 depositEnabled: ownedBarbershop.depositEnabled,
                 depositAmountType: ownedBarbershop.depositAmountType,
                 depositAmount: ownedBarbershop.depositAmount,
+                cancellationPolicy: ownedBarbershop.cancellationPolicy,
                 mpCredentials: ownedBarbershop.mpCredentials,
               }
             : {}),

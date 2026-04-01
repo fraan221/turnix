@@ -46,6 +46,7 @@ model Barbershop {
   image        String?
   address      String?
   description  String?
+  cancellationPolicy String?
 
   // Deposit settings
   depositEnabled    Boolean  @default(false)

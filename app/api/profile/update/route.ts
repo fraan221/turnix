@@ -31,6 +31,7 @@ const UserProfileSchema = z.object({
     .optional(),
   barbershopDescription: z.string().optional(),
   barbershopAddress: z.string().optional(),
+  cancellationPolicy: z.string().optional(),
   avatarUrl: z.string().optional(),
   barbershopImageUrl: z.string().optional(),
   depositEnabled: z.enum(["true", "false"]).optional(),
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
         "barbershopDescription",
       );
       fieldsToValidate.barbershopAddress = formData.get("barbershopAddress");
+      fieldsToValidate.cancellationPolicy = formData.get("cancellationPolicy");
       fieldsToValidate.depositEnabled = formData.get("depositEnabled");
       fieldsToValidate.depositAmountType = formData.get("depositAmountType");
       fieldsToValidate.depositAmount = formData.get("depositAmount");
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
         slug,
         barbershopAddress,
         barbershopDescription,
+        cancellationPolicy,
         depositEnabled,
         depositAmountType,
         depositAmount,
@@ -137,6 +140,7 @@ export async function POST(request: Request) {
               name: barbershopName!,
               description: barbershopDescription,
               address: barbershopAddress,
+              cancellationPolicy,
               ...(barbershopImageUrl && { image: barbershopImageUrl }),
               // Deposit settings
               ...(depositEnabled !== undefined && {
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
               slug: slug!,
               description: barbershopDescription,
               address: barbershopAddress,
+              cancellationPolicy,
               ...(barbershopImageUrl && { image: barbershopImageUrl }),
               owner: { connect: { id: userId } },
             },

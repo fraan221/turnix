@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Bell } from "lucide-react";
 import { Badge } from "./ui/badge";
@@ -12,11 +11,6 @@ import {
   markNotificationsAsRead,
 } from "@/actions/notification.actions";
 import { useBroadcast } from "@/hooks/use-broadcast";
-
-interface NotificationPayload {
-  id: string;
-  message: string;
-}
 
 export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -29,10 +23,8 @@ export function NotificationBell() {
     }
   }, []);
 
-  useBroadcast(session?.user?.id, (event, payload) => {
+  useBroadcast(session?.user?.id, (event) => {
     if (event === "new-notification") {
-      const notification = payload as NotificationPayload;
-      toast.info(notification.message);
       setUnreadCount((prev) => prev + 1);
       window.dispatchEvent(new Event("new-booking-event"));
     }

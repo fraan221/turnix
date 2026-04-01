@@ -11,6 +11,8 @@ interface BookingWizardProps {
   barbers: User[];
   barberServices: Service[];
   selectedServices: Service[];
+  barbershopName: string;
+  cancellationPolicy: string | null;
   step: number;
   selectedBarber: User | null;
   selectedServiceId: string;
@@ -27,6 +29,8 @@ export function BookingWizard({
   barbers,
   barberServices,
   selectedServices,
+  barbershopName,
+  cancellationPolicy,
   step,
   selectedBarber,
   selectedServiceId,
@@ -86,8 +90,10 @@ export function BookingWizard({
                   <Step3_Confirmation
                     barberId={selectedBarber.id}
                     barberName={selectedBarber.name}
+                    barbershopName={barbershopName}
                     selectedServices={selectedServices}
                     selectedDateTime={selectedDateTime}
+                    cancellationPolicy={cancellationPolicy}
                     onBack={handleBack}
                     hasMultipleBarbers={hasMultipleBarbers}
                   />

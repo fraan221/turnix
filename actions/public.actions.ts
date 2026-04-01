@@ -236,6 +236,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
           ),
       ),
     startTime: z.string().datetime(),
+    acceptPolicy: z.string().optional(),
   });
 
   const validatedFields = BookingFormSchema.safeParse(
@@ -246,13 +247,14 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     return { error: validatedFields.error.issues[0].message };
   }
 
-  const {
-    barberId,
-    clientName,
-    clientPhone,
-    startTime: startTimeISO,
-    serviceIds,
-  } = validatedFields.data;
+    const {
+      barberId,
+      clientName,
+      clientPhone,
+      startTime: startTimeISO,
+      serviceIds,
+      acceptPolicy,
+    } = validatedFields.data;
   const serviceId = serviceIds.split(",")[0];
   const startTime = new Date(startTimeISO);
 
@@ -285,12 +287,19 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         depositEnabled: true,
         depositAmountType: true,
         depositAmount: true,
+        cancellationPolicy: true,
         mpCredentials: { select: { id: true } },
       },
     });
 
     if (!barbershop) {
       return { error: "Los detalles de la barbería no fueron encontrados." };
+    }
+
+    if (barbershop.cancellationPolicy && acceptPolicy !== "on") {
+      return {
+        error: "Debes aceptar las políticas de cancelación para continuar.",
+      };
     }
 
     const [client, service] = await Promise.all([

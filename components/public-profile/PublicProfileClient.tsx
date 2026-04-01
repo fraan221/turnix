@@ -165,6 +165,8 @@ export function PublicProfileClient({
                     barbers={allBarbers}
                     barberServices={barberServices}
                     selectedServices={selectedServices}
+                    barbershopName={barbershop.name}
+                    cancellationPolicy={barbershop.cancellationPolicy}
                     step={step}
                     selectedBarber={selectedBarber}
                     selectedServiceId={selectedServiceId}
@@ -184,6 +186,7 @@ export function PublicProfileClient({
                   <InformationTab
                     description={barbershop.description}
                     address={barbershop.address}
+                    cancellationPolicy={barbershop.cancellationPolicy}
                     whatsappUrl={whatsappUrl}
                     workingHours={
                       barbershop.owner.workingHours as WorkingHoursWithBlocks[]

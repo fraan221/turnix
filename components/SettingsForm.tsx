@@ -95,6 +95,7 @@ interface SettingsFormProps {
       image: string | null;
       address: string | null;
       description: string | null;
+      cancellationPolicy?: string | null;
       depositEnabled?: boolean;
       depositAmountType?: string | null;
       depositAmount?: { toString(): string } | null;
@@ -162,6 +163,9 @@ export default function SettingsForm({
   );
   const [barbershopDescription, setBarbershopDescription] = useState(
     user.barbershop?.description || "",
+  );
+  const [cancellationPolicy, setCancellationPolicy] = useState(
+    user.barbershop?.cancellationPolicy || "",
   );
   const [slugValue, setSlugValue] = useState(user.barbershop?.slug || "");
 
@@ -400,6 +404,7 @@ export default function SettingsForm({
           setBarbershopName(updatedBarbershop.name || "");
           setBarbershopAddress(updatedBarbershop.address || "");
           setBarbershopDescription(updatedBarbershop.description || "");
+          setCancellationPolicy(updatedBarbershop.cancellationPolicy || "");
           setSlugValue(updatedBarbershop.slug || "");
           if (updatedBarbershop.image) {
             const cacheBustedUrl = `${
@@ -462,6 +467,8 @@ export default function SettingsForm({
               onNameChange={setBarbershopName}
               onAddressChange={setBarbershopAddress}
               onDescriptionChange={setBarbershopDescription}
+              cancellationPolicy={cancellationPolicy}
+              onCancellationPolicyChange={setCancellationPolicy}
               onImageSelect={handleBarbershopImageSelect}
             />
             <div className="flex justify-end mt-6">
@@ -594,6 +601,11 @@ export default function SettingsForm({
               type="hidden"
               name="barbershopDescription"
               value={barbershopDescription}
+            />
+            <input
+              type="hidden"
+              name="cancellationPolicy"
+              value={cancellationPolicy}
             />
             <input type="hidden" name="slug" value={slugValue} />
             <input

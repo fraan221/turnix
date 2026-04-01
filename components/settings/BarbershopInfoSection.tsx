@@ -11,10 +11,12 @@ interface BarbershopInfoSectionProps {
   name: string;
   address: string;
   description: string;
+  cancellationPolicy: string;
   imagePreview: string | null;
   onNameChange: (value: string) => void;
   onAddressChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onCancellationPolicyChange: (value: string) => void;
   onImageSelect: (file: File, dataUrl: string) => void;
 }
 
@@ -22,10 +24,12 @@ export function BarbershopInfoSection({
   name,
   address,
   description,
+  cancellationPolicy,
   imagePreview,
   onNameChange,
   onAddressChange,
   onDescriptionChange,
+  onCancellationPolicyChange,
   onImageSelect,
 }: BarbershopInfoSectionProps) {
   return (
@@ -89,6 +93,28 @@ export function BarbershopInfoSection({
             rows={4}
             className="resize-none"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="cancellationPolicy"
+            className="text-sm font-medium"
+          >
+            Política de Cancelación{" "}
+            <span className="text-muted-foreground">(opcional)</span>
+          </Label>
+          <Textarea
+            id="cancellationPolicy"
+            name="cancellationPolicy"
+            value={cancellationPolicy}
+            onChange={(e) => onCancellationPolicyChange(e.target.value)}
+            placeholder="Ej: Las cancelaciones deben realizarse con al menos 24 horas de anticipación..."
+            rows={5}
+            className="resize-none"
+          />
+          <p className="text-xs text-muted-foreground">
+            Este texto se mostrará a los clientes antes de confirmar su turno.
+          </p>
         </div>
       </div>
     </SettingsCard>

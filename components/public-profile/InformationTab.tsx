@@ -1,4 +1,10 @@
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import {
   ReadOnlyScheduleView,
@@ -9,6 +15,7 @@ import { MapPin } from "lucide-react";
 interface InformationTabProps {
   description: string | null;
   address: string | null;
+  cancellationPolicy: string | null;
   whatsappUrl: string | null;
   workingHours: WorkingHoursWithBlocks[];
 }
@@ -16,6 +23,7 @@ interface InformationTabProps {
 export function InformationTab({
   description,
   address,
+  cancellationPolicy,
   whatsappUrl,
   workingHours,
 }: InformationTabProps) {
@@ -49,6 +57,24 @@ export function InformationTab({
         <p className="text-sm text-center text-muted-foreground">
           {description}
         </p>
+      )}
+
+      {cancellationPolicy && (
+        <>
+          <Separator className="my-4" />
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="cancellation-policy">
+              <AccordionTrigger className="text-sm">
+                Política de Cancelación
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                  {cancellationPolicy}
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </>
       )}
 
       <Separator className="my-4" />
