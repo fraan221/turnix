@@ -11,7 +11,7 @@ const comparisonDescriptions: Record<Period, string> = {
   day: "vs ayer",
   week: "vs semana pasada",
   month: "vs mes pasado",
-  quarter: "vs trimestre pasado",
+  quarter: "vs 3 meses anteriores",
   year: "vs año pasado",
   all: "histórico",
 };

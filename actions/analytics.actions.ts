@@ -10,8 +10,6 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
-  getStartOfQuarter,
-  getEndOfQuarter,
   getStartOfYear,
   getEndOfYear,
   getAllTimeStart,
@@ -61,6 +59,8 @@ export type ClientMetricsData = {
 function formatChartDataByPeriod(
   rawChartData: ChartDataPoint[],
   period: Period,
+  startDate?: Date,
+  endDate?: Date,
 ): ChartDataPoint[] {
   if (period === "day") {
     const chartDataMap = new Map<string, number>(
@@ -99,38 +99,147 @@ function formatChartDataByPeriod(
     return chartData;
   }
 
-  const groupedData = new Map<string, number>();
+  const groupedData = new Map<string, { total: number; sortKey: number }>();
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
   for (const item of rawChartData) {
     const [yearStr, monthStr, dayStr] = String(item.name).split("-");
     if (!yearStr || !monthStr || !dayStr) continue;
-    
+
+    const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10) - 1;
     const day = parseInt(dayStr, 10);
-    
+
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) continue;
+
     let groupKey = String(item.name);
+    let sortKey = year * 10000 + (month + 1) * 100 + day;
 
     if (period === "month") {
       groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
+      sortKey = day;
     } else if (period === "quarter") {
       const weekOfMonth = Math.ceil(day / 7);
       groupKey = `Sem ${weekOfMonth} ${months[month]}`;
+      sortKey = year * 1000 + (month + 1) * 10 + weekOfMonth;
     } else if (period === "year") {
       groupKey = months[month];
+      sortKey = month + 1;
     } else if (period === "all") {
       groupKey = `${months[month]} ${yearStr.slice(-2)}`;
+      sortKey = year * 100 + (month + 1);
     }
 
-    groupedData.set(groupKey, (groupedData.get(groupKey) || 0) + item.total);
+    const existing = groupedData.get(groupKey);
+    if (existing) {
+      existing.total += item.total;
+    } else {
+      groupedData.set(groupKey, { total: item.total, sortKey });
+    }
   }
 
-  const result: ChartDataPoint[] = [];
-  Array.from(groupedData.entries()).forEach(([name, total]) => {
-    result.push({ name, total });
-  });
+  if (period === "month" && groupedData.size > 0) {
+    const monthReference = startDate ? new Date(startDate) : new Date();
 
-  return result;
+    const year = monthReference.getFullYear();
+    const monthIndex = monthReference.getMonth();
+    const monthLabel = String(monthIndex + 1).padStart(2, "0");
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+    const filledData: ChartDataPoint[] = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = `${String(day).padStart(2, "0")}/${monthLabel}`;
+      filledData.push({
+        name: key,
+        total: groupedData.get(key)?.total ?? 0,
+      });
+    }
+
+    return filledData;
+  }
+
+  if (period === "quarter" && groupedData.size > 0) {
+    const rangeStart = startDate ? new Date(startDate) : new Date();
+    const rangeEnd = endDate ? new Date(endDate) : new Date();
+
+    const currentMonth = new Date(
+      rangeStart.getFullYear(),
+      rangeStart.getMonth(),
+      1,
+    );
+    const lastMonth = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+
+    const filledData: ChartDataPoint[] = [];
+
+    while (currentMonth <= lastMonth) {
+      const monthIndex = currentMonth.getMonth();
+      const year = currentMonth.getFullYear();
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      const weeksInMonth = Math.ceil(daysInMonth / 7);
+
+      for (let week = 1; week <= weeksInMonth; week++) {
+        const key = `Sem ${week} ${months[monthIndex]}`;
+        filledData.push({
+          name: key,
+          total: groupedData.get(key)?.total ?? 0,
+        });
+      }
+
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+
+    return filledData;
+  }
+
+  if (period === "year") {
+    return months.map((monthName) => ({
+      name: monthName,
+      total: groupedData.get(monthName)?.total ?? 0,
+    }));
+  }
+
+  if (period === "all" && groupedData.size > 0) {
+    const totalsByMonth = new Map<number, number>();
+
+    for (const value of Array.from(groupedData.values())) {
+      totalsByMonth.set(value.sortKey, value.total);
+    }
+
+    const sortKeys = Array.from(totalsByMonth.keys()).sort((a, b) => a - b);
+    const firstMonth = sortKeys[0];
+    const lastMonth = sortKeys[sortKeys.length - 1];
+
+    if (firstMonth === undefined || lastMonth === undefined) {
+      return [];
+    }
+
+    const filledData: ChartDataPoint[] = [];
+    let year = Math.floor(firstMonth / 100);
+    let month = firstMonth % 100;
+
+    while (year * 100 + month <= lastMonth) {
+      const monthKey = year * 100 + month;
+      const monthLabel = `${months[month - 1]} ${String(year).slice(-2)}`;
+
+      filledData.push({
+        name: monthLabel,
+        total: totalsByMonth.get(monthKey) ?? 0,
+      });
+
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+
+    return filledData;
+  }
+
+  return Array.from(groupedData.entries())
+    .sort(([, a], [, b]) => a.sortKey - b.sortKey)
+    .map(([name, value]) => ({ name, total: value.total }));
 }
 
 function getDateRangeForPeriod(period: Period) {
@@ -153,10 +262,14 @@ function getDateRangeForPeriod(period: Period) {
         endDate: getEndOfMonth(now),
       };
     case "quarter":
-      return {
-        startDate: getStartOfQuarter(now),
-        endDate: getEndOfQuarter(now),
-      };
+      {
+        const startDate = getStartOfMonth(new Date(now));
+        startDate.setMonth(startDate.getMonth() - 2);
+        return {
+          startDate,
+          endDate: getEndOfDay(now),
+        };
+      }
     case "year":
       return {
         startDate: getStartOfYear(now),
@@ -195,9 +308,11 @@ function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
       return { start, end: getEndOfMonth(start) };
     }
     case "quarter": {
-      const start = getStartOfQuarter(now);
-      start.setMonth(start.getMonth() - 3);
-      return { start, end: getEndOfQuarter(start) };
+      const end = new Date(getStartOfMonth(now));
+      end.setDate(0);
+      const start = getStartOfMonth(new Date(end));
+      start.setMonth(start.getMonth() - 2);
+      return { start, end: getEndOfMonth(end) };
     }
     case "year": {
       const start = getStartOfYear(now);
@@ -320,7 +435,12 @@ const getBarbershopAnalytics = cache(
       );
       const completedBookingsCount = completedBookings.length;
 
-      const chartData = formatChartDataByPeriod(rawChartData, period);
+      const formattedChartData = formatChartDataByPeriod(
+        rawChartData,
+        period,
+        startDate,
+        endDate,
+      );
 
       const serviceIds = topServices
         .map((item) => item.serviceId)
@@ -350,7 +470,7 @@ const getBarbershopAnalytics = cache(
         totalRevenue,
         completedBookings: completedBookingsCount,
         cancelledBookings: cancelledBookingsCount,
-        chartData,
+        chartData: formattedChartData,
         topServices: formattedTopServices,
         error: undefined,
       };
@@ -561,7 +681,7 @@ const getBarberAnalytics = cache(
         completedBookings: completedBookingsCount,
         cancelledBookings,
         uniqueClients,
-        chartData: formatChartDataByPeriod(rawChartData, period),
+        chartData: formatChartDataByPeriod(rawChartData, period, startDate, endDate),
         topServices: formattedTopServices,
       };
     } catch (error) {

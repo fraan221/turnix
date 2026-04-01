@@ -33,6 +33,8 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function IncomeOverTimeChart({ data, period }: IncomeOverTimeChartProps) {
+  const shouldShowAllTicks = period === "day" || period === "week";
+
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-sm text-center border-2 border-dashed rounded-lg text-muted-foreground w-full">
@@ -63,8 +65,8 @@ export function IncomeOverTimeChart({ data, period }: IncomeOverTimeChartProps) 
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          minTickGap={30}
-          interval={period === "week" ? 0 : "preserveStartEnd"}
+          minTickGap={period === "month" || period === "quarter" ? 20 : 30}
+          interval={shouldShowAllTicks ? 0 : "preserveStartEnd"}
         />
         <YAxis
           stroke="#888888"
@@ -99,7 +101,7 @@ export function IncomeOverTimeChart({ data, period }: IncomeOverTimeChartProps) 
         </defs>
         <Area
           dataKey="total"
-          type="natural"
+          type="monotone"
           fill="url(#fillTotal)"
           fillOpacity={0.4}
           stroke="var(--color-total)"
