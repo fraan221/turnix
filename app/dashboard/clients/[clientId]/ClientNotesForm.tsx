@@ -27,7 +27,7 @@ function SubmitButton({ hasChanges }: { hasChanges: boolean }) {
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Guardando...
+          Guardando…
         </>
       ) : (
         <>
@@ -42,7 +42,6 @@ function SubmitButton({ hasChanges }: { hasChanges: boolean }) {
 interface ClientNotesFormProps {
   clientId: string;
   currentNotes: string | null;
-  clientName: string;
 }
 
 const initialState: FormState = { error: null, success: null };
@@ -50,7 +49,6 @@ const initialState: FormState = { error: null, success: null };
 export function ClientNotesForm({
   clientId,
   currentNotes,
-  clientName,
 }: ClientNotesFormProps) {
   const [state, formAction] = useFormState<FormState, FormData>(
     updateClientNotes,
@@ -65,7 +63,8 @@ export function ClientNotesForm({
       toast.success("¡Éxito!", { description: state.success });
     }
     if (state?.error) {
-      toast.error("Error", { description: state.error });
+      const errorMessage = typeof state.error === "string" ? state.error : "Error de validación";
+      toast.error("Error", { description: errorMessage });
     }
   }, [state]);
 
@@ -82,10 +81,13 @@ export function ClientNotesForm({
         <form action={formAction}>
           <input type="hidden" name="clientId" value={clientId} />
           <div className="grid w-full gap-2">
+            <label htmlFor="notes" className="sr-only">
+              Notas del cliente
+            </label>
             <Textarea
               id="notes"
               name="notes"
-              placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, alérgico a..."
+              placeholder="Ej: Prefiere la máquina en el número 2, le gusta hablar de fútbol, alérgico a…"
               value={notesContent}
               onChange={(e) => setNotesContent(e.target.value)}
               rows={6}
@@ -93,7 +95,11 @@ export function ClientNotesForm({
             <SubmitButton hasChanges={hasChanges} />
           </div>
           <div className="h-5 mt-2 text-sm">
-            {state?.error && <p className="text-red-500">{state.error}</p>}
+            {state?.error && (
+              <p className="text-destructive font-medium">
+                {typeof state.error === "string" ? state.error : "Revisa los campos del formulario"}
+              </p>
+            )}
           </div>
         </form>
       </CardContent>

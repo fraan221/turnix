@@ -1,16 +1,42 @@
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import ClientListSkeleton from "@/components/skeletons/ClientListSkeleton";
 import { getCurrentUserWithBarbershop } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Contact, Users } from "lucide-react";
-import { Client } from "@prisma/client";
+import { Users } from "lucide-react";
+import { Client, Role } from "@prisma/client";
+import { ClientListClient } from "./ClientListClient";
+
+const getClients = cache(async (barbershopId: string, userId: string, role: Role) => {
+  if (role === Role.OWNER) {
+    return prisma.client.findMany({
+      where: {
+        barbershopId: barbershopId,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+  }
+
+  return prisma.client.findMany({
+    where: {
+      barbershopId: barbershopId,
+      bookings: {
+        some: {
+          barberId: userId,
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+});
 
 async function ClientsPageContent() {
   const user = await getCurrentUserWithBarbershop();
-  if (!user) return <p>No autorizado</p>;
+  if (!user || !user.role) return <p>No autorizado</p>;
 
   const barbershopId =
     user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
@@ -19,22 +45,15 @@ async function ClientsPageContent() {
     return <p>No estás asociado a ninguna barbería.</p>;
   }
 
-  const clients: Client[] = await prisma.client.findMany({
-    where: {
-      barbershopId: barbershopId,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
-
+  const clients: Client[] = await getClients(barbershopId, user.id, user.role);
+  const isOwner = user.role === Role.OWNER;
   const hasClients = clients.length > 0;
 
   return (
     <div className="max-w-6xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Clientes de la Barbería</CardTitle>
+          <CardTitle>{isOwner ? "Clientes de la Barbería" : "Mis Clientes"}</CardTitle>
         </CardHeader>
         <CardContent>
           {!hasClients ? (
@@ -42,46 +61,16 @@ async function ClientsPageContent() {
               <Users className="w-12 h-12 text-muted-foreground" />
               <p className="mt-4 font-semibold">No hay clientes para mostrar</p>
               <p className="text-sm text-muted-foreground">
-                Los clientes aparecerán aquí después de su primer turno.
+                {isOwner
+                  ? "Los clientes aparecerán aquí después de su primer turno."
+                  : "Tus clientes aparecerán aquí después de que los atiendas por primera vez."}
               </p>
             </div>
           ) : (
-            <ClientList clients={clients} />
+            <ClientListClient clients={clients} />
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function ClientList({ clients }: { clients: Client[] }) {
-  if (clients.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No hay clientes en esta sección.
-      </p>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {clients.map((client) => (
-        <div
-          key={client.id}
-          className="flex items-center justify-between p-4 border rounded-md"
-        >
-          <div>
-            <p className="font-semibold">{client.name}</p>
-            <p className="text-sm text-gray-500">{client.phone}</p>
-          </div>
-          <Link href={`/dashboard/clients/${client.id}`}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Contact className="w-4 h-4" />
-              Ficha
-            </Button>
-          </Link>
-        </div>
-      ))}
     </div>
   );
 }

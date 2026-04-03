@@ -16,7 +16,7 @@ import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
   success: string | null;
-  error: any | null;
+  error: string | Record<string, string[]> | null;
   data?: {
     user?: User;
     barbershop?: Barbershop;
@@ -652,12 +652,28 @@ export async function createBooking(
   }
 }
 
+const ClientNotesSchema = z.object({
+  clientId: z.string().min(1, "ID de cliente inválido."),
+  notes: z.string().nullable().optional().transform(v => v ?? ""),
+});
+
 export async function updateClientNotes(
   prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const clientId = formData.get("clientId")?.toString();
-  const notes = formData.get("notes")?.toString();
+  const validatedFields = ClientNotesSchema.safeParse({
+    clientId: formData.get("clientId"),
+    notes: formData.get("notes"),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      success: null,
+      error: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { clientId, notes } = validatedFields.data;
 
   const user = await getUserForSettings();
   if (!user) {
