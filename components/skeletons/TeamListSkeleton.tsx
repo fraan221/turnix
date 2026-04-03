@@ -11,19 +11,37 @@ export default function TeamListSkeleton() {
         <Skeleton className="h-10 w-36" />
       </CardHeader>
       <CardContent>
-        <div>
-          {Array.from({ length: 2 }).map((_, i) => (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center justify-between p-4 mb-4 border rounded-lg border-gray-200/40 last:mb-0"
+              className="relative p-4 border rounded-lg bg-card"
             >
-              <div className="flex items-center gap-4">
-                <Skeleton className="w-10 h-10 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="w-40 h-4" />
-                  <Skeleton className="h-4 w-36" />
+              {/* Owner Badge Skeleton (only for the first item) */}
+              {i === 0 && (
+                <div className="absolute top-3 right-3">
+                  <Skeleton className="w-20 h-5 rounded-full" />
+                </div>
+              )}
+
+              <div className="flex items-start gap-4">
+                <Skeleton className="w-14 h-14 rounded-full" />
+
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Skeleton className="w-3/4 h-5" />
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Skeleton className="w-3.5 h-3.5 rounded-full shrink-0" />
+                    <Skeleton className="w-1/2 h-4" />
+                  </div>
                 </div>
               </div>
+
+              {/* Action Button Skeleton (for non-owner items) */}
+              {i !== 0 && (
+                <div className="pt-4 mt-4 border-t">
+                  <Skeleton className="w-full h-9 rounded-md" />
+                </div>
+              )}
             </div>
           ))}
         </div>

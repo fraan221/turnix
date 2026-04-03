@@ -35,7 +35,7 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Verificando...
+          Verificando…
         </>
       ) : (
         "Añadir Barbero al Equipo"
@@ -75,8 +75,8 @@ export function AddBarberForm() {
         <DialogHeader>
           <DialogTitle>Añadir un nuevo barbero</DialogTitle>
           <DialogDescription>
-            Pídele a tu barbero su código de conexión de 6 caracteres e
-            ingrésalo a continuación para añadirlo a tu equipo.
+            Pedile a tu barbero su código de conexión de 6 caracteres e
+            ingresalo a continuación para añadirlo a tu equipo.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -91,7 +91,7 @@ export function AddBarberForm() {
             <Label htmlFor="connectionCode" className="sr-only">
               Código de Conexión
             </Label>
-            <InputOTP id="connectionCode" name="connectionCode" maxLength={6}>
+            <InputOTP id="connectionCode" name="connectionCode" maxLength={6} autoComplete="off">
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
                 <InputOTPSlot index={1} />

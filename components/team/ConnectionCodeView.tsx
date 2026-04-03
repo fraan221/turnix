@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clipboard, ClipboardCheck, Users, Zap } from "lucide-react";
+import { Clipboard, ClipboardCheck, Users, Zap, Lightbulb } from "lucide-react";
 
 interface ConnectionCodeViewProps {
   connectionCode: string;
@@ -136,9 +136,10 @@ export function ConnectionCodeView({
           </Button>
 
           <div className="pt-2 space-y-2">
-            <div className="p-3 border rounded-lg bg-muted/50 border-muted-foreground/10">
-              <p className="text-xs leading-relaxed text-center sm:text-sm text-muted-foreground">
-                💡 Tip: Podés enviar el código por WhatsApp o mostrarle la
+            <div className="flex items-start gap-2 p-3 border rounded-lg bg-muted/50 border-muted-foreground/10 text-muted-foreground">
+              <Lightbulb className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+              <p className="text-xs leading-relaxed sm:text-sm">
+                Tip: Podés enviar el código por WhatsApp o mostrarle la
                 pantalla directamente
               </p>
             </div>

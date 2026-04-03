@@ -32,8 +32,8 @@ export function EnableTeamView() {
     <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
       <Card className="w-full max-w-2xl text-center">
         <CardHeader className="items-center">
-          <div className="p-4 rounded-full bg-primary/10">
-            <Users className="w-12 h-12 text-primary" />
+          <div className="p-4 rounded-full bg-gradient-to-br from-primary/10 to-primary/5">
+            <Users className="w-12 h-12 text-primary drop-shadow-sm" />
           </div>
           <CardTitle className="mt-4 text-3xl">
             ¿Trabajás con otros barberos?
@@ -80,7 +80,7 @@ export function EnableTeamView() {
               {isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Activando...
+                  Activando…
                 </>
               ) : (
                 "Activar gestión de equipo"

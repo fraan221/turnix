@@ -35,7 +35,12 @@ async function TeamPageContent() {
   return (
     <Card className="max-w-6xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle>Barberos</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Barberos
+          <span className="flex items-center justify-center w-6 h-6 text-sm font-medium rounded-full bg-primary/10 text-primary">
+            {allMembers.length}
+          </span>
+        </CardTitle>
         <AddBarberForm />
       </CardHeader>
       <CardContent>

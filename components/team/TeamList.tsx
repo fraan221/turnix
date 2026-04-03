@@ -56,9 +56,9 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
         <Users className="w-12 h-12 text-muted-foreground" />
-        <p className="mt-4 font-semibold">Tu equipo está vacío</p>
+        <p className="mt-4 font-semibold">Todavía no hay barberos en tu equipo</p>
         <p className="text-sm text-muted-foreground">
-          Usa el botón "+ Añadir barbero" para empezar a invitar miembros.
+          Usá el botón «Añadir barbero» para empezar a invitar miembros.
         </p>
       </div>
     );
@@ -73,7 +73,7 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
           return (
             <div
               key={member.id}
-              className="relative p-4 transition-colors border rounded-lg bg-card hover:border-primary/50"
+              className="relative p-4 transition-all duration-200 border rounded-lg bg-card hover:border-primary/50 hover:shadow-md"
             >
               {isOwner && (
                 <div className="absolute top-3 right-3">
@@ -107,6 +107,7 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
               {!isOwner && (
                 <div className="pt-4 mt-4 border-t">
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -146,7 +147,7 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
               {isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Eliminando...
+                  Eliminando…
                 </>
               ) : (
                 "Eliminar"
