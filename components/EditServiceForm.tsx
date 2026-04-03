@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
 
@@ -29,7 +30,7 @@ const cleanPriceValue = (formattedValue: string): string => {
 };
 
 interface EditServiceFormProps {
-  service: Service;
+  service: Service & { activeDurationInMinutes?: number | null };
 }
 
 export default function EditServiceForm({ service }: EditServiceFormProps) {
@@ -38,6 +39,9 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
   const [priceDisplay, setPriceDisplay] = useState(() =>
     service.price ? formatPrice(service.price.toString()) : ""
   );
+  const [allowsOverlapping, setAllowsOverlapping] = useState(
+    service.activeDurationInMinutes !== null && service.activeDurationInMinutes !== undefined
+  );
 
   const {
     register,
@@ -45,6 +49,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
     formState: { errors, isSubmitting, isValid, isDirty },
     setValue,
     trigger,
+    watch,
   } = useForm<ServiceFormInput>({
     resolver: zodResolver(ServiceInputSchema),
     mode: "onChange",
@@ -52,6 +57,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
       name: service.name,
       price: service.price,
       durationInMinutes: service.durationInMinutes || "",
+      activeDurationInMinutes: service.activeDurationInMinutes || null,
       description: service.description || "",
     },
   });
@@ -75,6 +81,11 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
           ? typeof data.durationInMinutes === "string"
             ? parseInt(data.durationInMinutes, 10)
             : data.durationInMinutes
+          : null,
+        activeDurationInMinutes: allowsOverlapping && data.activeDurationInMinutes
+          ? typeof data.activeDurationInMinutes === "string"
+            ? parseInt(data.activeDurationInMinutes, 10)
+            : data.activeDurationInMinutes
           : null,
         description: data.description,
       };
@@ -187,6 +198,80 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
               </p>
             )}
           </div>
+        </div>
+
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="allowOverlapping"
+              className="mt-1"
+              checked={allowsOverlapping}
+              onCheckedChange={(checked) => {
+                setAllowsOverlapping(!!checked);
+                if (checked) {
+                  const baseDuration = watch("durationInMinutes");
+                  const parsedDuration =
+                    typeof baseDuration === "string"
+                      ? parseInt(baseDuration, 10)
+                      : baseDuration;
+                  setValue(
+                    "activeDurationInMinutes",
+                    parsedDuration && parsedDuration > 0
+                      ? Math.min(parsedDuration, 60)
+                      : 60,
+                    { shouldDirty: true, shouldValidate: true },
+                  );
+                  return;
+                }
+
+                setValue("activeDurationInMinutes", null, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="allowOverlapping" className="text-sm font-medium">
+                Permitir sobreturnos
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Definí cuánto tiempo requiere atención activa. El resto queda
+                libre para otros turnos.
+              </p>
+            </div>
+          </div>
+
+          {allowsOverlapping && (
+            <div className="space-y-2">
+              <Label
+                htmlFor="activeDurationInMinutes"
+                className="text-sm font-medium"
+              >
+                Tiempo activo
+              </Label>
+              <div className="relative">
+                <Input
+                  id="activeDurationInMinutes"
+                  type="number"
+                  min={1}
+                  placeholder="60"
+                  {...register("activeDurationInMinutes")}
+                  className={
+                    errors.activeDurationInMinutes ? "border-destructive" : ""
+                  }
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  min
+                </span>
+              </div>
+              {errors.activeDurationInMinutes && (
+                <p className="flex items-center gap-1.5 text-xs text-destructive">
+                  <span className="h-1 w-1 rounded-full bg-destructive" />
+                  {errors.activeDurationInMinutes.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

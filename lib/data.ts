@@ -273,9 +273,12 @@ export const getBarberAvailability = async (
     },
     select: {
       startTime: true,
+      activeDurationAtBooking: true,
+      durationAtBooking: true,
       service: {
         select: {
           durationInMinutes: true,
+          activeDurationInMinutes: true,
         },
       },
     },

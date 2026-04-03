@@ -25,7 +25,8 @@ export async function createService(data: ServiceInput) {
     return { error: "Usuario no asociado a una barbería." };
   }
 
-  const { name, price, durationInMinutes, description } = data;
+  const { name, price, durationInMinutes, activeDurationInMinutes, description } =
+    data;
 
   try {
     await prisma.service.create({
@@ -33,6 +34,7 @@ export async function createService(data: ServiceInput) {
         name,
         price,
         durationInMinutes,
+        activeDurationInMinutes,
         description,
         barberId: user.id,
         barbershopId: barbershopId,
@@ -89,12 +91,19 @@ export async function updateService(serviceId: string, data: ServiceInput) {
     };
   }
 
-  const { name, price, durationInMinutes, description } = data;
+  const { name, price, durationInMinutes, activeDurationInMinutes, description } =
+    data;
 
   try {
     await prisma.service.update({
       where: { id: serviceId },
-      data: { name, price, durationInMinutes, description },
+      data: {
+        name,
+        price,
+        durationInMinutes,
+        activeDurationInMinutes,
+        description,
+      },
     });
 
     revalidatePath("/dashboard/services");

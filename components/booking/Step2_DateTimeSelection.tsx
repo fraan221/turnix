@@ -41,6 +41,15 @@ export function Step2_DateTimeSelection({
     );
   }, [selectedServices]);
 
+  const totalActiveDuration = useMemo(() => {
+    if (selectedServices.length === 0) return 60;
+    return selectedServices.reduce(
+      (sum, service) =>
+        sum + (service.activeDurationInMinutes ?? service.durationInMinutes ?? 60),
+      0
+    );
+  }, [selectedServices]);
+
   useEffect(() => {
     if (!date) {
       setIsLoading(false);
@@ -54,7 +63,8 @@ export function Step2_DateTimeSelection({
       const availabilityData = await getBarberAvailability(
         barberId,
         date,
-        totalDuration
+        totalDuration,
+        totalActiveDuration
       );
 
       setAvailability(availabilityData);
@@ -62,7 +72,7 @@ export function Step2_DateTimeSelection({
     };
 
     fetchTimeSlots();
-  }, [date, barberId, totalDuration]);
+  }, [date, barberId, totalDuration, totalActiveDuration]);
 
   const handleNextClick = () => {
     if (date && selectedSlot) {

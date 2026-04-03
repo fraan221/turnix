@@ -94,13 +94,14 @@ model Client {
 }
 
 model Service {
-  id                String   @id @default(cuid())
-  name              String
-  price             Float
-  durationInMinutes Int?
-  description       String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  name                    String
+  price                   Float
+  durationInMinutes       Int?
+  activeDurationInMinutes Int?
+  description             String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
@@ -116,9 +117,10 @@ model Booking {
   startTime         DateTime
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-  status            BookingStatus @default(SCHEDULED)
-  priceAtBooking    Float?
-  durationAtBooking Int?
+  status                  BookingStatus @default(SCHEDULED)
+  priceAtBooking          Float?
+  durationAtBooking       Int?
+  activeDurationAtBooking Int?
 
   // Deposit tracking fields
   depositAmount        Decimal?       @db.Decimal(10, 2)

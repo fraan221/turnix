@@ -40,6 +40,7 @@ export async function getBarberAvailability(
   barberId: string,
   date: Date,
   totalDuration: number,
+  totalActiveDuration?: number,
 ): Promise<BarberAvailability> {
   const dayOfWeek = getArgentinaDayOfWeek(date);
 
@@ -77,7 +78,14 @@ export async function getBarberAvailability(
         startTime: { gte: startOfDayUTC, lt: endOfDayUTC },
         status: { not: "CANCELLED" },
       },
-      include: { service: { select: { durationInMinutes: true } } },
+      include: {
+        service: {
+          select: {
+            durationInMinutes: true,
+            activeDurationInMinutes: true,
+          },
+        },
+      },
     }),
     prisma.timeBlock.findMany({
       where: {
@@ -142,7 +150,11 @@ export async function getBarberAvailability(
     for (const booking of bookings) {
       const bookingStart = new Date(booking.startTime);
       const durationInMinutes =
-        booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
+        booking.activeDurationAtBooking ??
+        booking.service?.activeDurationInMinutes ??
+        booking.durationAtBooking ??
+        booking.service?.durationInMinutes ??
+        60;
       const bookingEnd = new Date(
         bookingStart.getTime() + durationInMinutes * 60000,
       );
@@ -164,10 +176,10 @@ export async function getBarberAvailability(
     let slotStart = new Date(currentTime);
 
     while (
-      slotStart.getTime() + totalDuration * 60000 <=
-      dayEndTime.getTime()
+      slotStart.getTime() + totalDuration * 60000 <= dayEndTime.getTime()
     ) {
-      const slotEnd = new Date(slotStart.getTime() + totalDuration * 60000);
+      const overlapDuration = totalActiveDuration ?? totalDuration;
+      const slotEnd = new Date(slotStart.getTime() + overlapDuration * 60000);
 
       const overlappingIntervals = occupiedIntervals.filter(
         (interval) => slotStart < interval.end && slotEnd > interval.start,
@@ -314,7 +326,12 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }),
       prisma.service.findUnique({
         where: { id: serviceId },
-        select: { name: true, price: true, durationInMinutes: true },
+        select: {
+          name: true,
+          price: true,
+          durationInMinutes: true,
+          activeDurationInMinutes: true,
+        },
       }),
     ]);
 
@@ -338,6 +355,8 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
     }
 
     const serviceDuration = service.durationInMinutes || 60;
+    const serviceActiveDuration =
+      service.activeDurationInMinutes || serviceDuration;
 
     const result = await prisma.$transaction(async (tx) => {
       const existingPendingBooking = await tx.booking.findFirst({
@@ -357,6 +376,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
             serviceId: serviceId,
             priceAtBooking: service.price,
             durationAtBooking: service.durationInMinutes,
+            activeDurationAtBooking: service.activeDurationInMinutes,
             barbershopId: barbershopId,
             depositAmount:
               requiresDeposit && calculatedDeposit
@@ -370,7 +390,9 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       }
 
       const slotStart = startTime;
-      const slotEnd = new Date(startTime.getTime() + serviceDuration * 60000);
+      const slotEnd = new Date(
+        startTime.getTime() + serviceActiveDuration * 60000,
+      );
 
       const conflictingBooking = await tx.booking.findFirst({
         where: {
@@ -396,12 +418,19 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
           ],
         },
         include: {
-          service: { select: { durationInMinutes: true } },
+          service: {
+            select: {
+              durationInMinutes: true,
+              activeDurationInMinutes: true,
+            },
+          },
         },
       });
 
       if (conflictingBooking) {
         const conflictDuration =
+          conflictingBooking.activeDurationAtBooking ||
+          conflictingBooking.service?.activeDurationInMinutes ||
           conflictingBooking.durationAtBooking ||
           conflictingBooking.service?.durationInMinutes ||
           60;
@@ -419,6 +448,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
           startTime,
           priceAtBooking: service.price,
           durationAtBooking: service.durationInMinutes,
+          activeDurationAtBooking: service.activeDurationInMinutes,
           barber: { connect: { id: barberId } },
           client: { connect: { id: client.id } },
           service: { connect: { id: serviceId } },

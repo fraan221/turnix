@@ -356,9 +356,15 @@ export default function BarberCalendar({
   const events = optimisticBookings
     .filter((booking) => booking.status !== "CANCELLED")
     .map((booking) => {
+      const totalDuration =
+        booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
+      const activeDuration =
+        booking.activeDurationAtBooking ??
+        booking.service?.activeDurationInMinutes ??
+        totalDuration;
+      const allowsOverlapping = activeDuration < totalDuration;
       const endTime = new Date(
-        booking.startTime.getTime() +
-          (booking.service?.durationInMinutes || 0) * 60000,
+        booking.startTime.getTime() + totalDuration * 60000,
       );
 
       const isPastScheduled =
@@ -393,7 +399,9 @@ export default function BarberCalendar({
 
       return {
         id: booking.id,
-        title: `${booking.service?.name ?? "Servicio"} - ${booking.client.name}`,
+        title: `${booking.service?.name ?? "Servicio"} - ${booking.client.name}${
+          allowsOverlapping ? " [S]" : ""
+        }`,
         start: booking.startTime,
         end: endTime,
         backgroundColor: eventColor,
@@ -405,6 +413,7 @@ export default function BarberCalendar({
           isSelected,
           bookingDateKey,
           isSelectableInSelectionMode,
+          allowsOverlapping,
         },
       };
     });

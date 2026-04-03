@@ -522,6 +522,8 @@ export async function createBooking(
     const bookingTimeInMinutes = parseTimeToMinutes(bookingTimeStr);
 
     const serviceDuration = serviceForBooking.durationInMinutes ?? 60;
+    const serviceActiveDuration =
+      serviceForBooking.activeDurationInMinutes ?? serviceDuration;
     const bookingEndTimeInMinutes = bookingTimeInMinutes + serviceDuration;
 
     let isWithinWorkingHours = false;
@@ -548,10 +550,6 @@ export async function createBooking(
       };
     }
 
-    const newBookingEndTime = new Date(
-      startTime.getTime() + serviceDuration * 60000,
-    );
-
     let finalClientName: string;
 
     await prisma.$transaction(async (tx) => {
@@ -568,14 +566,21 @@ export async function createBooking(
           service: {
             select: {
               durationInMinutes: true,
+              activeDurationInMinutes: true,
             },
           },
         },
       });
 
+      const newBookingActiveEnd = new Date(
+        startTime.getTime() + serviceActiveDuration * 60000,
+      );
+
       const overlappingBooking = existingBookings.find((existing) => {
         const existingStartTime = existing.startTime;
         const existingDuration =
+          existing.activeDurationAtBooking ??
+          existing.service?.activeDurationInMinutes ??
           existing.durationAtBooking ??
           existing.service?.durationInMinutes ??
           60;
@@ -584,7 +589,7 @@ export async function createBooking(
         );
 
         return (
-          startTime < existingEndTime && existingStartTime < newBookingEndTime
+          startTime < existingEndTime && existingStartTime < newBookingActiveEnd
         );
       });
 
@@ -616,6 +621,7 @@ export async function createBooking(
           startTime,
           priceAtBooking: serviceForBooking.price,
           durationAtBooking: serviceForBooking.durationInMinutes,
+          activeDurationAtBooking: serviceForBooking.activeDurationInMinutes,
           barberId: barberId,
           clientId: client.id,
           serviceId: serviceId,
@@ -848,9 +854,121 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
   }
 }
 
+type AvailabilityResult =
+  | { available: true }
+  | { available: false; reason: string };
+
+export async function checkBookingAvailability(
+  barberId: string,
+  startTime: Date,
+  durationMinutes: number,
+  activeDurationMinutes?: number,
+  excludeBookingId?: string,
+): Promise<AvailabilityResult> {
+  const user = await getCurrentUser();
+  if (!user) return { available: false, reason: "No autorizado." };
+
+  const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+  const overlapEndTime = new Date(
+    startTime.getTime() + (activeDurationMinutes ?? durationMinutes) * 60000,
+  );
+  const dayOfWeek = getArgentinaDayOfWeek(startTime);
+
+  const [workingHours, timeBlocks] = await Promise.all([
+    prisma.workingHours.findUnique({
+      where: { barberId_dayOfWeek: { barberId, dayOfWeek } },
+      include: { blocks: true },
+    }),
+    prisma.timeBlock.findMany({
+      where: {
+        barberId: barberId,
+        startTime: { lt: getEndOfDay(startTime) },
+        endTime: { gt: getStartOfDay(startTime) },
+      },
+    }),
+  ]);
+
+  const newStartMinutes = getArgentinaMinutesOfDay(startTime);
+  const newEndMinutes = getArgentinaMinutesOfDay(endTime);
+
+  const isWithinWorkingHours =
+    workingHours?.isWorking &&
+    workingHours.blocks.some((shift) => {
+      const shiftStartMinutes = parseTimeToMinutes(shift.startTime);
+      const shiftEndMinutes = parseTimeToMinutes(shift.endTime);
+
+      return (
+        newStartMinutes >= shiftStartMinutes && newEndMinutes <= shiftEndMinutes
+      );
+    });
+
+  if (!isWithinWorkingHours) {
+    return {
+      available: false,
+      reason: "El horario está fuera de la jornada laboral.",
+    };
+  }
+
+  const overlapsWithTimeBlock = timeBlocks.some(
+    (block) => startTime < block.endTime && overlapEndTime > block.startTime,
+  );
+
+  if (overlapsWithTimeBlock) {
+    return {
+      available: false,
+      reason: "El horario se superpone con un bloqueo de tiempo.",
+    };
+  }
+
+  const otherBookings = await prisma.booking.findMany({
+    where: {
+      barberId: barberId,
+      status: { not: "CANCELLED" },
+      startTime: {
+        gte: getStartOfDay(startTime),
+        lt: getEndOfDay(startTime),
+      },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    include: {
+      service: {
+        select: {
+          durationInMinutes: true,
+          activeDurationInMinutes: true,
+        },
+      },
+    },
+  });
+
+  const overlapsWithBooking = otherBookings.some((existingBooking) => {
+    const existingStartTime = existingBooking.startTime;
+    const existingDuration =
+      existingBooking.activeDurationAtBooking ??
+      existingBooking.service?.activeDurationInMinutes ??
+      existingBooking.durationAtBooking ??
+      existingBooking.service?.durationInMinutes ??
+      60;
+    const existingEndTime = new Date(
+      existingStartTime.getTime() + existingDuration * 60000,
+    );
+
+    return startTime < existingEndTime && overlapEndTime > existingStartTime;
+  });
+
+  if (overlapsWithBooking) {
+    return {
+      available: false,
+      reason: "El horario se superpone con otro turno.",
+    };
+  }
+
+  return { available: true };
+}
+
 export async function updateBookingTime(
   bookingId: string,
   newStartTime: Date,
+  newDuration?: number,
 ): Promise<{ success?: string; error?: string }> {
   const user = await getCurrentUser();
   if (!user) {
@@ -864,7 +982,12 @@ export async function updateBookingTime(
         barbershop: {
           select: { ownerId: true, teamMembers: { select: { userId: true } } },
         },
-        service: { select: { durationInMinutes: true } },
+        service: {
+          select: {
+            durationInMinutes: true,
+            activeDurationInMinutes: true,
+          },
+        },
       },
     });
 
@@ -879,7 +1002,11 @@ export async function updateBookingTime(
       return { error: "No tienes permiso para modificar este turno." };
     }
 
-    const serviceDuration = bookingToMove.service?.durationInMinutes ?? 60;
+    const serviceDuration =
+      newDuration ??
+      bookingToMove.durationAtBooking ??
+      bookingToMove.service?.durationInMinutes ??
+      60;
     const newEndTime = new Date(
       newStartTime.getTime() + serviceDuration * 60000,
     );
@@ -944,12 +1071,33 @@ export async function updateBookingTime(
             lt: getEndOfDay(newStartTime),
           },
         },
-        include: { service: { select: { durationInMinutes: true } } },
+        include: {
+          service: {
+            select: {
+              durationInMinutes: true,
+              activeDurationInMinutes: true,
+            },
+          },
+        },
       });
+
+      const bookingActiveDuration =
+        bookingToMove.activeDurationAtBooking ??
+        bookingToMove.service?.activeDurationInMinutes ??
+        serviceDuration;
+      const nextActiveDuration =
+        newDuration !== undefined
+          ? Math.min(bookingActiveDuration, newDuration)
+          : bookingActiveDuration;
+      const newActiveEndTime = new Date(
+        newStartTime.getTime() + nextActiveDuration * 60000,
+      );
 
       const overlapsWithBooking = otherBookings.some((existingBooking) => {
         const existingStartTime = existingBooking.startTime;
         const existingDuration =
+          existingBooking.activeDurationAtBooking ??
+          existingBooking.service?.activeDurationInMinutes ??
           existingBooking.durationAtBooking ??
           existingBooking.service?.durationInMinutes ??
           60;
@@ -957,7 +1105,9 @@ export async function updateBookingTime(
           existingStartTime.getTime() + existingDuration * 60000,
         );
 
-        return newStartTime < existingEndTime && newEndTime > existingStartTime;
+        return (
+          newStartTime < existingEndTime && newActiveEndTime > existingStartTime
+        );
       });
 
       if (overlapsWithBooking) {
@@ -969,6 +1119,15 @@ export async function updateBookingTime(
         where: { id: bookingId },
         data: {
           startTime: newStartTime,
+          ...(newDuration !== undefined && { durationAtBooking: newDuration }),
+          ...(newDuration !== undefined && {
+            activeDurationAtBooking: Math.min(
+              bookingToMove.activeDurationAtBooking ??
+                bookingToMove.service?.activeDurationInMinutes ??
+                newDuration,
+              newDuration,
+            ),
+          }),
         },
       });
     });

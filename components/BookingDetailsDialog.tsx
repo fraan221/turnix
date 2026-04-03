@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { Booking, Client, Service, BookingStatus } from "@prisma/client";
 import {
   DialogHeader,
@@ -26,12 +26,14 @@ import {
   updateBookingTime,
   updateBookingStatus,
   updateClientNotes,
+  checkBookingAvailability,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
   depositAmount: number | string | null;
@@ -66,34 +68,108 @@ export function BookingDetailsDialogContent({
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
-  const [editingTime, setEditingTime] = useState("");
+  
+  const [editingStartTime, setEditingStartTime] = useState("");
+  const [editingEndTime, setEditingEndTime] = useState("");
+  const [availability, setAvailability] = useState<{
+    status: "idle" | "checking" | "available" | "unavailable";
+    reason?: string;
+  }>({ status: "idle" });
+
+  const originalDuration = booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
 
   useEffect(() => {
     setView("details");
     setNote(booking.client.notes || "");
-    setEditingTime(
-      new Date(booking.startTime).toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
+    
+    const start = new Date(booking.startTime);
+    const duration = booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
+    const end = new Date(start.getTime() + duration * 60000);
+    
+    setEditingStartTime(
+      start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
     );
-  }, [booking.id, booking.client.notes]);
+    setEditingEndTime(
+      end.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+    );
+  }, [booking.id, booking.client.notes, booking.startTime, booking.durationAtBooking, booking.service?.durationInMinutes]);
+
+  const calculatedDuration = useMemo(() => {
+    if (!editingStartTime || !editingEndTime) return 0;
+    const [startH, startM] = editingStartTime.split(":").map(Number);
+    const [endH, endM] = editingEndTime.split(":").map(Number);
+    return (endH * 60 + endM) - (startH * 60 + startM);
+  }, [editingStartTime, editingEndTime]);
+
+  const debouncedStart = useDebounce(editingStartTime, 500);
+  const debouncedEnd = useDebounce(editingEndTime, 500);
+
+  useEffect(() => {
+    if (!debouncedStart || !debouncedEnd) return;
+    
+    if (calculatedDuration <= 0) {
+      setAvailability({ status: "unavailable", reason: "La hora de fin debe ser posterior a la de inicio." });
+      return;
+    }
+    if (calculatedDuration < 5) {
+      setAvailability({ status: "unavailable", reason: "La duración mínima es de 5 minutos." });
+      return;
+    }
+    if (calculatedDuration > 480) {
+      setAvailability({ status: "unavailable", reason: "La duración máxima es de 8 horas." });
+      return;
+    }
+
+    const checkAvailability = async () => {
+      setAvailability((prev) => ({ ...prev, status: "checking" }));
+      
+      const [hours, minutes] = debouncedStart.split(":").map(Number);
+      const newStartTime = new Date(booking.startTime);
+      newStartTime.setHours(hours, minutes, 0, 0);
+      
+      try {
+        const result = await checkBookingAvailability(
+          booking.barberId,
+          newStartTime,
+          calculatedDuration,
+          calculatedDuration,
+          booking.id
+        );
+        
+        setAvailability(
+          result.available 
+            ? { status: "available" } 
+            : { status: "unavailable", reason: result.reason }
+        );
+      } catch (error) {
+        setAvailability({ status: "unavailable", reason: "Error al verificar disponibilidad." });
+      }
+    };
+
+    checkAvailability();
+  }, [debouncedStart, debouncedEnd, calculatedDuration, booking.barberId, booking.id, booking.startTime]);
 
   const handleTimeChange = () => {
-    if (!editingTime) {
+    if (!editingStartTime || !editingEndTime) {
       toast.error("Error", {
-        description: "Seleccioná una hora válida.",
+        description: "Seleccioná horas válidas.",
       });
       return;
     }
 
-    const [hours, minutes] = editingTime.split(":").map(Number);
+    if (availability.status === "unavailable") {
+      toast.error("Error", {
+        description: availability.reason || "El horario no está disponible.",
+      });
+      return;
+    }
+
+    const [hours, minutes] = editingStartTime.split(":").map(Number);
     const newStartTime = new Date(booking.startTime);
     newStartTime.setHours(hours, minutes, 0, 0);
 
     startTimeUpdating(async () => {
-      const result = await updateBookingTime(booking.id, newStartTime);
+      const result = await updateBookingTime(booking.id, newStartTime, calculatedDuration);
 
       if (result?.error) {
         toast.error("Error al cambiar horario", {
@@ -290,28 +366,81 @@ export function BookingDetailsDialogContent({
         </p>
       </div>
 
-      <div>
-        <Label htmlFor="newTime">Nueva hora</Label>
-        <input
-          id="newTime"
-          type="time"
-          step={300}
-          value={editingTime}
-          onChange={(e) => setEditingTime(e.target.value)}
-          className="flex px-3 py-2 mt-1 w-full h-10 text-sm rounded-md border bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Podés ajustar el turno en incrementos de 5 minutos.
-        </p>
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Label htmlFor="newStartTime">Hora de inicio</Label>
+          <input
+            id="newStartTime"
+            type="time"
+            step={300}
+            value={editingStartTime}
+            onChange={(e) => setEditingStartTime(e.target.value)}
+            className="flex px-3 py-2 mt-1 w-full h-10 text-sm rounded-md border bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+        <div className="flex-1">
+          <Label htmlFor="newEndTime">Hora de fin</Label>
+          <input
+            id="newEndTime"
+            type="time"
+            step={300}
+            value={editingEndTime}
+            onChange={(e) => setEditingEndTime(e.target.value)}
+            className="flex px-3 py-2 mt-1 w-full h-10 text-sm rounded-md border bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
       </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-medium">
+          Duración: {calculatedDuration} min{" "}
+          {calculatedDuration !== originalDuration && (
+            <span className="text-muted-foreground font-normal">
+              (original: {originalDuration} min)
+            </span>
+          )}
+        </div>
+
+        <div className="text-sm flex items-center min-h-[24px]">
+          {availability.status === "checking" && (
+            <div className="flex items-center text-muted-foreground">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Verificando disponibilidad...
+            </div>
+          )}
+          {availability.status === "available" && (
+            <div className="flex items-center text-green-600">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Horario disponible
+            </div>
+          )}
+          {availability.status === "unavailable" && (
+            <div className="flex items-center text-red-600">
+              <XCircle className="w-4 h-4 mr-2" />
+              {availability.reason}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Podés ajustar el turno en incrementos de 5 minutos.
+      </p>
 
       <DialogFooter className="gap-2">
         <Button variant="ghost" onClick={() => setView("details")}>
           Volver
         </Button>
-        <Button onClick={handleTimeChange} disabled={isTimeUpdating}>
+        <Button
+          onClick={handleTimeChange}
+          disabled={
+            isTimeUpdating ||
+            availability.status === "checking" ||
+            availability.status === "unavailable"
+          }
+        >
           {isTimeUpdating && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-          Guardar horario
+          Guardar cambios
         </Button>
       </DialogFooter>
     </div>
