@@ -201,44 +201,46 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
         </div>
 
         <div className="space-y-3 rounded-md border p-3">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="allowOverlapping"
-              className="mt-1"
-              checked={allowsOverlapping}
-              onCheckedChange={(checked) => {
-                setAllowsOverlapping(!!checked);
-                if (checked) {
-                  const baseDuration = watch("durationInMinutes");
-                  const parsedDuration =
-                    typeof baseDuration === "string"
-                      ? parseInt(baseDuration, 10)
-                      : baseDuration;
-                  setValue(
-                    "activeDurationInMinutes",
-                    parsedDuration && parsedDuration > 0
-                      ? Math.min(parsedDuration, 60)
-                      : 60,
-                    { shouldDirty: true, shouldValidate: true },
-                  );
-                  return;
-                }
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="allowOverlapping"
+                checked={allowsOverlapping}
+                onCheckedChange={(checked) => {
+                  setAllowsOverlapping(!!checked);
+                  if (checked) {
+                    const baseDuration = watch("durationInMinutes");
+                    const parsedDuration =
+                      typeof baseDuration === "string"
+                        ? parseInt(baseDuration, 10)
+                        : baseDuration;
+                    setValue(
+                      "activeDurationInMinutes",
+                      parsedDuration && parsedDuration > 0
+                        ? Math.min(parsedDuration, 60)
+                        : 60,
+                      { shouldDirty: true, shouldValidate: true },
+                    );
+                    return;
+                  }
 
-                setValue("activeDurationInMinutes", null, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
-              }}
-            />
-            <div className="space-y-1">
-              <Label htmlFor="allowOverlapping" className="text-sm font-medium">
+                  setValue("activeDurationInMinutes", null, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
+              />
+              <Label
+                htmlFor="allowOverlapping"
+                className="text-sm font-medium leading-none"
+              >
                 Permitir sobreturnos
               </Label>
-              <p className="text-xs text-muted-foreground">
-                Definí cuánto tiempo requiere atención activa. El resto queda
-                libre para otros turnos.
-              </p>
             </div>
+            <p className="pl-7 text-xs text-muted-foreground">
+              Definí cuánto tiempo requiere atención activa. El resto queda
+              libre para otros turnos.
+            </p>
           </div>
 
           {allowsOverlapping && (
