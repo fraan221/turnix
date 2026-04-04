@@ -17,7 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { GroupedService } from "./page";
+import { AssignableBarber, GroupedService } from "./page";
 
 const AddServiceModalContent = dynamic(
   () =>
@@ -70,6 +70,7 @@ interface ServicesClientProps {
   initialServices: Service[];
   initialGroupedServices: GroupedService[];
   teamsEnabled: boolean;
+  assignableBarbers: AssignableBarber[];
 }
 
 export function ServicesClient({
@@ -78,6 +79,7 @@ export function ServicesClient({
   initialServices,
   initialGroupedServices,
   teamsEnabled,
+  assignableBarbers,
 }: ServicesClientProps) {
   const [isModalOpen, setModalOpen] = useState(false);
 
@@ -132,7 +134,12 @@ export function ServicesClient({
         <DialogContent className="sm:max-w-[500px]">
           {isModalOpen && (
             <Suspense fallback={<ModalContentSkeleton />}>
-              <AddServiceModalContent onClose={() => setModalOpen(false)} />
+              <AddServiceModalContent
+                onClose={() => setModalOpen(false)}
+                userRole={userRole}
+                teamsEnabled={teamsEnabled}
+                assignableBarbers={assignableBarbers}
+              />
             </Suspense>
           )}
         </DialogContent>

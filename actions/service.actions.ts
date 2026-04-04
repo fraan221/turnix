@@ -9,7 +9,43 @@ import { Role } from "@prisma/client";
 
 type ServiceInput = z.infer<typeof ServiceSchema>;
 
-export async function createService(data: ServiceInput) {
+function getFirstValidationMessage(error: z.ZodError) {
+  return error.issues[0]?.message || "Los datos ingresados no son válidos.";
+}
+
+async function resolveCreateTargetBarberId(
+  user: {
+    id: string;
+    role: Role | null;
+  },
+  barbershopId: string,
+  targetBarberId?: string,
+) {
+  if (user.role !== Role.OWNER) {
+    return { barberId: user.id };
+  }
+
+  const targetId = targetBarberId?.trim();
+  if (!targetId || targetId === user.id) {
+    return { barberId: user.id };
+  }
+
+  const isTeamMember = await prisma.team.findFirst({
+    where: {
+      barbershopId,
+      userId: targetId,
+    },
+    select: { id: true },
+  });
+
+  if (!isTeamMember) {
+    return { error: "No tienes permiso para crear servicios para este barbero." };
+  }
+
+  return { barberId: targetId };
+}
+
+export async function createService(data: ServiceInput, targetBarberId?: string) {
   const user = await getUserForSettings();
   if (!user) {
     return { error: "No autorizado." };
@@ -25,8 +61,27 @@ export async function createService(data: ServiceInput) {
     return { error: "Usuario no asociado a una barbería." };
   }
 
-  const { name, price, durationInMinutes, activeDurationInMinutes, description } =
-    data;
+  const validatedData = ServiceSchema.safeParse(data);
+  if (!validatedData.success) {
+    return { error: getFirstValidationMessage(validatedData.error) };
+  }
+
+  const resolvedTarget = await resolveCreateTargetBarberId(
+    user,
+    barbershopId,
+    targetBarberId,
+  );
+  if ("error" in resolvedTarget) {
+    return { error: resolvedTarget.error };
+  }
+
+  const {
+    name,
+    price,
+    durationInMinutes,
+    activeDurationInMinutes,
+    description,
+  } = validatedData.data;
 
   try {
     await prisma.service.create({
@@ -36,7 +91,7 @@ export async function createService(data: ServiceInput) {
         durationInMinutes,
         activeDurationInMinutes,
         description,
-        barberId: user.id,
+        barberId: resolvedTarget.barberId,
         barbershopId: barbershopId,
       },
     });
@@ -67,6 +122,11 @@ export async function updateService(serviceId: string, data: ServiceInput) {
     return { error: "Usuario no asociado a una barbería." };
   }
 
+  const validatedData = ServiceSchema.safeParse(data);
+  if (!validatedData.success) {
+    return { error: getFirstValidationMessage(validatedData.error) };
+  }
+
   const serviceToUpdate = await prisma.service.findUnique({
     where: { id: serviceId },
     include: {
@@ -80,9 +140,14 @@ export async function updateService(serviceId: string, data: ServiceInput) {
     return { error: "El servicio que intentas editar no existe." };
   }
 
+  if (serviceToUpdate.barbershopId !== barbershopId) {
+    return {
+      error: "Operación no permitida. No tienes permiso para editar este servicio.",
+    };
+  }
+
   const isDirectOwner = serviceToUpdate.barberId === user.id;
-  const isBarbershopOwner =
-    user.role === Role.OWNER && serviceToUpdate.barbershopId === barbershopId;
+  const isBarbershopOwner = user.role === Role.OWNER;
 
   if (!isDirectOwner && !isBarbershopOwner) {
     return {
@@ -91,8 +156,13 @@ export async function updateService(serviceId: string, data: ServiceInput) {
     };
   }
 
-  const { name, price, durationInMinutes, activeDurationInMinutes, description } =
-    data;
+  const {
+    name,
+    price,
+    durationInMinutes,
+    activeDurationInMinutes,
+    description,
+  } = validatedData.data;
 
   try {
     await prisma.service.update({

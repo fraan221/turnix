@@ -146,7 +146,10 @@ export function ScheduleClient({
           </CardHeader>
 
           <CardContent className="pt-6">
-            <TimeBlockList timeBlocks={initialTimeBlocks} />
+            <TimeBlockList
+              timeBlocks={initialTimeBlocks}
+              selectedBarberId={selectedBarberId}
+            />
           </CardContent>
         </Card>
       </section>
@@ -155,7 +158,10 @@ export function ScheduleClient({
         <DialogContent className="w-[calc(100%-2rem)] max-w-[500px]">
           {isModalOpen && (
             <Suspense fallback={<ModalContentSkeleton />}>
-              <AddTimeBlockModalContent onClose={() => setModalOpen(false)} />
+              <AddTimeBlockModalContent
+                onClose={() => setModalOpen(false)}
+                selectedBarberId={selectedBarberId}
+              />
             </Suspense>
           )}
         </DialogContent>

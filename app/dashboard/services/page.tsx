@@ -16,6 +16,11 @@ export type GroupedService = {
   services: Service[];
 };
 
+export type AssignableBarber = {
+  id: string;
+  name: string;
+};
+
 async function getServicesData() {
   const user = await getCurrentUserWithBarbershop();
   if (!user) {
@@ -28,23 +33,39 @@ async function getServicesData() {
   let services: Service[] = [];
   let groupedServices: GroupedService[] = [];
   let teamsEnabled = false;
+  let assignableBarbers: AssignableBarber[] = [
+    { id: user.id, name: `${user.name} (vos)` },
+  ];
 
   if (userRole === Role.OWNER) {
     const barbershopInfo = user.ownedBarbershop;
     const barbershop = barbershopInfo
-      ? await prisma.barbershop.findUnique({
-          where: { id: barbershopInfo.id },
-          include: {
-            services: {
-              include: { barber: { select: { id: true, name: true } } },
-              orderBy: { name: "asc" },
+        ? await prisma.barbershop.findUnique({
+            where: { id: barbershopInfo.id },
+            include: {
+              teamMembers: {
+                include: {
+                  user: { select: { id: true, name: true } },
+                },
+                orderBy: { createdAt: "asc" },
+              },
+              services: {
+                include: { barber: { select: { id: true, name: true } } },
+                orderBy: { name: "asc" },
+              },
             },
-          },
         })
       : null;
 
     if (barbershop) {
       teamsEnabled = barbershop.teamsEnabled;
+      assignableBarbers = [
+        { id: user.id, name: `${user.name} (vos)` },
+        ...barbershop.teamMembers.map((member) => ({
+          id: member.user.id,
+          name: member.user.name,
+        })),
+      ];
       const allServices: ServiceWithBarber[] = barbershop.services;
 
       if (teamsEnabled) {
@@ -75,7 +96,7 @@ async function getServicesData() {
     });
   }
 
-  return { user, services, groupedServices, teamsEnabled };
+  return { user, services, groupedServices, teamsEnabled, assignableBarbers };
 }
 
 export default async function ServicesPage() {
@@ -96,6 +117,7 @@ export default async function ServicesPage() {
           initialServices={data.services}
           initialGroupedServices={data.groupedServices}
           teamsEnabled={data.teamsEnabled}
+          assignableBarbers={data.assignableBarbers}
         />
       </Suspense>
     </div>

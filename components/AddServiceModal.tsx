@@ -8,12 +8,20 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
 import { createService } from "@/actions/service.actions";
+import { Role } from "@prisma/client";
 import { formatPrice, cleanPriceValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DialogHeader,
   DialogTitle,
@@ -24,16 +32,27 @@ import {
 
 interface AddServiceModalContentProps {
   onClose: () => void;
+  userRole: Role;
+  teamsEnabled: boolean;
+  assignableBarbers: { id: string; name: string }[];
 }
 
 type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
 
 export function AddServiceModalContent({
   onClose,
+  userRole,
+  teamsEnabled,
+  assignableBarbers,
 }: AddServiceModalContentProps) {
   const [isPending, startTransition] = useTransition();
   const [priceDisplay, setPriceDisplay] = useState("");
   const [allowsOverlapping, setAllowsOverlapping] = useState(false);
+  const [targetBarberId, setTargetBarberId] = useState(
+    assignableBarbers[0]?.id ?? ""
+  );
+
+  const canAssignBarber = userRole === Role.OWNER && teamsEnabled;
 
   const {
     register,
@@ -76,13 +95,22 @@ export function AddServiceModalContent({
         description: data.description,
       };
 
-      const result = await createService(serviceData);
+      const result = await createService(
+        serviceData,
+        canAssignBarber ? targetBarberId : undefined
+      );
       if (result?.success) {
         toast.success("¡Servicio creado!", {
           description: "Ya está disponible para agendar turnos.",
         });
         reset();
         setPriceDisplay("");
+        setAllowsOverlapping(false);
+        setValue("activeDurationInMinutes", null, {
+          shouldDirty: false,
+          shouldValidate: false,
+        });
+        setTargetBarberId(assignableBarbers[0]?.id ?? "");
         onClose();
       }
       if (result?.error) {
@@ -105,6 +133,26 @@ export function AddServiceModalContent({
       </DialogHeader>
 
       <form onSubmit={handleSubmit(onSubmit)} className="py-4 space-y-5">
+        {canAssignBarber && (
+          <div className="space-y-2">
+            <Label htmlFor="targetBarber" className="text-sm font-medium">
+              Asignar a
+            </Label>
+            <Select value={targetBarberId} onValueChange={setTargetBarberId}>
+              <SelectTrigger id="targetBarber" className="w-full">
+                <SelectValue placeholder="Seleccionar barbero" />
+              </SelectTrigger>
+              <SelectContent>
+                {assignableBarbers.map((barber) => (
+                  <SelectItem key={barber.id} value={barber.id}>
+                    {barber.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="name" className="text-sm font-medium">
             Nombre del servicio

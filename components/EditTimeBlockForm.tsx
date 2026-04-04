@@ -11,7 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatToDateInput, formatTime } from "@/lib/date-helpers";
+import {
+  ARGENTINA_TIMEZONE,
+  createArgentinaDate,
+  formatTime,
+} from "@/lib/date-helpers";
 import { ArrowLeft, Clock } from "lucide-react";
 
 function SubmitButton() {
@@ -25,9 +29,16 @@ function SubmitButton() {
 
 export default function EditTimeBlockForm({
   timeBlock,
+  returnHref = "/dashboard/schedule",
 }: {
   timeBlock: TimeBlock;
+  returnHref?: string;
 }) {
+  const formatDateInputInArgentina = (date: Date | string) =>
+    new Date(date).toLocaleDateString("en-CA", {
+      timeZone: ARGENTINA_TIMEZONE,
+    });
+
   const router = useRouter();
   const updateTimeBlockWithId = updateTimeBlock.bind(null, timeBlock.id);
   const [state, formAction] = useFormState(updateTimeBlockWithId, null);
@@ -37,7 +48,7 @@ export default function EditTimeBlockForm({
       toast.success("Bloqueo actualizado", {
         description: "Los cambios se guardaron correctamente",
       });
-      router.push("/dashboard/schedule");
+      router.push(returnHref);
     }
     if (state?.error) {
       let errorMessage = "No pudimos guardar los cambios. Intentá de nuevo.";
@@ -51,7 +62,7 @@ export default function EditTimeBlockForm({
       }
       toast.error("Error al guardar", { description: errorMessage });
     }
-  }, [state, router]);
+  }, [state, router, returnHref]);
 
   const clientAction = async (formData: FormData) => {
     const startDate = formData.get("startDate") as string;
@@ -59,10 +70,8 @@ export default function EditTimeBlockForm({
     const endDate = formData.get("endDate") as string;
     const endTime = formData.get("endTime") as string;
 
-    const startDateTimeISO = new Date(
-      `${startDate}T${startTime}`
-    ).toISOString();
-    const endDateTimeISO = new Date(`${endDate}T${endTime}`).toISOString();
+    const startDateTimeISO = createArgentinaDate(startDate, startTime).toISOString();
+    const endDateTimeISO = createArgentinaDate(endDate, endTime).toISOString();
 
     const newFormData = new FormData();
     newFormData.append("startDateTime", startDateTimeISO);
@@ -76,7 +85,7 @@ export default function EditTimeBlockForm({
     <form action={clientAction} className="space-y-6">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/schedule">
+          <Link href={returnHref}>
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ArrowLeft className="w-4 h-4" />
               <span className="sr-only">Volver a horarios</span>
@@ -99,7 +108,7 @@ export default function EditTimeBlockForm({
               id="startDate"
               name="startDate"
               type="date"
-              defaultValue={formatToDateInput(timeBlock.startTime)}
+              defaultValue={formatDateInputInArgentina(timeBlock.startTime)}
               required
               className="w-full"
             />
@@ -112,7 +121,7 @@ export default function EditTimeBlockForm({
               id="endDate"
               name="endDate"
               type="date"
-              defaultValue={formatToDateInput(timeBlock.endTime)}
+              defaultValue={formatDateInputInArgentina(timeBlock.endTime)}
               required
               className="w-full"
             />
@@ -178,7 +187,7 @@ export default function EditTimeBlockForm({
       </div>
 
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-        <Link href="/dashboard/schedule" className="w-full sm:w-auto">
+        <Link href={returnHref} className="w-full sm:w-auto">
           <Button type="button" variant="outline" className="w-full sm:w-auto">
             Cancelar
           </Button>

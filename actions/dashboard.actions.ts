@@ -24,7 +24,7 @@ export type FormState = {
   } | null;
 };
 
-const TimeBlockSchema = z
+const TimeBlockBaseSchema = z
   .object({
     startDateTime: z
       .string()
@@ -42,8 +42,11 @@ const TimeBlockSchema = z
       message: "La fecha y hora de fin debe ser posterior a la de inicio.",
       path: ["endDateTime"],
     },
-  )
-  .refine(
+  );
+
+const CreateTimeBlockSchema = TimeBlockBaseSchema.extend({
+  barberId: z.string().min(1).optional().nullable(),
+}).refine(
     (data) => {
       return new Date(data.startDateTime) > new Date();
     },
@@ -52,6 +55,13 @@ const TimeBlockSchema = z
       path: ["startDateTime"],
     },
   );
+
+const UpdateTimeBlockSchema = TimeBlockBaseSchema;
+
+type TimeBlockFormState = {
+  success?: string | null;
+  error?: string | Record<string, string[]> | null;
+};
 
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
@@ -89,6 +99,50 @@ const ScheduleSchema = z.array(DayScheduleSchema).refine(
   },
 );
 
+async function ownerCanManageBarber(ownerId: string, barberId: string) {
+  if (ownerId === barberId) {
+    return true;
+  }
+
+  const isTeamMember = await prisma.team.findFirst({
+    where: {
+      userId: barberId,
+      barbershop: { ownerId },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(isTeamMember);
+}
+
+async function resolveManagedBarberId(
+  user: { id: string; role: Role | null },
+  requestedBarberId?: string | null,
+): Promise<{ barberId: string } | { error: string }> {
+  const targetBarberId = requestedBarberId?.trim();
+
+  if (user.role === Role.OWNER) {
+    if (!targetBarberId || targetBarberId === user.id) {
+      return { barberId: user.id };
+    }
+
+    const canManage = await ownerCanManageBarber(user.id, targetBarberId);
+    if (!canManage) {
+      return {
+        error: "No tienes permisos para gestionar horarios de este barbero.",
+      };
+    }
+
+    return { barberId: targetBarberId };
+  }
+
+  if (targetBarberId && targetBarberId !== user.id) {
+    return { error: "No tienes permisos para gestionar horarios de otros." };
+  }
+
+  return { barberId: user.id };
+}
+
 export async function saveSchedule(
   schedule: z.infer<typeof ScheduleSchema>,
   targetBarberId?: string,
@@ -98,27 +152,9 @@ export async function saveSchedule(
     return { error: "No autorizado." };
   }
 
-  let barberIdToUpdate = user.id;
-
-  if (user.role === Role.OWNER) {
-    if (targetBarberId && targetBarberId !== user.id) {
-      const isTeamMember = await prisma.team.findFirst({
-        where: {
-          userId: targetBarberId,
-          barbershop: { ownerId: user.id },
-        },
-      });
-
-      if (!isTeamMember) {
-        return { error: "No puedes editar el horario de este usuario." };
-      }
-      barberIdToUpdate = targetBarberId;
-    }
-  } else if (user.role === Role.BARBER) {
-    if (targetBarberId && targetBarberId !== user.id) {
-      return { error: "No tienes permisos para editar horarios de otros." };
-    }
-    barberIdToUpdate = user.id;
+  const managedBarber = await resolveManagedBarberId(user, targetBarberId);
+  if ("error" in managedBarber) {
+    return { error: managedBarber.error };
   }
 
   const validatedSchedule = ScheduleSchema.safeParse(schedule);
@@ -127,7 +163,7 @@ export async function saveSchedule(
     return { error: validatedSchedule.error.issues[0].message };
   }
 
-  const barberId = barberIdToUpdate;
+  const barberId = managedBarber.barberId;
 
   try {
     const userWorkingHours = await prisma.workingHours.findMany({
@@ -737,7 +773,12 @@ export async function deleteTimeBlock(blockId: string) {
       where: { id: blockId },
     });
 
-    if (block?.barberId !== user!.id) {
+    if (!block) {
+      return { error: "Bloqueo no encontrado." };
+    }
+
+    const managedBarber = await resolveManagedBarberId(user, block.barberId);
+    if ("error" in managedBarber) {
       return { error: "No tienes permiso para borrar este bloqueo." };
     }
 
@@ -755,7 +796,7 @@ export async function deleteTimeBlock(blockId: string) {
 
 export async function updateTimeBlock(
   blockId: string,
-  prevState: any,
+  prevState: TimeBlockFormState | null,
   formData: FormData,
 ) {
   const user = await getCurrentUser();
@@ -767,11 +808,16 @@ export async function updateTimeBlock(
     where: { id: blockId },
   });
 
-  if (!blockToUpdate || blockToUpdate.barberId !== user!.id) {
+  if (!blockToUpdate) {
     return { error: "Operación no permitida." };
   }
 
-  const validatedFields = TimeBlockSchema.safeParse(
+  const managedBarber = await resolveManagedBarberId(user, blockToUpdate.barberId);
+  if ("error" in managedBarber) {
+    return { error: "Operación no permitida." };
+  }
+
+  const validatedFields = UpdateTimeBlockSchema.safeParse(
     Object.fromEntries(formData.entries()),
   );
 
@@ -784,6 +830,25 @@ export async function updateTimeBlock(
   const { startDateTime, endDateTime, reason } = validatedFields.data;
 
   try {
+    const overlappingBlock = await prisma.timeBlock.findFirst({
+      where: {
+        barberId: blockToUpdate.barberId,
+        id: { not: blockId },
+        startTime: {
+          lt: new Date(endDateTime),
+        },
+        endTime: {
+          gt: new Date(startDateTime),
+        },
+      },
+    });
+
+    if (overlappingBlock) {
+      return {
+        error: "Ya existe un bloqueo que se superpone con este horario.",
+      };
+    }
+
     await prisma.timeBlock.update({
       where: { id: blockId },
       data: {
@@ -801,13 +866,16 @@ export async function updateTimeBlock(
   }
 }
 
-export async function createTimeBlock(prevState: any, formData: FormData) {
+export async function createTimeBlock(
+  prevState: TimeBlockFormState | null,
+  formData: FormData,
+) {
   const user = await getCurrentUser();
   if (!user) {
     return { error: "No autorizado" };
   }
 
-  const validatedFields = TimeBlockSchema.safeParse(
+  const validatedFields = CreateTimeBlockSchema.safeParse(
     Object.fromEntries(formData.entries()),
   );
 
@@ -817,12 +885,19 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
     };
   }
 
-  const { startDateTime, endDateTime, reason } = validatedFields.data;
+  const { startDateTime, endDateTime, reason, barberId } = validatedFields.data;
+
+  const managedBarber = await resolveManagedBarberId(user, barberId);
+  if ("error" in managedBarber) {
+    return { error: managedBarber.error };
+  }
+
+  const barberIdToUse = managedBarber.barberId;
 
   try {
     const existingBlock = await prisma.timeBlock.findFirst({
       where: {
-        barberId: user!.id,
+        barberId: barberIdToUse,
         startTime: {
           lt: new Date(endDateTime),
         },
@@ -843,7 +918,7 @@ export async function createTimeBlock(prevState: any, formData: FormData) {
         startTime: new Date(startDateTime),
         endTime: new Date(endDateTime),
         reason: reason,
-        barberId: user!.id,
+        barberId: barberIdToUse,
       },
     });
     revalidatePath("/dashboard/schedule");

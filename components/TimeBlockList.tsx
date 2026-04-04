@@ -21,9 +21,10 @@ import {
 
 interface TimeBlockItemProps {
   block: TimeBlock;
+  selectedBarberId: string;
 }
 
-function TimeBlockItem({ block }: TimeBlockItemProps) {
+function TimeBlockItem({ block, selectedBarberId }: TimeBlockItemProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = () => {
@@ -84,7 +85,7 @@ function TimeBlockItem({ block }: TimeBlockItemProps) {
       {/* Acciones */}
       <div className="flex items-center gap-2 sm:shrink-0">
         <Link
-          href={`/dashboard/schedule/${block.id}/edit`}
+          href={`/dashboard/schedule/${block.id}/edit?barberId=${selectedBarberId}`}
           className="flex-1 sm:flex-none"
         >
           <Button variant="outline" size="sm" className="w-full sm:w-auto">
@@ -134,9 +135,13 @@ function TimeBlockItem({ block }: TimeBlockItemProps) {
 
 interface TimeBlockListProps {
   timeBlocks: TimeBlock[];
+  selectedBarberId: string;
 }
 
-export default function TimeBlockList({ timeBlocks }: TimeBlockListProps) {
+export default function TimeBlockList({
+  timeBlocks,
+  selectedBarberId,
+}: TimeBlockListProps) {
   // Estado vacío
   if (timeBlocks.length === 0) {
     return (
@@ -158,7 +163,11 @@ export default function TimeBlockList({ timeBlocks }: TimeBlockListProps) {
   return (
     <div className="space-y-3">
       {timeBlocks.map((block) => (
-        <TimeBlockItem key={block.id} block={block} />
+        <TimeBlockItem
+          key={block.id}
+          block={block}
+          selectedBarberId={selectedBarberId}
+        />
       ))}
     </div>
   );

@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { Loader2, CalendarX, Lightbulb } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
+import { createArgentinaDate } from "@/lib/date-helpers";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -18,6 +19,7 @@ import {
 
 interface AddTimeBlockModalContentProps {
   onClose: () => void;
+  selectedBarberId: string;
 }
 
 function SubmitButton() {
@@ -42,6 +44,7 @@ function SubmitButton() {
 
 export function AddTimeBlockModalContent({
   onClose,
+  selectedBarberId,
 }: AddTimeBlockModalContentProps) {
   const [state, formAction] = useFormState(createTimeBlock, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -76,15 +79,14 @@ export function AddTimeBlockModalContent({
     const endDate = formData.get("endDate") as string;
     const endTime = formData.get("endTime") as string;
 
-    const startDateTimeISO = new Date(
-      `${startDate}T${startTime}`
-    ).toISOString();
-    const endDateTimeISO = new Date(`${endDate}T${endTime}`).toISOString();
+    const startDateTimeISO = createArgentinaDate(startDate, startTime).toISOString();
+    const endDateTimeISO = createArgentinaDate(endDate, endTime).toISOString();
 
     const newFormData = new FormData();
     newFormData.append("startDateTime", startDateTimeISO);
     newFormData.append("endDateTime", endDateTimeISO);
     newFormData.append("reason", formData.get("reason") || "");
+    newFormData.append("barberId", selectedBarberId);
 
     formAction(newFormData);
   };
