@@ -113,6 +113,7 @@ export function AddServiceModalContent({
             id="name"
             placeholder="Ej: Corte, Ribete, Afeitado tradicional"
             {...register("name")}
+            autoComplete="off"
             className={errors.name ? "border-destructive" : ""}
           />
           {errors.name && (
@@ -138,6 +139,7 @@ export function AddServiceModalContent({
                 placeholder="10.000"
                 value={priceDisplay}
                 onChange={handlePriceChange}
+                autoComplete="off"
                 onBlur={() => {
                   const cleanValue = cleanPriceValue(priceDisplay);
                   setValue("price", cleanValue);
@@ -166,6 +168,7 @@ export function AddServiceModalContent({
                 id="durationInMinutes"
                 type="number"
                 placeholder="30"
+                autoComplete="off"
                 {...register("durationInMinutes")}
                 className={errors.durationInMinutes ? "border-destructive" : ""}
               />
@@ -239,6 +242,7 @@ export function AddServiceModalContent({
                   type="number"
                   min={1}
                   placeholder="60"
+                  autoComplete="off"
                   {...register("activeDurationInMinutes")}
                   className={
                     errors.activeDurationInMinutes ? "border-destructive" : ""
@@ -269,6 +273,7 @@ export function AddServiceModalContent({
             id="description"
             placeholder="Ej: Incluye lavado, productos y secado"
             rows={3}
+            autoComplete="off"
             {...register("description")}
             className={errors.description ? "border-destructive" : ""}
           />
@@ -299,7 +304,7 @@ export function AddServiceModalContent({
             {isSubmitting || isPending ? (
               <>
                 <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                Creando...
+                Creando…
               </>
             ) : (
               "Crear Servicio"

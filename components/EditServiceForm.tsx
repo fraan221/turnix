@@ -131,6 +131,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             id="name"
             placeholder="Ej: Corte Fade, Barba Completa"
             {...register("name")}
+            autoComplete="off"
             className={errors.name ? "border-destructive" : ""}
           />
           {errors.name && (
@@ -156,6 +157,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
                 placeholder="10.000"
                 value={priceDisplay}
                 onChange={handlePriceChange}
+                autoComplete="off"
                 onBlur={() => {
                   const cleanValue = cleanPriceValue(priceDisplay);
                   setValue("price", cleanValue, { shouldDirty: true });
@@ -184,6 +186,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
                 id="durationInMinutes"
                 type="number"
                 placeholder="30"
+                autoComplete="off"
                 {...register("durationInMinutes")}
                 className={errors.durationInMinutes ? "border-destructive" : ""}
               />
@@ -257,6 +260,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
                   type="number"
                   min={1}
                   placeholder="60"
+                  autoComplete="off"
                   {...register("activeDurationInMinutes")}
                   className={
                     errors.activeDurationInMinutes ? "border-destructive" : ""
@@ -287,6 +291,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             id="description"
             placeholder="Ej: Incluye lavado, corte con máquina y tijera, y peinado final"
             rows={3}
+            autoComplete="off"
             {...register("description")}
             className={errors.description ? "border-destructive" : ""}
           />
@@ -316,7 +321,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             {isSubmitting || isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
+                Guardando…
               </>
             ) : (
               "Guardar Cambios"
