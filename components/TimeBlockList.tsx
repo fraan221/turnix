@@ -57,7 +57,7 @@ function TimeBlockItem({ block }: TimeBlockItemProps) {
   const endDateTime = formatDateTime(block.endTime);
 
   return (
-    <div className="flex flex-col justify-between gap-4 p-4 transition-colors border rounded-lg sm:flex-row sm:items-center bg-card hover:bg-accent/5">
+    <div className="flex flex-col justify-between gap-4 p-4 transition-all duration-200 border rounded-lg sm:flex-row sm:items-center bg-card hover:bg-accent/30 hover:shadow-sm">
       {/* Información del bloqueo */}
       <div className="flex-1 space-y-2">
         {/* Razón o título por defecto */}
@@ -108,20 +108,21 @@ function TimeBlockItem({ block }: TimeBlockItemProps) {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar este bloqueo?</AlertDialogTitle>
               <AlertDialogDescription className="text-left">
-                El horario volverá a estar disponible para que tus clientes
+                Este horario volverá a estar disponible para que tus clientes
                 puedan agendar turnos. Esta acción no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-              <AlertDialogCancel className="w-full mt-0 sm:w-auto">
+              <AlertDialogCancel type="button" className="w-full mt-0 sm:w-auto">
                 Cancelar
               </AlertDialogCancel>
               <AlertDialogAction
+                type="button"
                 onClick={handleDelete}
                 disabled={isPending}
                 className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {isPending ? "Eliminando..." : "Sí, eliminar"}
+                {isPending ? "Eliminando…" : "Sí, eliminar"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -140,8 +141,8 @@ export default function TimeBlockList({ timeBlocks }: TimeBlockListProps) {
   if (timeBlocks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-        <div className="p-3 mb-4 rounded-full bg-muted">
-          <CalendarX className="w-6 h-6 text-muted-foreground" />
+        <div className="p-4 mb-4 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 drop-shadow-sm">
+          <CalendarX className="w-8 h-8 text-primary" />
         </div>
         <h3 className="mb-1 font-medium text-foreground">
           No hay bloqueos activos

@@ -18,7 +18,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? "Guardando..." : "Guardar cambios"}
+      {pending ? "Guardando…" : "Guardar cambios"}
     </Button>
   );
 }
@@ -170,6 +170,7 @@ export default function EditTimeBlockForm({
           defaultValue={timeBlock.reason || ""}
           rows={3}
           className="resize-none"
+          autoComplete="off"
         />
         <p className="text-xs text-muted-foreground">
           Ayuda a recordar por qué bloqueaste este horario

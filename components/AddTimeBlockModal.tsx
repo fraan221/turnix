@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { Loader2, CalendarX } from "lucide-react";
+import { Loader2, CalendarX, Lightbulb } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -31,7 +31,7 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Bloqueando...
+          Bloqueando…
         </>
       ) : (
         "Bloquear Horario"
@@ -148,12 +148,14 @@ export function AddTimeBlockModalContent({
             id="reason"
             name="reason"
             placeholder="Ej: Vacaciones, día libre, evento personal"
+            autoComplete="off"
           />
         </div>
 
-        <div className="p-3 border rounded-lg bg-muted/50 border-muted-foreground/10">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            💡 Tip: Durante este período, los clientes no podrán reservar turnos
+        <div className="flex items-start gap-2 p-3 border rounded-lg bg-muted/50 border-muted-foreground/10 text-muted-foreground">
+          <Lightbulb className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+          <p className="text-xs leading-relaxed sm:text-sm">
+            Tip: Durante este período, los clientes no podrán reservar turnos
             en tu agenda
           </p>
         </div>

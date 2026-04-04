@@ -209,10 +209,10 @@ export default function ScheduleForm({
               );
               const canAddMore = enabledShifts.length < 3;
               return (
-                <div
-                  key={day.dayOfWeek}
-                  className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-colors hover:border-primary/30"
-                >
+                  <div
+                    key={day.dayOfWeek}
+                    className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
+                  >
                   <div className="flex justify-between items-center">
                     <div className="flex gap-3 items-center">
                       <Switch
@@ -231,7 +231,7 @@ export default function ScheduleForm({
                       </Label>
                     </div>
                     {!day.isWorking && (
-                      <span className="px-2 py-1 text-xs rounded-md text-muted-foreground bg-muted/50">
+                      <span className="px-2.5 py-1 text-xs font-medium rounded-md text-muted-foreground bg-secondary/80">
                         Cerrado
                       </span>
                     )}
@@ -250,6 +250,7 @@ export default function ScheduleForm({
                                 </Label>
                               </div>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="w-8 h-8"
@@ -308,13 +309,14 @@ export default function ScheduleForm({
                     <div className="pt-2 mt-auto">
                       <Separator className="mb-4" />
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         className="w-full"
                         onClick={() => handleAddShift(day.dayOfWeek)}
                       >
                         <Plus className="mr-2 w-4 h-4" />
-                        Agregar Jornada
+                        Añadir jornada
                       </Button>
                     </div>
                   )}
@@ -335,7 +337,7 @@ export default function ScheduleForm({
             {isPending ? (
               <>
                 <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                Guardando...
+                Guardando…
               </>
             ) : (
               <>
