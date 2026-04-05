@@ -76,8 +76,8 @@ export function NotificationList({
     if (notifications.length === 0) return null;
 
     return (
-      <section key={title} className="space-y-3">
-        <div className="px-4 md:px-0">
+      <section key={title} className="space-y-3 relative">
+        <div className="sticky top-0 z-10 py-2 bg-background/95 backdrop-blur px-4 md:px-0">
           <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
             {title}
           </h2>
@@ -88,7 +88,7 @@ export function NotificationList({
             <article
               key={n.id}
               className={cn(
-                "group relative px-4 py-3 border-l-4 transition-all duration-200 hover:bg-accent/50",
+                "group relative px-4 py-3 border-l-4 transition-colors duration-200 rounded-r-lg",
                 n.read
                   ? "border-transparent bg-muted/30"
                   : "bg-primary/5 border-primary"
@@ -102,9 +102,9 @@ export function NotificationList({
                   )}
                 >
                   {n.read ? (
-                    <BellOff className="w-4 h-4" />
+                    <BellOff className="w-4 h-4" aria-hidden="true" />
                   ) : (
-                    <Bell className="w-4 h-4" />
+                    <Bell className="w-4 h-4" aria-hidden="true" />
                   )}
                 </div>
 
@@ -120,7 +120,7 @@ export function NotificationList({
                     {n.message}
                   </p>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3 h-3" aria-hidden="true" />
                     <time dateTime={new Date(n.createdAt).toISOString()}>
                       {formatDistanceFromNow(n.createdAt)}
                     </time>
@@ -145,12 +145,16 @@ export function NotificationList({
 
   if (initialNotifications.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-        <div className="p-4 mb-4 rounded-full bg-muted">
-          <Bell className="w-8 h-8 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center border rounded-xl border-dashed bg-muted/20">
+        <div className="p-4 mb-4 rounded-full bg-background border shadow-sm">
+          <BellOff
+            className="w-8 h-8 text-muted-foreground/50"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
         </div>
-        <h3 className="mb-2 font-semibold text-foreground">
-          No tenés notificaciones
+        <h3 className="mb-2 text-lg font-semibold text-foreground">
+          No hay notificaciones
         </h3>
         <p className="max-w-sm text-sm text-muted-foreground">
           Cuando tengas turnos nuevos, cambios o recordatorios, te avisaremos
@@ -161,10 +165,12 @@ export function NotificationList({
   }
 
   return (
-    <div className="pb-6 space-y-8">
-      {renderSection("Esta semana", groupedNotifications.estaSemana)}
-      {renderSection("Este mes", groupedNotifications.esteMes)}
-      {renderSection("Anteriores", groupedNotifications.anteriores)}
+    <div className="pb-6 space-y-6">
+      <div className="space-y-8">
+        {renderSection("Esta semana", groupedNotifications.estaSemana)}
+        {renderSection("Este mes", groupedNotifications.esteMes)}
+        {renderSection("Anteriores", groupedNotifications.anteriores)}
+      </div>
     </div>
   );
 }
