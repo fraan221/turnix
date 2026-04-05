@@ -1,21 +1,32 @@
 import { test, expect } from "@playwright/test";
-
-const getNextWednesday = () => {
-  const date = new Date();
-  date.setDate(date.getDate() + ((3 - date.getDay() + 7) % 7));
-  return date;
-};
+import { smoke, critical } from "./utils/tags";
 
 test.describe("Booking Flow", () => {
-  test("a customer can book an appointment", async ({ page }) => {
-    await page.goto("/test-barber");
-    await page.waitForURL("**/test-barber");
-    await page.waitForLoadState("networkidle");
-    await expect(
-      page.getByText("Nuestros Servicios", { exact: true })
-    ).toBeVisible();
+  test(`${smoke} ${critical} a customer can book an appointment`, async ({ page }) => {
+    const setupResponse = await page.request.post("/api/test/login", {
+      data: { scenario: "owner" },
+    });
+    expect(setupResponse.ok()).toBeTruthy();
+    const setupData = (await setupResponse.json()) as {
+      barbershop?: { slug: string };
+    };
 
-    await page.getByText("Standard Haircut").click();
+    const publicSlug = setupData.barbershop?.slug;
+    if (!publicSlug) {
+      test.fail(true, "No se recibió un slug público de prueba.");
+      return;
+    }
+
+    await page.goto(`/${publicSlug}`);
+    await page.waitForURL(`**/${publicSlug}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("tab", { name: "Reservas" })).toBeVisible();
+
+    const firstServiceCard = page.getByRole("radio", {
+      name: /Servicio Owner/,
+    });
+    await expect(firstServiceCard).toBeVisible();
+    await firstServiceCard.click();
 
     const dayButtonsLocator = page.locator("button:not([disabled])");
     const texts = await dayButtonsLocator.allInnerTexts();
@@ -25,20 +36,14 @@ test.describe("Booking Flow", () => {
       if (!text || !/^[0-9]+$/.test(text.trim())) continue;
       const btn = dayButtonsLocator.nth(i);
       await btn.click();
-      await page.waitForTimeout(500);
       const noHorarios = await page
-        .locator("text=No hay horarios disponibles para este día.")
+        .getByText("No hay horarios disponibles para este día.")
         .isVisible();
       const noTrabaja = await page
-        .locator("text=El barbero no trabaja en el día seleccionado.")
+        .getByText("El barbero no trabaja en el día seleccionado.")
         .isVisible();
       if (!noHorarios && !noTrabaja) {
         found = true;
-        await page.waitForResponse(
-          (response) =>
-            response.url().includes("actions/public.actions") &&
-            response.status() === 200
-        );
         break;
       }
     }
@@ -56,8 +61,8 @@ test.describe("Booking Flow", () => {
     await primerHorario.click();
 
     await page.getByLabel("Nombre y Apellido").fill("Cliente de Prueba E2E");
-    await page.getByLabel("Número de WhatsApp").fill("1122334455");
-    await page.getByRole("button", { name: "Confirmar Reserva" }).click();
+    await page.getByLabel("Número de Celular").fill("1122334455");
+    await page.getByRole("button", { name: "Confirmar reserva" }).click();
 
     await expect(page).toHaveURL("/booking-confirmed", { timeout: 10000 });
     await expect(

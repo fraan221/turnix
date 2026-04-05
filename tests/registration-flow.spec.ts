@@ -1,14 +1,15 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/test-session";
+import { smoke, critical } from "./utils/tags";
 
 test.describe("Flujo de Registro de Usuario", () => {
   // --- Test de registro con credenciales ---
-  test("un nuevo dueño de barbería puede registrarse con email y contraseña", async ({
-    page,
-  }) => {
+  test(
+    `${smoke} ${critical} un nuevo dueño de barbería puede registrarse con email y contraseña`,
+    async ({ page }) => {
     const uniqueEmail = `test-user-${Date.now()}@turnix.app`;
 
     await page.goto("/register");
-    await expect(page.getByText("Regístrate", { exact: true })).toBeVisible();
+    await expect(page.getByText("Crea tu cuenta", { exact: true })).toBeVisible();
 
     await page.getByRole("combobox").click();
     await page
@@ -16,43 +17,31 @@ test.describe("Flujo de Registro de Usuario", () => {
       .click();
 
     await page
-      .getByLabel("Nombre de tu Barbería")
+      .getByLabel(/Nombre de tu Barbería/)
       .fill("Barbería de Prueba E2E");
-    await page.getByLabel("Nombre", { exact: true }).fill("Dueño de Prueba");
-    await page.getByLabel("Email").fill(uniqueEmail);
-    await page.getByLabel("Contraseña").fill("PasswordConSimbolo123!");
+    await page.getByLabel(/Tu Nombre/).fill("Dueño de Prueba");
+    await page.getByLabel(/Tu Celular/).fill("1122334455");
+    await page.getByLabel(/Email/).fill(uniqueEmail);
+    await page.getByLabel(/Contraseña/).fill("PasswordConSimbolo123!");
 
-    await page.getByRole("button", { name: "Crear Cuenta" }).click();
-    await expect(page).toHaveURL("/login", { timeout: 10000 });
-  });
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByText("¡Listo! Ya podés empezar", { exact: true })).toBeVisible();
+    }
+  );
 
   // --- Test de Google ---
-  test("un nuevo usuario autenticado es redirigido a completar su perfil si no tiene rol", async ({
-    page,
-    context,
-  }) => {
-    const response = await page.request.post("/api/test/login");
-    expect(response.ok()).toBeTruthy();
-    const sessionCookie = await response.json();
+  test(
+    `${smoke} ${critical} un usuario autenticado sin rol es redirigido a completar su perfil`,
+    async ({ page, loginAsScenario }) => {
+      await loginAsScenario("incomplete-profile");
 
-    await context.addCookies([
-      {
-        name: sessionCookie.name,
-        value: sessionCookie.value,
-        domain: "localhost",
-        path: "/",
-      },
-    ]);
+      await page.goto("/dashboard");
 
-    // 3. Navegamos a una página protegida
-    await page.goto("/dashboard");
-
-    // 4. Verificamos que nuestro middleware nos redirige correctamente
-    await page.waitForURL("**/complete-profile");
-    await expect(page).toHaveURL("/complete-profile");
-    await page.waitForLoadState("networkidle");
-    await expect(
-      page.getByText("Un último paso...", { exact: true })
-    ).toBeVisible();
-  });
+      await page.waitForURL("**/complete-profile");
+      await expect(page).toHaveURL("/complete-profile");
+      await expect(
+        page.getByText("Un último paso...", { exact: true })
+      ).toBeVisible();
+    }
+  );
 });
