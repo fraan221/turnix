@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
+import { invalidateAnalyticsCache } from "@/lib/cache-utils";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -28,6 +30,11 @@ export async function GET(request: NextRequest) {
         paymentStatus: null,
       },
     });
+
+    if (result.count > 0) {
+      revalidatePath("/dashboard");
+      invalidateAnalyticsCache();
+    }
 
     console.log(`[Cron] Cleaned up ${result.count} expired pending bookings`);
 

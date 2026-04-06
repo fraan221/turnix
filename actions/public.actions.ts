@@ -1,6 +1,8 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { invalidateAnalyticsCache } from "@/lib/cache-utils";
 import { broadcastToUser } from "@/lib/supabase-server";
 import {
   getEndOfDay,
@@ -553,6 +555,9 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       });
     }
 
+    revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
+
     return {
       success: "¡Turno confirmado con éxito!",
       bookingDetails: {
@@ -600,6 +605,9 @@ export async function cancelFailedBooking(bookingId: string) {
         data: { status: "CANCELLED" },
       });
     }
+
+    revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
 
     return { success: true, barbershopSlug: booking.barbershop.slug };
   } catch (error) {

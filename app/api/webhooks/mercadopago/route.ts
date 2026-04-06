@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { revalidatePath } from "next/cache";
+import { invalidateAnalyticsCache } from "@/lib/cache-utils";
 import { syncSubscriptionStatus } from "@/lib/mercadopago/sync";
 import { validateWebhookSignature } from "@/lib/mercadopago/webhook-security";
 import { broadcastToUser } from "@/lib/supabase-server";
@@ -178,6 +179,7 @@ export async function POST(req: NextRequest) {
             console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
 
             revalidatePath("/dashboard");
+            invalidateAnalyticsCache();
 
             console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
 

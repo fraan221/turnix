@@ -3,6 +3,7 @@
 import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAnalyticsCache } from "@/lib/cache-utils";
 import { BookingStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import {
@@ -288,6 +289,7 @@ export async function deleteClient(clientId: string) {
 
     revalidatePath("/dashboard/clients");
     revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
     return { success: "Cliente y sus turnos han sido eliminados con éxito." };
   } catch (error) {
     console.error("Error al eliminar al cliente:", error);
@@ -338,6 +340,9 @@ export async function updateBookingStatus(
       [BookingStatus.CANCELLED]: "cancelado",
     };
     const friendlyStatus = statusTextMap[newStatus];
+
+    revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
 
     return {
       success: `El turno ha sido marcado como ${friendlyStatus}.`,
@@ -395,6 +400,7 @@ export async function bulkUpdateBookingStatus(
     });
 
     revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
 
     const statusTextMap = {
       [BookingStatus.SCHEDULED]: "agendados",
@@ -667,6 +673,7 @@ export async function createBooking(
     });
 
     revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
     return {
       success: `Turno creado con éxito para ${finalClientName!}.`,
       error: null,
@@ -1208,6 +1215,7 @@ export async function updateBookingTime(
     });
 
     revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
 
     return { success: "Turno reprogramado con éxito." };
   } catch (error: any) {
