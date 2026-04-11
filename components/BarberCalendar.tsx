@@ -126,10 +126,10 @@ function getDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function SubmitButton() {
+function SubmitButton({ isDisabled }: { isDisabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type="submit" className="w-full" disabled={pending || isDisabled}>
       {pending ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -160,6 +160,7 @@ export default function BarberCalendar({
     useState<BookingWithDetails | null>(null);
   const [state, formAction] = useFormState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const hasSubmittedRef = useRef(false);
   const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<CalendarView>(
     (searchParams.get("view") as CalendarView) ||
@@ -317,6 +318,7 @@ export default function BarberCalendar({
     }
 
     if (state?.success) {
+      hasSubmittedRef.current = true;
       toast.success("¡Éxito!", { description: state.success });
       setCreateModalOpen(false);
       formRef.current?.reset();
@@ -426,6 +428,7 @@ export default function BarberCalendar({
     }
 
     setSelectedDateInfo(selectInfo);
+    hasSubmittedRef.current = false;
     setCreateModalOpen(true);
   };
 
@@ -749,7 +752,7 @@ export default function BarberCalendar({
                 </SelectContent>
               </Select>
             </div>
-            <SubmitButton />
+            <SubmitButton isDisabled={hasSubmittedRef.current} />
           </form>
         </DialogContent>
       </Dialog>

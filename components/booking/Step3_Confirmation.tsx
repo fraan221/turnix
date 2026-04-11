@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import type { Service } from "@prisma/client";
 import { formatShortDateTime } from "@/lib/date-helpers";
@@ -25,23 +23,6 @@ import { createPublicBooking } from "@/actions/public.actions";
 import { createDepositPreference } from "@/actions/payment.actions";
 import { ArrowLeft, Loader2, CalendarPlus, Info } from "lucide-react";
 
-type CreateBookingState = {
-  success?: string | null;
-  error?: string | null;
-  requiresPayment?: boolean;
-  bookingId?: string;
-  depositAmount?: number;
-  slotTaken?: boolean;
-  bookingDetails?: {
-    clientName: string;
-    barberPhone: string;
-    barberName: string;
-    serviceName: string;
-    startTime: string;
-    teamsEnabled: boolean;
-  } | null;
-} | null;
-
 interface Step3ConfirmationProps {
   barberId: string;
   barberName: string;
@@ -51,38 +32,7 @@ interface Step3ConfirmationProps {
   cancellationPolicy: string | null;
   onBack: () => void;
   hasMultipleBarbers: boolean;
-}
-
-function SubmitButton({
-  isRedirecting,
-  isDisabled,
-}: {
-  isRedirecting: boolean;
-  isDisabled: boolean;
-}) {
-  const { pending } = useFormStatus();
-
-  if (isRedirecting) {
-    return (
-      <Button className="w-full" disabled>
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        Redirigiendo a Mercado Pago...
-      </Button>
-    );
-  }
-
-  return (
-    <Button type="submit" className="w-full" disabled={pending || isDisabled}>
-      {pending ? (
-        <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Reservando...
-        </>
-      ) : (
-        "Confirmar reserva"
-      )}
-    </Button>
-  );
+  onBookingComplete: () => void;
 }
 
 export function Step3_Confirmation({
@@ -94,84 +44,99 @@ export function Step3_Confirmation({
   cancellationPolicy,
   onBack,
   hasMultipleBarbers,
+  onBookingComplete,
 }: Step3ConfirmationProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [policyAccepted, setPolicyAccepted] = useState(false);
-  const router = useRouter();
-
-  const [state, formAction] = useFormState<CreateBookingState, FormData>(
-    createPublicBooking,
-    null,
-  );
 
   const serviceIds = useMemo(() => {
     return selectedServices.map((s) => s.id);
   }, [selectedServices]);
 
   const isFormReady = useMemo(() => {
-    const isValidName = (name: string) => name.trim().length > 0;
-    const isValidPhone = (phone: string) => phone.trim().length > 0;
-
-    const hasName = isValidName(clientName);
-    const hasPhone = isValidPhone(clientPhone);
+    const hasName = clientName.trim().length > 0;
+    const hasPhone = clientPhone.trim().length > 0;
     const policyIsValid = !cancellationPolicy || policyAccepted;
 
     return hasName && hasPhone && policyIsValid;
   }, [clientName, clientPhone, cancellationPolicy, policyAccepted]);
 
-  useEffect(() => {
-    async function handlePaymentRedirect(bookingId: string) {
-      try {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const result = await createPublicBooking(null, formData);
+
+      // Payment redirect
+      if (result?.requiresPayment && result.bookingId) {
+        onBookingComplete();
+        setIsDialogOpen(false);
         setIsRedirecting(true);
-        const result = await createDepositPreference(bookingId);
 
-        if (result.success && result.initPoint) {
-          window.location.href = result.initPoint;
-        } else {
-          toast.error("Error al iniciar el pago", {
-            description: result.error || "Intenta nuevamente más tarde",
-          });
+        try {
+          const paymentResult = await createDepositPreference(result.bookingId);
+          if (paymentResult.success && paymentResult.initPoint) {
+            window.location.href = paymentResult.initPoint;
+          } else {
+            toast.error("Error al iniciar el pago", {
+              description:
+                paymentResult.error || "Intenta nuevamente más tarde",
+            });
+            setIsRedirecting(false);
+            setIsPending(false);
+          }
+        } catch {
+          toast.error("Error inesperado al iniciar el pago");
           setIsRedirecting(false);
+          setIsPending(false);
         }
-      } catch (error) {
-        console.error("Payment redirect error:", error);
-        toast.error("Error inesperado al iniciar el pago");
-        setIsRedirecting(false);
+        return;
       }
-    }
 
-    if (state?.requiresPayment && state.bookingId) {
-      handlePaymentRedirect(state.bookingId);
-      return;
-    }
+      // Success — navigate immediately
+      if (result?.success && result.bookingDetails) {
+        onBookingComplete();
+        setIsDialogOpen(false);
 
-    if (state?.success && state.bookingDetails) {
-      const queryParams = new URLSearchParams({
-        client: state.bookingDetails.clientName,
-        phone: state.bookingDetails.barberPhone,
-        barberName: state.bookingDetails.barberName,
-        serviceName: state.bookingDetails.serviceName,
-        startTime: state.bookingDetails.startTime,
-        teamsEnabled: String(state.bookingDetails.teamsEnabled),
-      });
+        const queryParams = new URLSearchParams({
+          client: result.bookingDetails.clientName,
+          phone: result.bookingDetails.barberPhone,
+          barberName: result.bookingDetails.barberName,
+          serviceName: result.bookingDetails.serviceName,
+          startTime: result.bookingDetails.startTime,
+          teamsEnabled: String(result.bookingDetails.teamsEnabled),
+        });
 
-      router.push(`/booking-confirmed?${queryParams.toString()}`);
-    }
-
-    if (state?.error) {
-      toast.error("Error al reservar", { description: state.error });
-
-      if (state.slotTaken) {
-        setTimeout(() => {
-          onBack();
-        }, 2000);
+        window.location.href = `/booking-confirmed?${queryParams.toString()}`;
+        return;
       }
+
+      // Error
+      if (result?.error) {
+        toast.error("Error al reservar", { description: result.error });
+        setIsPending(false);
+
+        if (result.slotTaken) {
+          setTimeout(() => {
+            onBack();
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error("[Booking] Error inesperado:", error);
+      toast.error("Error inesperado al crear la reserva");
+      setIsPending(false);
     }
-  }, [state, router, onBack]);
+  }
 
   return (
     <div className="space-y-6">
@@ -236,7 +201,7 @@ export function Step3_Confirmation({
               </DialogDescription>
             </DialogHeader>
 
-            <form action={formAction} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <input type="hidden" name="barberId" value={barberId} />
               <input type="hidden" name="serviceIds" value={serviceIds.join(",")} />
               <input
@@ -298,10 +263,22 @@ export function Step3_Confirmation({
                 </div>
               )}
 
-              <SubmitButton
-                isRedirecting={isRedirecting}
-                isDisabled={!isFormReady}
-              />
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!isFormReady || isPending}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isRedirecting
+                      ? "Redirigiendo a Mercado Pago..."
+                      : "Reservando..."}
+                  </>
+                ) : (
+                  "Confirmar reserva"
+                )}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>

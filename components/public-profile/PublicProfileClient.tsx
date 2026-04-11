@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingWizard } from "@/components/booking/BookingWizard";
@@ -31,6 +31,11 @@ export function PublicProfileClient({
 
   const hasMultipleBarbers = allBarbers.length > 1;
   const allServices = barbershop.services;
+  const [isBookingComplete, setIsBookingComplete] = useState(false);
+
+  const onBookingComplete = useCallback(() => {
+    setIsBookingComplete(true);
+  }, []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -177,6 +182,8 @@ export function PublicProfileClient({
                     handleNextFromStep2={handleNextFromStep2}
                     handleBack={handleBack}
                     setStep={setStepManual}
+                    isBookingComplete={isBookingComplete}
+                    onBookingComplete={onBookingComplete}
                   />
                 </motion.div>
               </TabsContent>

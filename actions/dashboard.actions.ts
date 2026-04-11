@@ -658,6 +658,22 @@ export async function createBooking(
         finalClientName = client.name;
       }
 
+      // Deduplication: check for any recent booking from same client at same time (within 60s)
+      const recentDuplicate = await tx.booking.findFirst({
+        where: {
+          barberId,
+          clientId: client.id,
+          startTime,
+          status: { not: "CANCELLED" },
+          createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+        },
+      });
+
+      if (recentDuplicate) {
+        // Already created recently — skip to avoid duplicate
+        return;
+      }
+
       await tx.booking.create({
         data: {
           startTime,

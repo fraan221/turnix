@@ -363,34 +363,44 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       service.activeDurationInMinutes || serviceDuration;
 
     const result = await prisma.$transaction(async (tx) => {
-      const existingPendingBooking = await tx.booking.findFirst({
+      // Deduplication: check for any recent booking from same client at same time (within 60s)
+      const recentDuplicate = await tx.booking.findFirst({
         where: {
           barberId,
           clientId: client.id,
           startTime,
-          paymentStatus: "PENDING",
           status: { not: "CANCELLED" },
+          createdAt: { gte: new Date(Date.now() - 60 * 1000) },
         },
       });
 
-      if (existingPendingBooking) {
-        await tx.booking.update({
-          where: { id: existingPendingBooking.id },
-          data: {
-            serviceId: serviceId,
-            priceAtBooking: service.price,
-            durationAtBooking: service.durationInMinutes,
-            activeDurationAtBooking: service.activeDurationInMinutes,
-            barbershopId: barbershopId,
-            depositAmount:
-              requiresDeposit && calculatedDeposit
-                ? calculatedDeposit
-                : existingPendingBooking.depositAmount,
-            updatedAt: new Date(),
-          },
-        });
+      if (recentDuplicate) {
+        // If it's a pending payment booking, update it and return for payment flow
+        if (recentDuplicate.paymentStatus === "PENDING") {
+          await tx.booking.update({
+            where: { id: recentDuplicate.id },
+            data: {
+              serviceId: serviceId,
+              priceAtBooking: service.price,
+              durationAtBooking: service.durationInMinutes,
+              activeDurationAtBooking: service.activeDurationInMinutes,
+              barbershopId: barbershopId,
+              depositAmount:
+                requiresDeposit && calculatedDeposit
+                  ? calculatedDeposit
+                  : recentDuplicate.depositAmount,
+              updatedAt: new Date(),
+            },
+          });
 
-        return { type: "existing" as const, booking: existingPendingBooking };
+          return { type: "existing" as const, booking: recentDuplicate };
+        }
+
+        // For non-payment bookings, return as already confirmed (idempotent)
+        return {
+          type: "existing_confirmed" as const,
+          booking: recentDuplicate,
+        };
       }
 
       const slotStart = startTime;
@@ -469,6 +479,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       return { type: "new" as const, booking: newBooking };
     });
 
+    // Handle existing booking with pending payment
     if (result.type === "existing") {
       if (requiresDeposit && calculatedDeposit) {
         return {
@@ -480,6 +491,21 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
         };
       }
 
+      return {
+        success: "¡Turno confirmado con éxito!",
+        bookingDetails: {
+          clientName: client.name,
+          barberPhone: barber.phone || "",
+          barberName: barber.name || "",
+          serviceName: service.name,
+          startTime: startTime.toISOString(),
+          teamsEnabled: barbershop.teamsEnabled,
+        },
+      };
+    }
+
+    // Handle duplicate submission — return success without re-sending notifications
+    if (result.type === "existing_confirmed") {
       return {
         success: "¡Turno confirmado con éxito!",
         bookingDetails: {

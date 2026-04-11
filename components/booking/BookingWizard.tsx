@@ -6,6 +6,7 @@ import { Step0_BarberSelection } from "./Step0_BarberSelection";
 import { Step1_ServiceSelection } from "./Step1_ServiceSelection";
 import { Step2_DateTimeSelection } from "./Step2_DateTimeSelection";
 import { Step3_Confirmation } from "./Step3_Confirmation";
+import { Loader2 } from "lucide-react";
 
 interface BookingWizardProps {
   barbers: User[];
@@ -23,6 +24,8 @@ interface BookingWizardProps {
   handleNextFromStep2: (dateTime: Date) => void;
   handleBack: () => void;
   setStep: (step: number) => void;
+  isBookingComplete: boolean;
+  onBookingComplete: () => void;
 }
 
 export function BookingWizard({
@@ -41,7 +44,20 @@ export function BookingWizard({
   handleNextFromStep2,
   handleBack,
   setStep,
+  isBookingComplete,
+  onBookingComplete,
 }: BookingWizardProps) {
+  if (isBookingComplete) {
+    return (
+      <div className="p-6">
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Redirigiendo...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <AnimatePresence mode="wait">
@@ -96,6 +112,7 @@ export function BookingWizard({
                     cancellationPolicy={cancellationPolicy}
                     onBack={handleBack}
                     hasMultipleBarbers={hasMultipleBarbers}
+                    onBookingComplete={onBookingComplete}
                   />
                 );
               default:
