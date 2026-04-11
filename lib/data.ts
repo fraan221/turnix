@@ -302,3 +302,33 @@ export const getBarberAvailability = async (
 
   return { bookings, timeBlocks };
 };
+
+/**
+ * Obtiene los turnos fijos activos de una barbería.
+ */
+export const getRecurringBookings = cache(async (barbershopId: string) => {
+  return prisma.recurringBooking.findMany({
+    where: { barbershopId, isActive: true },
+    include: {
+      client: true,
+      service: true,
+      barber: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: [
+      { dayOfWeek: "asc" },
+      { startTime: "asc" }
+    ],
+  });
+});
+
+/**
+ * Precarga de turnos fijos para evitar waterfalls (Preload Pattern).
+ */
+export const preloadRecurringBookings = (barbershopId: string) => {
+  void getRecurringBookings(barbershopId);
+};

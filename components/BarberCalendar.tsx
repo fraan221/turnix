@@ -379,7 +379,9 @@ export default function BarberCalendar({
       let eventColor = "#3b82f6";
       let eventClassName = "cursor-pointer";
 
-      if (booking.paymentStatus === "PENDING") {
+      if ((booking as any).recurringBookingId) {
+        eventColor = "#8b5cf6";
+      } else if (booking.paymentStatus === "PENDING") {
         eventColor = "#f59e0b";
       } else if (booking.status === "COMPLETED") {
         eventColor = "#22c55e";
@@ -401,12 +403,12 @@ export default function BarberCalendar({
         id: booking.id,
         title: `${booking.service?.name ?? "Servicio"} - ${booking.client.name}${
           allowsOverlapping ? " [S]" : ""
-        }`,
+        }${(booking as any).recurringBookingId ? " [F]" : ""}`,
         start: booking.startTime,
         end: endTime,
         backgroundColor: eventColor,
         borderColor: eventColor,
-        className: eventClassName,
+        className: eventClassName + ((booking as any).recurringBookingId ? " border-2 border-dashed opacity-90" : ""),
         extendedProps: {
           ...booking,
           isPastScheduled,

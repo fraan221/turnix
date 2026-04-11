@@ -16,6 +16,7 @@ const pageTitles: { [key: string]: string } = {
   "/dashboard/team": "Equipo",
   "/dashboard/analytics": "Estadísticas",
   "/dashboard/connect": "Conectar",
+  "/dashboard/fixed": "Turnos Fijos",
   "/dashboard": "Agenda",
   "/dashboard/help": "Ayuda",
   "/dashboard/my-stats": "Mis Estadísticas",

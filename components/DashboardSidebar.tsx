@@ -40,6 +40,7 @@ import {
   Info,
   Bug,
   Siren,
+  Repeat,
 } from "lucide-react";
 import { WhatsAppIcon } from "./icons/WhatsAppIcon";
 
@@ -67,6 +68,7 @@ export function DashboardSidebar() {
       { href: "/dashboard/services", label: "Servicios", icon: Scissors },
       { href: "/dashboard/schedule", label: "Horarios", icon: Clock },
       { href: "/dashboard/clients", label: "Clientes", icon: Users },
+      { href: "/dashboard/fixed", label: "Turnos Fijos", icon: Repeat },
     ];
 
     if (userRole === Role.OWNER) {

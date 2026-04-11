@@ -35,7 +35,7 @@ const shiftNames: Record<WorkShiftType, string> = {
 
 type TimeSlotGroup = {
   shiftName: string;
-  slots: { time: string; available: boolean }[];
+  slots: { time: string; available: boolean; isRecurring?: boolean }[];
 };
 
 export async function getBarberAvailability(
@@ -130,7 +130,7 @@ export async function getBarberAvailability(
   const slotGroups: TimeSlotGroup[] = [];
 
   for (const shift of shifts) {
-    const shiftSlots: { time: string; available: boolean }[] = [];
+    const shiftSlots: { time: string; available: boolean; isRecurring?: boolean }[] = [];
     const dayStartTime = createDateInArgentina(shift.startTime);
     const dayEndTime = createDateInArgentina(shift.endTime);
 
@@ -147,7 +147,7 @@ export async function getBarberAvailability(
       }
     }
 
-    const occupiedIntervals: { start: Date; end: Date }[] = [];
+    const occupiedIntervals: { start: Date; end: Date; isRecurring: boolean }[] = [];
 
     for (const booking of bookings) {
       const bookingStart = new Date(booking.startTime);
@@ -161,7 +161,7 @@ export async function getBarberAvailability(
         bookingStart.getTime() + durationInMinutes * 60000,
       );
       if (bookingEnd > dayStartTime && bookingStart < dayEndTime) {
-        occupiedIntervals.push({ start: bookingStart, end: bookingEnd });
+        occupiedIntervals.push({ start: bookingStart, end: bookingEnd, isRecurring: !!(booking as any).recurringBookingId });
       }
     }
 
@@ -169,7 +169,7 @@ export async function getBarberAvailability(
       const blockStart = new Date(block.startTime);
       const blockEnd = new Date(block.endTime);
       if (blockEnd > dayStartTime && blockStart < dayEndTime) {
-        occupiedIntervals.push({ start: blockStart, end: blockEnd });
+        occupiedIntervals.push({ start: blockStart, end: blockEnd, isRecurring: false });
       }
     }
 
@@ -187,10 +187,12 @@ export async function getBarberAvailability(
         (interval) => slotStart < interval.end && slotEnd > interval.start,
       );
       const isAvailable = overlappingIntervals.length === 0;
+      const isRecurring = overlappingIntervals.some(i => i.isRecurring);
 
       shiftSlots.push({
         time: formatTime(slotStart),
         available: isAvailable,
+        isRecurring,
       });
 
       if (isAvailable) {

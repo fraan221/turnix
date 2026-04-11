@@ -129,10 +129,12 @@ export function Step2_DateTimeSelection({
               onClick={() => slot.available && setSelectedSlot(slot.time)}
               disabled={!slot.available}
               className={cn(
-                !slot.available && "line-through text-muted-foreground"
+                !slot.available && !slot.isRecurring && "line-through text-muted-foreground",
+                !slot.available && slot.isRecurring && "bg-amber-50 text-amber-700 border-amber-300 border-dashed border-2 font-bold opacity-100 px-1 text-[10px] uppercase tracking-widest shadow-sm dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+                "relative transition-all"
               )}
             >
-              {slot.time}
+              {slot.available ? slot.time : slot.isRecurring ? "Turno Fijo" : slot.time}
             </Button>
           ))}
         </div>

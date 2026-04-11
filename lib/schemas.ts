@@ -174,3 +174,24 @@ export const ServiceSchema = z
       path: ["activeDurationInMinutes"],
     },
   );
+
+export const RecurringBookingSchema = z.object({
+  barberId: z.string().cuid({ message: "ID de barbero inválido." }).optional().or(z.literal("")),
+  clientId: z.string().min(1, { message: "Seleccioná un cliente." }),
+  serviceId: z.string().min(1, { message: "Seleccioná un servicio." }),
+  dayOfWeek: z.coerce
+    .number()
+    .int()
+    .min(0, { message: "Día inválido." })
+    .max(6, { message: "Día inválido." }),
+  startTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido (HH:mm)." }),
+  frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY"], {
+    message: "Seleccioná una frecuencia.",
+  }),
+});
+
+export const SuspendRecurringBookingSchema = z.object({
+  recurringBookingId: z.string().min(1, { message: "ID de turno fijo requerido." }),
+});
