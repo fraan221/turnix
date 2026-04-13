@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
+import { WelcomeBarberEmail } from "@/emails/WelcomeBarberEmail";
 import { signOut } from "@/auth";
 
 export async function logoutAction() {
@@ -209,17 +210,30 @@ export async function registerBarber(prevState: any, formData: FormData) {
           connectionCode,
         },
       });
+
+      try {
+        await resend.emails.send({
+          from: "Turnix <contacto@turnix.app>",
+          to: email,
+          subject: "¡Bienvenido a Turnix! Tu código de conexión",
+          react: WelcomeBarberEmail({ name, connectionCode }),
+        });
+      } catch (emailError) {
+        console.error("Error al enviar el email de bienvenida:", emailError);
+      }
     }
 
-    try {
-      await resend.emails.send({
-        from: "Turnix <contacto@turnix.app>",
-        to: email,
-        subject: "¡Bienvenido a Turnix!",
-        react: WelcomeEmail({ name }),
-      });
-    } catch (emailError) {
-      console.error("Error al enviar el email de bienvenida:", emailError);
+    if (role === "OWNER") {
+      try {
+        await resend.emails.send({
+          from: "Turnix <contacto@turnix.app>",
+          to: email,
+          subject: "¡Bienvenido a Turnix!",
+          react: WelcomeEmail({ name }),
+        });
+      } catch (emailError) {
+        console.error("Error al enviar el email de bienvenida:", emailError);
+      }
     }
 
     return { success: "¡Cuenta creada con éxito! Serás redirigido al login." };
@@ -283,6 +297,32 @@ export async function completeGoogleRegistration(
         where: { id: userId },
         data: { role: Role.BARBER, phone, connectionCode },
       });
+
+      if (user.email) {
+        try {
+          await resend.emails.send({
+            from: "Turnix <contacto@turnix.app>",
+            to: user.email,
+            subject: "¡Bienvenido a Turnix! Tu código de conexión",
+            react: WelcomeBarberEmail({ name: user.name, connectionCode }),
+          });
+        } catch (emailError) {
+          console.error("Error al enviar el email de bienvenida:", emailError);
+        }
+      }
+    }
+
+    if (role === "OWNER" && user.email) {
+      try {
+        await resend.emails.send({
+          from: "Turnix <contacto@turnix.app>",
+          to: user.email,
+          subject: "¡Bienvenido a Turnix!",
+          react: WelcomeEmail({ name: user.name }),
+        });
+      } catch (emailError) {
+        console.error("Error al enviar el email de bienvenida:", emailError);
+      }
     }
 
     return {
