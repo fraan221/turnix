@@ -201,6 +201,13 @@ export async function removeTeamMember(
         },
       });
 
+      await tx.recurringBooking.deleteMany({
+        where: {
+          barberId: memberIdToRemove,
+          barbershopId: barbershopId,
+        },
+      });
+
       await tx.service.deleteMany({
         where: {
           barberId: memberIdToRemove,
