@@ -338,7 +338,7 @@ model RecurringBooking {
   clientId        String
   client          Client     @relation(fields: [clientId], references: [id])
   serviceId       String
-  service         Service    @relation(fields: [serviceId], references: [id])
+  service         Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   barbershopId    String
   barbershop      Barbershop @relation(fields: [barbershopId], references: [id])
   
