@@ -102,6 +102,45 @@ export async function linkBarberToShop(
         where: { id: barberToLink.id },
         data: { connectionCode: null },
       });
+
+      // Heredar horarios del OWNER al nuevo BARBER
+      const ownerWorkingHours = await tx.workingHours.findMany({
+        where: { barberId: user.id },
+        include: { blocks: true },
+      });
+
+      for (const ownerDay of ownerWorkingHours) {
+        const barberDay = await tx.workingHours.upsert({
+          where: {
+            barberId_dayOfWeek: {
+              barberId: barberToLink.id,
+              dayOfWeek: ownerDay.dayOfWeek,
+            },
+          },
+          update: { isWorking: ownerDay.isWorking },
+          create: {
+            barberId: barberToLink.id,
+            dayOfWeek: ownerDay.dayOfWeek,
+            isWorking: ownerDay.isWorking,
+          },
+        });
+
+        if (ownerDay.blocks.length > 0) {
+          // Limpiar bloques existentes del barbero para este día
+          await tx.workScheduleBlock.deleteMany({
+            where: { workingHoursId: barberDay.id },
+          });
+
+          await tx.workScheduleBlock.createMany({
+            data: ownerDay.blocks.map((block) => ({
+              workingHoursId: barberDay.id,
+              type: block.type,
+              startTime: block.startTime,
+              endTime: block.endTime,
+            })),
+          });
+        }
+      }
     });
 
     await broadcastToUser(barberToLink.id, "team-joined", {

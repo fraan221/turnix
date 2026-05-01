@@ -524,19 +524,45 @@ export async function createBooking(
   try {
     const dayOfWeek = getArgentinaDayOfWeek(startTime);
 
-    const [workingHours, serviceForBooking] = await Promise.all([
-      prisma.workingHours.findUnique({
-        where: {
-          barberId_dayOfWeek: { barberId: barberId, dayOfWeek },
+    // Buscar workingHours del barbero target
+    let workingHours = await prisma.workingHours.findUnique({
+      where: {
+        barberId_dayOfWeek: { barberId: barberId, dayOfWeek },
+      },
+      include: {
+        blocks: true,
+      },
+    });
+
+    // Fallback: si el barbero no tiene horarios propios y es empleado,
+    // usar los horarios del OWNER de la barbería
+    if (!workingHours) {
+      const barberUser = await prisma.user.findUnique({
+        where: { id: barberId },
+        select: {
+          role: true,
+          teamMembership: {
+            select: { barbershop: { select: { ownerId: true } } },
+          },
         },
-        include: {
-          blocks: true,
-        },
-      }),
-      prisma.service.findUnique({
-        where: { id: serviceId },
-      }),
-    ]);
+      });
+
+      if (barberUser?.role === Role.BARBER && barberUser.teamMembership) {
+        const ownerId = barberUser.teamMembership.barbershop.ownerId;
+        workingHours = await prisma.workingHours.findUnique({
+          where: {
+            barberId_dayOfWeek: { barberId: ownerId, dayOfWeek },
+          },
+          include: {
+            blocks: true,
+          },
+        });
+      }
+    }
+
+    const serviceForBooking = await prisma.service.findUnique({
+      where: { id: serviceId },
+    });
 
     if (!serviceForBooking) {
       return { success: null, error: "El servicio seleccionado no existe." };
