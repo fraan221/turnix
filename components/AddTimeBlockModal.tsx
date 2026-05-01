@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useRef, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { Loader2, CalendarX, Lightbulb } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
@@ -46,7 +46,7 @@ export function AddTimeBlockModalContent({
   onClose,
   selectedBarberId,
 }: AddTimeBlockModalContentProps) {
-  const [state, formAction] = useFormState(createTimeBlock, null);
+  const [state, formAction] = useActionState(createTimeBlock, null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

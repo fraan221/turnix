@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (result.count > 0) {
-      revalidatePath("/dashboard");
+      revalidatePath("/dashboard", "layout");
       invalidateAnalyticsCache();
     }
 

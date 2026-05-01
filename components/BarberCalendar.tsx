@@ -8,8 +8,9 @@ import {
   useMemo,
   Suspense,
   lazy,
+  useActionState,
 } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
@@ -158,7 +159,7 @@ export default function BarberCalendar({
     useState<DateSelectArg | null>(null);
   const [selectedBooking, setSelectedBooking] =
     useState<BookingWithDetails | null>(null);
-  const [state, formAction] = useFormState(createBooking, initialState);
+  const [state, formAction] = useActionState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const hasSubmittedRef = useRef(false);
   const calendarRef = useRef<FullCalendar>(null);

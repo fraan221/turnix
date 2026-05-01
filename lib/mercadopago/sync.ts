@@ -95,8 +95,8 @@ export async function syncSubscriptionStatus(
       });
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/subscribe");
+    revalidatePath("/dashboard", "layout");
+    revalidatePath("/subscribe", "layout");
 
     console.log(`Éxito. Estado local actualizado a: ${subscription.status}`);
     return subscription;

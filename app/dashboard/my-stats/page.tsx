@@ -4,9 +4,9 @@ import AnalyticsDashboardSkeleton from "@/components/skeletons/AnalyticsDashboar
 import { Suspense } from "react";
 
 interface MyStatsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     period?: Period;
-  };
+  }>;
 }
 
 async function BarberStatsDataWrapper({ period }: { period: Period }) {
@@ -18,7 +18,8 @@ async function BarberStatsDataWrapper({ period }: { period: Period }) {
   return <BarberStatsDashboard initialData={stats} clientMetrics={clientMetrics} />;
 }
 
-export default async function MyStatsPage({ searchParams }: MyStatsPageProps) {
+export default async function MyStatsPage(props: MyStatsPageProps) {
+  const searchParams = await props.searchParams;
   const period = searchParams.period || "week";
 
   return (

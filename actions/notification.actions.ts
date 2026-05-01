@@ -42,7 +42,7 @@ export async function markNotificationsAsRead() {
         read: true,
       },
     });
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { success: "Notificaciones marcadas como leídas." };
   } catch (error) {
     return { error: "No se pudieron marcar las notificaciones." };

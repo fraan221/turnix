@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -99,7 +98,7 @@ type RegisterFormValues = z.infer<typeof RegisterSchema>;
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [state, formAction] = useFormState(registerBarber, null);
+  const [state, formAction] = useActionState(registerBarber, null);
   const [role, setRole] = useState<string | null>(null);
   const { showLoader, hideLoader } = useLoader();
   const [isSuccess, setIsSuccess] = useState(false);

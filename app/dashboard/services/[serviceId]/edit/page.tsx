@@ -5,12 +5,11 @@ import prisma from "@/lib/prisma";
 import EditServiceForm from "@/components/EditServiceForm";
 
 interface EditServicePageProps {
-  params: { serviceId: string };
+  params: Promise<{ serviceId: string }>;
 }
 
-export default async function EditServicePage({
-  params,
-}: EditServicePageProps) {
+export default async function EditServicePage(props: EditServicePageProps) {
+  const params = await props.params;
   const currentUser = await getUserForSettings();
   if (!currentUser) {
     return notFound();

@@ -91,11 +91,12 @@ async function getScheduleData(searchParams: { barberId?: string }) {
   };
 }
 
-export default async function SchedulePage({
-  searchParams,
-}: {
-  searchParams: { barberId?: string };
-}) {
+export default async function SchedulePage(
+  props: {
+    searchParams: Promise<{ barberId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const {
     user,
     barbershopWorkingHours,

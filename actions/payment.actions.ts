@@ -158,7 +158,7 @@ export async function updateDepositSettings(
       },
     });
 
-    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/settings", "layout");
 
     return { success: true };
   } catch (error) {
@@ -238,7 +238,7 @@ export async function disconnectMercadoPago(): Promise<{
       }),
     ]);
 
-    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/settings", "layout");
 
     return { success: true };
   } catch (error) {

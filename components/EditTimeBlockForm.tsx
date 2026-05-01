@@ -1,8 +1,8 @@
 "use client";
 
 import { TimeBlock } from "@prisma/client";
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect } from "react";
+import { useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
 import { toast } from "sonner";
 import { updateTimeBlock } from "@/actions/dashboard.actions";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ export default function EditTimeBlockForm({
 
   const router = useRouter();
   const updateTimeBlockWithId = updateTimeBlock.bind(null, timeBlock.id);
-  const [state, formAction] = useFormState(updateTimeBlockWithId, null);
+  const [state, formAction] = useActionState(updateTimeBlockWithId, null);
 
   useEffect(() => {
     if (state?.success) {

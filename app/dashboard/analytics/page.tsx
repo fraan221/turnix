@@ -21,14 +21,13 @@ async function AnalyticsDataWrapper({ period }: { period: Period }) {
 }
 
 interface AnalyticsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     period?: Period;
-  };
+  }>;
 }
 
-export default async function AnalyticsPage({
-  searchParams,
-}: AnalyticsPageProps) {
+export default async function AnalyticsPage(props: AnalyticsPageProps) {
+  const searchParams = await props.searchParams;
   const user = await getUserForSettings();
 
   if (!user || user.role !== Role.OWNER) {

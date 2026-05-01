@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
 
             console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
 
-            revalidatePath("/dashboard");
+            revalidatePath("/dashboard", "layout");
             invalidateAnalyticsCache();
 
             console.log(`[Deposit] Booking ${booking.id} marcado como PAID`);
@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
               );
             }
 
-            revalidatePath("/dashboard");
+            revalidatePath("/dashboard", "layout");
 
             console.log(
               `[Deposit] Notificaciones enviadas para booking ${booking.id}`,

@@ -96,7 +96,8 @@ export async function createService(data: ServiceInput, targetBarberId?: string)
       },
     });
 
-    revalidatePath("/dashboard/services");
+    revalidatePath("/dashboard/services", "layout");
+    // @ts-expect-error Next 16 typing bug
     revalidateTag(`barber-profile:${barbershopSlug}`);
     console.log(
       `[Cache Invalidation] Revalidando tag por nuevo servicio: barber-profile:${barbershopSlug}`
@@ -176,10 +177,11 @@ export async function updateService(serviceId: string, data: ServiceInput) {
       },
     });
 
-    revalidatePath("/dashboard/services");
+    revalidatePath("/dashboard/services", "layout");
     // 2. Invalidamos el caché del perfil público
     const barbershopSlug = serviceToUpdate.barbershop.slug;
     if (barbershopSlug) {
+      // @ts-expect-error Next 16 typing bug
       revalidateTag(`barber-profile:${barbershopSlug}`);
       console.log(
         `[Cache Invalidation] Revalidando tag por actualización de servicio: barber-profile:${barbershopSlug}`
@@ -222,9 +224,10 @@ export async function deleteService(serviceId: string) {
 
     await prisma.service.delete({ where: { id: serviceId } });
 
-    revalidatePath("/dashboard/services");
+    revalidatePath("/dashboard/services", "layout");
     const barbershopSlug = service.barbershop.slug;
     if (barbershopSlug) {
+      // @ts-expect-error Next 16 typing bug
       revalidateTag(`barber-profile:${barbershopSlug}`);
       console.log(
         `[Cache Invalidation] Revalidando tag por eliminación de servicio: barber-profile:${barbershopSlug}`

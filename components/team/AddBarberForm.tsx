@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useRef, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { linkBarberToShop } from "@/actions/team.actions";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ function SubmitButton() {
 
 export function AddBarberForm() {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(linkBarberToShop, initialState);
+  const [state, formAction] = useActionState(linkBarberToShop, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

@@ -7,14 +7,13 @@ import { getCurrentUser } from "@/lib/data";
 import { SubscriptionManagement } from "@/components/billing/SubscriptionManagement";
 
 interface SubscribePageProps {
-  searchParams: {
+  searchParams: Promise<{
     reason?: string;
-  };
+  }>;
 }
 
-export default async function SubscribePage({
-  searchParams,
-}: SubscribePageProps) {
+export default async function SubscribePage(props: SubscribePageProps) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const reason = searchParams.reason;
   const isProactiveSubscription = reason === "trial";

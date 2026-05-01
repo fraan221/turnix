@@ -234,10 +234,11 @@ export async function saveSchedule(
       barberUpdated?.teamMembership?.barbershop?.slug;
 
     if (slug) {
+      // @ts-expect-error Next 16 typing bug
       revalidateTag(`barber-profile:${slug}`);
     }
 
-    revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/schedule", "layout");
     return { success: "¡Horario guardado con éxito!" };
   } catch (error) {
     console.error("Error al guardar el horario:", error);
@@ -287,8 +288,8 @@ export async function deleteClient(clientId: string) {
       });
     });
 
-    revalidatePath("/dashboard/clients");
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/clients", "layout");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
     return { success: "Cliente y sus turnos han sido eliminados con éxito." };
   } catch (error) {
@@ -341,7 +342,7 @@ export async function updateBookingStatus(
     };
     const friendlyStatus = statusTextMap[newStatus];
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     return {
@@ -399,7 +400,7 @@ export async function bulkUpdateBookingStatus(
       data: { status: newStatus },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     const statusTextMap = {
@@ -431,7 +432,7 @@ export async function completeOnboarding() {
       data: { onboardingCompleted: true },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { success: "¡Onboarding completado!" };
   } catch (error) {
     return { error: "No se pudo completar el onboarding." };
@@ -714,7 +715,7 @@ export async function createBooking(
       });
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
     return {
       success: `Turno creado con éxito para ${finalClientName!}.`,
@@ -800,7 +801,7 @@ export async function updateClientNotes(
       },
     });
 
-    revalidatePath(`/dashboard/clients/${clientId}`);
+    revalidatePath(`/dashboard/clients/${clientId}`, "layout");
     return { success: "¡Notas guardadas con éxito!", error: null };
   } catch (error) {
     console.error("Error al actualizar las notas del cliente:", error);
@@ -835,7 +836,7 @@ export async function deleteTimeBlock(blockId: string) {
       where: { id: blockId },
     });
 
-    revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/schedule", "layout");
     return { success: "Bloqueo eliminado con éxito." };
   } catch (error) {
     console.error("Error al eliminar el bloqueo:", error);
@@ -907,7 +908,7 @@ export async function updateTimeBlock(
       },
     });
 
-    revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/schedule", "layout");
     return { success: "Bloqueo actualizado con éxito." };
   } catch (error) {
     console.error("Error al actualizar el bloqueo de tiempo:", error);
@@ -970,7 +971,7 @@ export async function createTimeBlock(
         barberId: barberIdToUse,
       },
     });
-    revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/schedule", "layout");
     return { success: "Bloqueo de tiempo creado con éxito." };
   } catch (error) {
     console.error("Error al crear el bloqueo de tiempo:", error);
@@ -1256,7 +1257,7 @@ export async function updateBookingTime(
       });
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     return { success: "Turno reprogramado con éxito." };

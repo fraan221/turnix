@@ -1,8 +1,8 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { type FormState, updateClientNotes } from "@/actions/dashboard.actions";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useActionState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -50,7 +50,7 @@ export function ClientNotesForm({
   clientId,
   currentNotes,
 }: ClientNotesFormProps) {
-  const [state, formAction] = useFormState<FormState, FormData>(
+  const [state, formAction] = useActionState<FormState, FormData>(
     updateClientNotes,
     initialState
   );

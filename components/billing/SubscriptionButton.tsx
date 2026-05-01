@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { createSubscription } from "@/actions/subscription.actions";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export default function SubscriptionButton({
   isTrial: boolean;
   discountCode?: string | null;
 }) {
-  const [state, formAction] = useFormState(createSubscription, {});
+  const [state, formAction] = useActionState(createSubscription, {});
 
   useEffect(() => {
     if (state?.error) {

@@ -171,9 +171,10 @@ export async function POST(request: Request) {
         },
       );
 
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/dashboard/settings", "layout");
 
       if (finalBarbershop.slug) {
+        // @ts-expect-error Next 16 typing bug
         revalidateTag(`barber-profile:${finalBarbershop.slug}`);
       }
 
@@ -199,10 +200,11 @@ export async function POST(request: Request) {
         },
       });
 
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/dashboard/settings", "layout");
 
       const barbershopSlug = updatedUser.teamMembership?.barbershop.slug;
       if (barbershopSlug) {
+        // @ts-expect-error Next 16 typing bug
         revalidateTag(`barber-profile:${barbershopSlug}`);
       }
 

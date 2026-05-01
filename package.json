@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "email": "email dev --port 3001"
   },
   "prisma": {
@@ -64,15 +64,15 @@
     "lucide-react": "^0.274.0",
     "mercadopago": "^2.8.0",
     "motion": "^12.23.12",
-    "next": "14.2.35",
+    "next": "16.2.4",
     "next-auth": "^5.0.0-beta.30",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
     "pg": "^8.16.3",
     "qrcode.react": "^4.2.0",
-    "react": "^18.2.0",
+    "react": "19.2.5",
     "react-day-picker": "^9.7.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "19.2.5",
     "react-easy-crop": "^5.5.0",
     "react-hook-form": "^7.60.0",
     "recharts": "^2.15.4",
@@ -92,8 +92,8 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.12.8",
     "@types/pg": "^8.16.0",
-    "@types/react": "^18.2.23",
-    "@types/react-dom": "^18.2.8",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.15",
     "postcss": "^8.4.29",
@@ -103,9 +103,15 @@
     "tailwindcss": "^3.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
   }
 }
