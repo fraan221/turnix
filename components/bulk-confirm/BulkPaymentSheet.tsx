@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Banknote, Smartphone, CreditCard } from "lucide-react";
 import { PaymentMethod } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +52,7 @@ export function BulkPaymentSheet({ open, onOpenChange, bookingIds }: BulkPayment
             onClick={() => handleSetPaymentMethod("CASH")}
             disabled={isPending}
           >
-            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <span className="text-2xl mr-4">💵</span>}
+            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <Banknote className="w-6 h-6 mr-4" />}
             Efectivo
           </Button>
           <Button
@@ -61,7 +61,7 @@ export function BulkPaymentSheet({ open, onOpenChange, bookingIds }: BulkPayment
             onClick={() => handleSetPaymentMethod("TRANSFER")}
             disabled={isPending}
           >
-            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <span className="text-2xl mr-4">📱</span>}
+            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <Smartphone className="w-6 h-6 mr-4" />}
             Transferencia / MP
           </Button>
           <Button
@@ -70,7 +70,7 @@ export function BulkPaymentSheet({ open, onOpenChange, bookingIds }: BulkPayment
             onClick={() => handleSetPaymentMethod("CARD")}
             disabled={isPending}
           >
-            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <span className="text-2xl mr-4">💳</span>}
+            {isPending ? <Loader2 className="mr-4 animate-spin" /> : <CreditCard className="w-6 h-6 mr-4" />}
             Tarjeta
           </Button>
         </div>

@@ -33,7 +33,7 @@ import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Banknote, Smartphone, CreditCard, Lightbulb, Clock, Check } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
@@ -56,6 +56,88 @@ const statusMap = {
   [BookingStatus.CANCELLED]: { text: "Cancelado", color: "text-red-600" },
 };
 
+const PAYMENT_METHODS = [
+  {
+    value: "CASH" as PaymentMethod,
+    label: "Efectivo",
+    shortLabel: "Efectivo",
+    icon: Banknote,
+    bgClass: "bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-900/50",
+    textClass: "text-green-700 dark:text-green-300",
+    borderClass: "border-green-200 dark:border-green-800",
+    ringClass: "ring-green-500",
+  },
+  {
+    value: "TRANSFER" as PaymentMethod,
+    label: "Transferencia / MP",
+    shortLabel: "Transf.",
+    icon: Smartphone,
+    bgClass: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/50",
+    textClass: "text-blue-700 dark:text-blue-300",
+    borderClass: "border-blue-200 dark:border-blue-800",
+    ringClass: "ring-blue-500",
+  },
+  {
+    value: "CARD" as PaymentMethod,
+    label: "Tarjeta",
+    shortLabel: "Tarjeta",
+    icon: CreditCard,
+    bgClass: "bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/50",
+    textClass: "text-purple-700 dark:text-purple-300",
+    borderClass: "border-purple-200 dark:border-purple-800",
+    ringClass: "ring-purple-500",
+  },
+] as const;
+
+function getPaymentMethodConfig(method: PaymentMethod) {
+  return PAYMENT_METHODS.find((m) => m.value === method) ?? PAYMENT_METHODS[0];
+}
+
+interface PaymentMethodPickerProps {
+  onSelect: (method: PaymentMethod) => void;
+  isLoading: boolean;
+  selectedMethod: PaymentMethod | null;
+  compact?: boolean;
+}
+
+function PaymentMethodPicker({ onSelect, isLoading, selectedMethod, compact = false }: PaymentMethodPickerProps) {
+  return (
+    <div className={compact ? "grid grid-cols-3 gap-2" : "grid grid-cols-1 gap-3"}>
+      {PAYMENT_METHODS.map((method) => {
+        const Icon = method.icon;
+        const isSelected = isLoading && selectedMethod === method.value;
+
+        return (
+          <Button
+            key={method.value}
+            variant="outline"
+            className={cn(
+              compact ? "h-12 flex-col gap-1 px-2" : "h-16 justify-start px-6 text-lg",
+              method.bgClass,
+              method.textClass,
+              method.borderClass,
+              isSelected && `ring-2 ${method.ringClass}`,
+            )}
+            onClick={() => onSelect(method.value)}
+            disabled={isLoading}
+          >
+            {isSelected ? (
+              <Loader2 className={cn(compact ? "w-5 h-5" : "w-6 h-6 mr-4", "animate-spin")} />
+            ) : (
+              <Icon className={cn(compact ? "w-5 h-5" : "w-6 h-6 mr-4")} />
+            )}
+            {compact ? (
+              <span className="text-xs font-medium leading-none">{method.shortLabel}</span>
+            ) : (
+              method.label
+            )}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function BookingDetailsDialogContent({
   booking,
   onClose,
@@ -69,6 +151,8 @@ export function BookingDetailsDialogContent({
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null);
+  const [optimisticPaymentSet, setOptimisticPaymentSet] = useState(false);
   
   const [editingStartTime, setEditingStartTime] = useState("");
   const [editingEndTime, setEditingEndTime] = useState("");
@@ -245,15 +329,23 @@ export function BookingDetailsDialogContent({
   const isFutureBooking = new Date(booking.startTime) > new Date();
   const currentStatus = statusMap[booking.status];
 
-  const handleRetroactivePayment = (method: PaymentMethod) => {
-    startCompleting(async () => {
-      const result = await setPaymentMethod(booking.id, method);
-      if (result.success) {
-        toast.success(result.success);
-      } else if (result.error) {
-        toast.error(result.error);
-      }
-    });
+  const handlePaymentMethodSelect = (method: PaymentMethod, isRetroactive: boolean = false) => {
+    setSelectedPayment(method);
+    if (isRetroactive) {
+      setOptimisticPaymentSet(true);
+      startCompleting(async () => {
+        const result = await setPaymentMethod(booking.id, method);
+        if (result.success) {
+          toast.success(result.success);
+        } else if (result.error) {
+          toast.error(result.error);
+          setOptimisticPaymentSet(false);
+          setSelectedPayment(null);
+        }
+      });
+    } else {
+      handleStatusChange(BookingStatus.COMPLETED, method);
+    }
   };
 
   const renderDetailsView = () => (
@@ -284,25 +376,46 @@ export function BookingDetailsDialogContent({
             {currentStatus.text}
           </span>
         </p>
-        {booking.status === BookingStatus.COMPLETED && booking.paymentMethod && (
-          <p>
+        {booking.status === BookingStatus.COMPLETED && (booking.paymentMethod || optimisticPaymentSet) && (
+          <p className="flex items-center gap-1.5">
             <strong>Cobro:</strong>{" "}
-            {booking.paymentMethod === "CASH" ? "💵 Efectivo" : booking.paymentMethod === "TRANSFER" ? "📱 Transferencia" : "💳 Tarjeta"}
+            {(() => {
+              const method = booking.paymentMethod ?? selectedPayment;
+              if (!method) return null;
+              const config = getPaymentMethodConfig(method);
+              const Icon = config.icon;
+              return (
+                <span className={cn("inline-flex items-center gap-1 font-medium", config.textClass)}>
+                  <Icon className="w-4 h-4" />
+                  {config.label}
+                </span>
+              );
+            })()}
           </p>
         )}
       </div>
 
-      {booking.status === BookingStatus.COMPLETED && !booking.paymentMethod && (
+      {booking.status === BookingStatus.COMPLETED && !booking.paymentMethod && !optimisticPaymentSet && (
         <div className="p-3 mt-4 space-y-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-950/30 dark:border-blue-800">
           <p className="text-sm text-blue-800 dark:text-blue-200 font-medium flex items-center">
-            <span className="mr-2">💡</span>
+            <Lightbulb className="w-4 h-4 mr-2 flex-shrink-0" />
             Falta registrar el método de cobro
           </p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/50" onClick={() => handleRetroactivePayment("CASH")} disabled={isCompleting}>💵 Efectivo</Button>
-            <Button size="sm" variant="outline" className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50" onClick={() => handleRetroactivePayment("TRANSFER")} disabled={isCompleting}>📱 Transf.</Button>
-            <Button size="sm" variant="outline" className="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/50" onClick={() => handleRetroactivePayment("CARD")} disabled={isCompleting}>💳 Tarjeta</Button>
-          </div>
+          <PaymentMethodPicker
+            onSelect={(method) => handlePaymentMethodSelect(method, true)}
+            isLoading={isCompleting}
+            selectedMethod={selectedPayment}
+            compact
+          />
+        </div>
+      )}
+
+      {booking.status === BookingStatus.COMPLETED && !booking.paymentMethod && optimisticPaymentSet && selectedPayment && (
+        <div className="p-3 mt-4 bg-green-50 border border-green-200 rounded-md dark:bg-green-950/30 dark:border-green-800">
+          <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center">
+            <Check className="w-4 h-4 mr-2 flex-shrink-0" />
+            Cobro registrado: {getPaymentMethodConfig(selectedPayment).label}
+          </p>
         </div>
       )}
 
@@ -460,35 +573,11 @@ export function BookingDetailsDialogContent({
       <p className="text-center text-sm text-muted-foreground mb-4">
         ¿Cómo pagó el cliente?
       </p>
-      <div className="grid grid-cols-1 gap-3">
-        <Button
-          variant="outline"
-          className="h-16 justify-start px-6 text-lg bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/50"
-          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "CASH")}
-          disabled={isCompleting}
-        >
-          <span className="text-2xl mr-4">💵</span>
-          Efectivo
-        </Button>
-        <Button
-          variant="outline"
-          className="h-16 justify-start px-6 text-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50"
-          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "TRANSFER")}
-          disabled={isCompleting}
-        >
-          <span className="text-2xl mr-4">📱</span>
-          Transferencia / MP
-        </Button>
-        <Button
-          variant="outline"
-          className="h-16 justify-start px-6 text-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/50"
-          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "CARD")}
-          disabled={isCompleting}
-        >
-          <span className="text-2xl mr-4">💳</span>
-          Tarjeta
-        </Button>
-      </div>
+      <PaymentMethodPicker
+        onSelect={(method) => handlePaymentMethodSelect(method, false)}
+        isLoading={isCompleting}
+        selectedMethod={selectedPayment}
+      />
       <DialogFooter className="mt-4">
         <Button variant="ghost" className="w-full" onClick={() => setView("details")} disabled={isCompleting}>
           Volver
@@ -590,7 +679,7 @@ export function BookingDetailsDialogContent({
       {booking.paymentStatus === "PENDING" && view === "details" && (
         <div className="p-3 text-sm bg-amber-50 rounded-md border border-amber-300 dark:bg-amber-950/30 dark:border-amber-800">
           <p className="font-semibold text-amber-800 dark:text-amber-200">
-            ⏳ Esperando pago de seña
+            <Clock className="w-4 h-4 mr-1 inline" /> Esperando pago de seña
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300">
             Este turno se cancelará automáticamente si el cliente no paga en los

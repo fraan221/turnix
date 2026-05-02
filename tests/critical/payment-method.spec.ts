@@ -92,7 +92,7 @@ test.describe("Critical - Payment Method Flow", () => {
 
     await expect(page.getByText("Falta registrar el método de cobro")).toBeVisible();
     
-    await page.getByRole("button", { name: "📱 Transf." }).click();
+    await page.getByRole("button", { name: "Transf." }).click();
     
     await expect(page.getByText("Método de pago registrado con éxito.")).toBeVisible();
     
