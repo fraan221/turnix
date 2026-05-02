@@ -6,16 +6,19 @@ import { IncomeOverTimeChart } from "@/components/analytics/IncomeOverTimeChart"
 import { formatPrice } from "@/lib/utils";
 import { DollarSign, CheckCircle, XCircle } from "lucide-react";
 import React from "react";
-import type { AnalyticsData, ClientMetricsData, Period } from "@/actions/analytics.actions";
+import type { AnalyticsData, ClientMetricsData, FinanceData, Period } from "@/actions/analytics.actions";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
 import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
 import { TopServicesCard } from "@/components/analytics/TopServicesCard";
 import { ClientInsightsPanel } from "@/components/analytics/ClientInsightsPanel";
+import { PaymentBreakdownCards } from "@/components/analytics/PaymentBreakdownCards";
+import { TeamRevenueTable } from "@/components/analytics/TeamRevenueTable";
 
 interface AnalyticsDashboardProps {
   initialData: AnalyticsData;
   clientMetrics: ClientMetricsData;
+  financeData: FinanceData;
 }
 
 const periodDescriptions: Record<Period, string> = {
@@ -30,6 +33,7 @@ const periodDescriptions: Record<Period, string> = {
 export default function AnalyticsDashboard({
   initialData,
   clientMetrics,
+  financeData,
 }: AnalyticsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,6 +85,20 @@ export default function AnalyticsDashboard({
 
         <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
       </section>
+
+      {financeData.breakdown?.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Métodos de cobro</h2>
+          <PaymentBreakdownCards breakdown={financeData.breakdown} />
+        </section>
+      )}
+
+      {financeData.teamBreakdown && financeData.teamBreakdown.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold tracking-tight">Rendimiento del equipo</h2>
+          <TeamRevenueTable data={financeData.teamBreakdown} />
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">

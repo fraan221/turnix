@@ -86,9 +86,9 @@ const BookingDetailsSkeleton = () => (
       <DialogTitle>
         <Skeleton className="w-40 h-6" />
       </DialogTitle>
-      <DialogDescription>
+      <div className="text-sm text-muted-foreground">
         <Skeleton className="w-56 h-4" />
-      </DialogDescription>
+      </div>
     </DialogHeader>
     <div className="py-4 space-y-4">
       <div className="space-y-2 text-sm">

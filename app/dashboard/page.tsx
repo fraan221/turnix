@@ -48,7 +48,7 @@ export default async function DashboardPage(
   const user = await getUserForDashboard();
 
   if (!user) {
-    return <p>No estás autorizado.</p>;
+    return null; // El middleware se encarga de redirigir
   }
 
   if (

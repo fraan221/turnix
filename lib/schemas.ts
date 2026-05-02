@@ -195,3 +195,10 @@ export const RecurringBookingSchema = z.object({
 export const SuspendRecurringBookingSchema = z.object({
   recurringBookingId: z.string().min(1, { message: "ID de turno fijo requerido." }),
 });
+
+export const CompleteBookingSchema = z.object({
+  bookingId: z.string().cuid({ message: "ID de turno inválido." }),
+  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD"], {
+    message: "Seleccioná un método de pago.",
+  }),
+});

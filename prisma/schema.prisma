@@ -126,6 +126,9 @@ model Booking {
   durationAtBooking       Int?
   activeDurationAtBooking Int?
 
+  // Payment tracking
+  paymentMethod        PaymentMethod?
+
   // Deposit tracking fields
   depositAmount        Decimal?       @db.Decimal(10, 2)
   paymentStatus        PaymentStatus?
@@ -145,6 +148,8 @@ model Booking {
 
   recurringBooking   RecurringBooking? @relation("RecurringBookingInstances", fields: [recurringBookingId], references: [id], onDelete: SetNull)
   recurringBookingId String?
+
+  @@index([barberId, status, startTime])
 }
 
 model Account {
@@ -237,6 +242,12 @@ enum PaymentStatus {
 enum Role {
   OWNER
   BARBER
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
 }
 
 model Subscription {

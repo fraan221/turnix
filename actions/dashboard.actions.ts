@@ -4,7 +4,7 @@ import { getCurrentUser, getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { invalidateAnalyticsCache } from "@/lib/cache-utils";
-import { BookingStatus, Role } from "@prisma/client";
+import { BookingStatus, Role, PaymentMethod } from "@prisma/client";
 import { z } from "zod";
 import {
   getStartOfDay,
@@ -48,14 +48,14 @@ const TimeBlockBaseSchema = z
 const CreateTimeBlockSchema = TimeBlockBaseSchema.extend({
   barberId: z.string().min(1).optional().nullable(),
 }).refine(
-    (data) => {
-      return new Date(data.startDateTime) > new Date();
-    },
-    {
-      message: "No puedes crear un bloqueo en una fecha u hora pasada.",
-      path: ["startDateTime"],
-    },
-  );
+  (data) => {
+    return new Date(data.startDateTime) > new Date();
+  },
+  {
+    message: "No puedes crear un bloqueo en una fecha u hora pasada.",
+    path: ["startDateTime"],
+  },
+);
 
 const UpdateTimeBlockSchema = TimeBlockBaseSchema;
 
@@ -303,10 +303,15 @@ export async function deleteClient(clientId: string) {
 export async function updateBookingStatus(
   bookingId: string,
   newStatus: BookingStatus,
+  paymentMethod?: PaymentMethod,
 ) {
   const user = await getCurrentUser();
   if (!user) {
     return { error: "No autorizado" };
+  }
+
+  if (newStatus === BookingStatus.COMPLETED && !paymentMethod) {
+    return { error: "Seleccioná un método de pago." };
   }
 
   try {
@@ -332,7 +337,12 @@ export async function updateBookingStatus(
 
     await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: newStatus },
+      data: {
+        status: newStatus,
+        ...(newStatus === BookingStatus.COMPLETED && paymentMethod
+          ? { paymentMethod }
+          : {}),
+      },
     });
 
     const statusTextMap = {
@@ -746,7 +756,11 @@ export async function createBooking(
 
 const ClientNotesSchema = z.object({
   clientId: z.string().min(1, "ID de cliente inválido."),
-  notes: z.string().nullable().optional().transform(v => v ?? ""),
+  notes: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? ""),
 });
 
 export async function updateClientNotes(
@@ -812,6 +826,99 @@ export async function updateClientNotes(
   }
 }
 
+export async function setPaymentMethod(
+  bookingId: string,
+  paymentMethod: PaymentMethod,
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        barbershop: { select: { ownerId: true } },
+      },
+    });
+
+    if (!booking) return { error: "Turno no encontrado." };
+    if (booking.status !== BookingStatus.COMPLETED) {
+      return {
+        error: "Solo se puede asignar método de pago a turnos completados.",
+      };
+    }
+
+    const isAssignedBarber = booking.barberId === user.id;
+    const isOwner = booking.barbershop.ownerId === user.id;
+
+    if (!isAssignedBarber && !isOwner) {
+      return { error: "No tienes permiso para modificar este turno." };
+    }
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { paymentMethod },
+    });
+
+    revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
+
+    return { success: "Método de pago registrado con éxito." };
+  } catch (error) {
+    console.error("Error al asignar método de pago:", error);
+    return { error: "No se pudo registrar el método de pago." };
+  }
+}
+
+export async function bulkSetPaymentMethod(
+  bookingIds: string[],
+  paymentMethod: PaymentMethod,
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado" };
+  }
+
+  if (!bookingIds || bookingIds.length === 0) {
+    return { error: "No se seleccionaron turnos." };
+  }
+
+  try {
+    const firstBooking = await prisma.booking.findFirst({
+      where: { id: { in: bookingIds } },
+      include: { barbershop: { select: { ownerId: true } } },
+    });
+
+    if (!firstBooking) return { error: "Turnos no encontrados." };
+
+    const isOwner = firstBooking.barbershop.ownerId === user.id;
+    const isAssignedBarber = firstBooking.barberId === user.id;
+
+    if (!isOwner && !isAssignedBarber) {
+      return { error: "No tienes permiso para modificar estos turnos." };
+    }
+
+    await prisma.booking.updateMany({
+      where: {
+        id: { in: bookingIds },
+        status: BookingStatus.COMPLETED,
+        OR: [{ barberId: user.id }, { barbershop: { ownerId: user.id } }],
+      },
+      data: { paymentMethod },
+    });
+
+    revalidatePath("/dashboard");
+    invalidateAnalyticsCache();
+
+    return { success: "Métodos de pago asignados con éxito." };
+  } catch (error) {
+    console.error("Error al asignar métodos de pago masivamente:", error);
+    return { error: "No se pudo realizar la actualización masiva." };
+  }
+}
+
 export async function deleteTimeBlock(blockId: string) {
   const user = await getCurrentUser();
   if (!user) {
@@ -862,7 +969,10 @@ export async function updateTimeBlock(
     return { error: "Operación no permitida." };
   }
 
-  const managedBarber = await resolveManagedBarberId(user, blockToUpdate.barberId);
+  const managedBarber = await resolveManagedBarberId(
+    user,
+    blockToUpdate.barberId,
+  );
   if ("error" in managedBarber) {
     return { error: "Operación no permitida." };
   }
