@@ -6,7 +6,12 @@ import { IncomeOverTimeChart } from "@/components/analytics/IncomeOverTimeChart"
 import { formatPrice } from "@/lib/utils";
 import { DollarSign, CheckCircle, XCircle } from "lucide-react";
 import React from "react";
-import type { AnalyticsData, ClientMetricsData, FinanceData, Period } from "@/actions/analytics.actions";
+import type {
+  AnalyticsData,
+  ClientMetricsData,
+  FinanceData,
+  Period,
+} from "@/actions/analytics.actions";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
 import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
@@ -45,7 +50,7 @@ export default function AnalyticsDashboard({
 
   if (initialData.error) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex justify-center items-center h-64">
         <p className="text-red-500">{initialData.error}</p>
       </div>
     );
@@ -54,8 +59,10 @@ export default function AnalyticsDashboard({
   return (
     <div className="mx-auto space-y-6 max-w-7xl">
       <section className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-xl font-semibold tracking-tight">Tu facturación</h2>
+        <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold tracking-tight">
+            Tu facturación
+          </h2>
           <PeriodDropdown
             currentPeriod={currentPeriod}
             onPeriodChange={handlePeriodChange}
@@ -83,25 +90,32 @@ export default function AnalyticsDashboard({
           />
         </div>
 
-        <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
+        <IncomeOverTimeChart
+          data={initialData.chartData}
+          period={currentPeriod}
+        />
       </section>
 
       {financeData.breakdown?.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-xl font-semibold tracking-tight">Métodos de cobro</h2>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Métodos de cobro
+          </h2>
           <PaymentBreakdownCards breakdown={financeData.breakdown} />
         </section>
       )}
 
       {financeData.teamBreakdown && financeData.teamBreakdown.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-xl font-semibold tracking-tight">Rendimiento del equipo</h2>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Rendimiento del equipo
+          </h2>
           <TeamRevenueTable data={financeData.teamBreakdown} />
         </section>
       )}
 
       <section className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold tracking-tight">Tus clientes</h2>
         </div>
 
@@ -113,7 +127,7 @@ export default function AnalyticsDashboard({
           period={currentPeriod}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <TopClientsTable clients={clientMetrics.topClients} />
           <TopServicesCard services={initialData.topServices} />
         </div>

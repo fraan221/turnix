@@ -34,9 +34,13 @@ export function TeamRevenueTable({ data }: TeamRevenueTableProps) {
           <TableBody>
             {sortedData.map((barber) => (
               <TableRow key={barber.barberId}>
-                <TableCell className="font-medium">{barber.barberName}</TableCell>
-                <TableCell className="text-right">{barber.completedCount}</TableCell>
-                <TableCell className="text-right font-semibold">
+                <TableCell className="font-medium">
+                  {barber.barberName}
+                </TableCell>
+                <TableCell className="text-right">
+                  {barber.completedCount}
+                </TableCell>
+                <TableCell className="font-semibold text-right">
                   {formatPrice(barber.totalRevenue)}
                 </TableCell>
               </TableRow>

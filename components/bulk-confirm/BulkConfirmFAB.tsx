@@ -77,7 +77,7 @@ export function BulkConfirmFAB({ dayUnconfirmedIds }: BulkConfirmFABProps) {
           className={cn(
             "fixed right-4 bottom-4 left-4 z-50",
             "md:right-6 md:bottom-6 md:left-auto",
-            "flex flex-col gap-2 p-3 rounded-lg border bg-background shadow-xl",
+            "flex flex-col gap-2 p-3 rounded-lg border shadow-xl bg-background",
             "md:flex-row md:items-center md:gap-3",
           )}
         >
@@ -111,7 +111,7 @@ export function BulkConfirmFAB({ dayUnconfirmedIds }: BulkConfirmFABProps) {
               className="min-w-[140px]"
             >
               {isPending ? (
-                <Loader2 className="mr-1 size-4 animate-spin" />
+                <Loader2 className="mr-1 animate-spin size-4" />
               ) : (
                 <CheckCheck className="mr-1 size-4" />
               )}

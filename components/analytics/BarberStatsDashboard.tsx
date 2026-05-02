@@ -1,6 +1,12 @@
 "use client";
 
-import type { Period, PersonalStatsData, ClientMetricsData, AnalyticsData, FinanceData } from "@/actions/analytics.actions";
+import type {
+  Period,
+  PersonalStatsData,
+  ClientMetricsData,
+  AnalyticsData,
+  FinanceData,
+} from "@/actions/analytics.actions";
 import { IncomeOverTimeChart } from "@/components/analytics/IncomeOverTimeChart";
 import { StatCard } from "@/components/analytics/StatCard";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
@@ -44,7 +50,7 @@ export default function BarberStatsDashboard({
 
   if (initialData.error) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex justify-center items-center h-64">
         <p className="text-red-500">{initialData.error}</p>
       </div>
     );
@@ -61,8 +67,10 @@ export default function BarberStatsDashboard({
   return (
     <div className="mx-auto space-y-8 max-w-7xl">
       <div>
-        <div className="flex items-center justify-between gap-2 sm:flex-row xs:flex-col mb-4">
-          <h2 className="text-2xl font-bold tracking-tight">Mis estadísticas</h2>
+        <div className="flex gap-2 justify-between items-center mb-4 sm:flex-row xs:flex-col">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Mis estadísticas
+          </h2>
           <PeriodDropdown
             currentPeriod={currentPeriod}
             onPeriodChange={handlePeriodChange}
@@ -70,7 +78,7 @@ export default function BarberStatsDashboard({
         </div>
       </div>
 
-      <div className="grid max-w-7xl grid-cols-1 gap-4 mx-auto md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 mx-auto max-w-7xl md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Ingresos generados"
           value={formatPrice(initialData.totalRevenue)}
@@ -97,22 +105,32 @@ export default function BarberStatsDashboard({
         />
       </div>
 
-      <div className="max-w-7xl mx-auto">
-        <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
+      <div className="mx-auto max-w-7xl">
+        <IncomeOverTimeChart
+          data={initialData.chartData}
+          period={currentPeriod}
+        />
       </div>
 
       {financeData.breakdown?.length > 0 && (
-        <div className="max-w-7xl mx-auto pt-8">
-          <h3 className="text-xl font-bold tracking-tight mb-4">Métodos de cobro</h3>
+        <div className="pt-8 mx-auto max-w-7xl">
+          <h3 className="mb-4 text-xl font-bold tracking-tight">
+            Métodos de cobro
+          </h3>
           <PaymentBreakdownCards breakdown={financeData.breakdown} />
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-8 pt-8">
+      <div className="pt-8 mx-auto space-y-8 max-w-7xl">
         <div>
-          <h3 className="text-xl font-bold tracking-tight mb-4">Tus Clientes</h3>
+          <h3 className="mb-4 text-xl font-bold tracking-tight">
+            Tus Clientes
+          </h3>
           <div className="space-y-6">
-            <ClientMetricsCards metrics={clientMetrics} period={currentPeriod} />
+            <ClientMetricsCards
+              metrics={clientMetrics}
+              period={currentPeriod}
+            />
             <ClientInsightsPanel
               metrics={clientMetrics}
               analyticsData={analyticsDataForInsights}

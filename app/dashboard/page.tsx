@@ -39,11 +39,9 @@ async function CalendarDataWrapper({
   );
 }
 
-export default async function DashboardPage(
-  props: {
-    searchParams: Promise<{ barberId?: string }>;
-  }
-) {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ barberId?: string }>;
+}) {
   const searchParams = await props.searchParams;
   const user = await getUserForDashboard();
 

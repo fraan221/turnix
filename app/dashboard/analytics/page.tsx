@@ -4,7 +4,12 @@ import { getUserForSettings } from "@/lib/data";
 import { Role } from "@prisma/client";
 import AnalyticsDashboardSkeleton from "@/components/skeletons/AnalyticsDashboardSkeleton";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
-import { getAnalyticsData, getClientMetrics, getFinanceData, Period } from "@/actions/analytics.actions";
+import {
+  getAnalyticsData,
+  getClientMetrics,
+  getFinanceData,
+  Period,
+} from "@/actions/analytics.actions";
 
 async function AnalyticsDataWrapper({ period }: { period: Period }) {
   const [analyticsData, clientMetricsData, financeData] = await Promise.all([
@@ -12,10 +17,10 @@ async function AnalyticsDataWrapper({ period }: { period: Period }) {
     getClientMetrics(period),
     getFinanceData(period),
   ]);
-  
+
   return (
-    <AnalyticsDashboard 
-      initialData={analyticsData} 
+    <AnalyticsDashboard
+      initialData={analyticsData}
       clientMetrics={clientMetricsData}
       financeData={financeData}
     />

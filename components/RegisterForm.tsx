@@ -160,7 +160,7 @@ export default function RegisterForm() {
     <div className={cn("flex flex-col gap-6")}>
       <Card>
         {isSuccess ? (
-          <CardContent className="flex flex-col items-center justify-center p-8 space-y-4 text-center">
+          <CardContent className="flex flex-col justify-center items-center p-8 space-y-4 text-center">
             <div className="p-3 bg-green-100 rounded-full">
               <Check className="w-8 h-8 text-green-600" />
             </div>
@@ -191,13 +191,13 @@ export default function RegisterForm() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="OWNER">
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           <Store className="w-4 h-4" />
                           <span>Soy el Dueño de la Barbería</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="BARBER">
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           <Briefcase className="w-4 h-4" />
                           <span>Soy un Barbero / Empleado</span>
                         </div>
@@ -213,9 +213,9 @@ export default function RegisterForm() {
                 </div>
 
                 <div
-                  className={`grid gap-4 transition-all duration-300 ease-in-out ${role ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                  className={`grid gap-4 transition-all duration-300 ease-in-out ${role ? "opacity-100 grid-rows-[1fr]" : "opacity-0 grid-rows-[0fr]"}`}
                 >
-                  <div className="px-1 py-1 overflow-hidden">
+                  <div className="overflow-hidden px-1 py-1">
                     <div className="grid gap-4">
                       {role === "OWNER" && (
                         <div className="grid gap-2">
@@ -291,7 +291,7 @@ export default function RegisterForm() {
                 </div>
 
                 {errors.root?.serverError && (
-                  <div className="p-2 text-sm text-center text-red-600 bg-red-100 border border-red-200 rounded-md">
+                  <div className="p-2 text-sm text-center text-red-600 bg-red-100 rounded-md border border-red-200">
                     {errors.root.serverError.message}
                   </div>
                 )}
@@ -309,10 +309,10 @@ export default function RegisterForm() {
                 </Button>
 
                 <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
+                  <div className="flex absolute inset-0 items-center">
                     <span className="w-full border-t" />
                   </div>
-                  <div className="relative flex justify-center text-sm">
+                  <div className="flex relative justify-center text-sm">
                     <span className="px-2 bg-card text-muted-foreground">
                       O creá tu cuenta con
                     </span>

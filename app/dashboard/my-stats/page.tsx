@@ -1,4 +1,9 @@
-import { getPersonalBarberStats, getBarberClientMetricsData, getBarberFinanceData, type Period } from "@/actions/analytics.actions";
+import {
+  getPersonalBarberStats,
+  getBarberClientMetricsData,
+  getBarberFinanceData,
+  type Period,
+} from "@/actions/analytics.actions";
 import BarberStatsDashboard from "@/components/analytics/BarberStatsDashboard";
 import AnalyticsDashboardSkeleton from "@/components/skeletons/AnalyticsDashboardSkeleton";
 import { Suspense } from "react";
@@ -16,7 +21,13 @@ async function BarberStatsDataWrapper({ period }: { period: Period }) {
     getBarberFinanceData(period),
   ]);
 
-  return <BarberStatsDashboard initialData={stats} clientMetrics={clientMetrics} financeData={financeData} />;
+  return (
+    <BarberStatsDashboard
+      initialData={stats}
+      clientMetrics={clientMetrics}
+      financeData={financeData}
+    />
+  );
 }
 
 export default async function MyStatsPage(props: MyStatsPageProps) {
