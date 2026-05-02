@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useMemo } from "react";
-import { Booking, Client, Service, BookingStatus } from "@prisma/client";
+import { Booking, Client, Service, BookingStatus, PaymentMethod } from "@prisma/client";
 import {
   DialogHeader,
   DialogTitle,
@@ -27,6 +27,7 @@ import {
   updateBookingStatus,
   updateClientNotes,
   checkBookingAvailability,
+  setPaymentMethod,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,7 @@ interface BookingDetailsDialogContentProps {
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
 }
 
-type DialogView = "details" | "addNote" | "confirmDeleteClient" | "editTime";
+type DialogView = "details" | "addNote" | "confirmDeleteClient" | "editTime" | "selectPayment";
 
 const statusMap = {
   [BookingStatus.SCHEDULED]: { text: "Agendado", color: "text-blue-600" },
@@ -185,12 +186,12 @@ export function BookingDetailsDialogContent({
     });
   };
 
-  const handleStatusChange = (newStatus: BookingStatus) => {
+  const handleStatusChange = (newStatus: BookingStatus, paymentMethod?: PaymentMethod) => {
     onOptimisticUpdate(booking.id, newStatus);
     const transition =
       newStatus === "COMPLETED" ? startCompleting : startCancelling;
     transition(async () => {
-      const result = await updateBookingStatus(booking.id, newStatus);
+      const result = await updateBookingStatus(booking.id, newStatus, paymentMethod);
       if (result?.success) {
         toast.success("¡Éxito!", { description: result.success });
         if (newStatus === "COMPLETED") {
@@ -244,6 +245,17 @@ export function BookingDetailsDialogContent({
   const isFutureBooking = new Date(booking.startTime) > new Date();
   const currentStatus = statusMap[booking.status];
 
+  const handleRetroactivePayment = (method: PaymentMethod) => {
+    startCompleting(async () => {
+      const result = await setPaymentMethod(booking.id, method);
+      if (result.success) {
+        toast.success(result.success);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  };
+
   const renderDetailsView = () => (
     <div className="space-y-4">
       <div className="space-y-1 text-sm">
@@ -272,7 +284,28 @@ export function BookingDetailsDialogContent({
             {currentStatus.text}
           </span>
         </p>
+        {booking.status === BookingStatus.COMPLETED && booking.paymentMethod && (
+          <p>
+            <strong>Cobro:</strong>{" "}
+            {booking.paymentMethod === "CASH" ? "💵 Efectivo" : booking.paymentMethod === "TRANSFER" ? "📱 Transferencia" : "💳 Tarjeta"}
+          </p>
+        )}
       </div>
+
+      {booking.status === BookingStatus.COMPLETED && !booking.paymentMethod && (
+        <div className="p-3 mt-4 space-y-3 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-950/30 dark:border-blue-800">
+          <p className="text-sm text-blue-800 dark:text-blue-200 font-medium flex items-center">
+            <span className="mr-2">💡</span>
+            Falta registrar el método de cobro
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/50" onClick={() => handleRetroactivePayment("CASH")} disabled={isCompleting}>💵 Efectivo</Button>
+            <Button size="sm" variant="outline" className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50" onClick={() => handleRetroactivePayment("TRANSFER")} disabled={isCompleting}>📱 Transf.</Button>
+            <Button size="sm" variant="outline" className="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/50" onClick={() => handleRetroactivePayment("CARD")} disabled={isCompleting}>💳 Tarjeta</Button>
+          </div>
+        </div>
+      )}
+
       {booking.status === BookingStatus.SCHEDULED && (
         <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Button
@@ -314,41 +347,17 @@ export function BookingDetailsDialogContent({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="default"
-                disabled={isCompleting || isFutureBooking}
-                className="w-full"
-              >
-                {isCompleting && (
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                )}
-                Marcar como Completado
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Confirmar turno?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Estás a punto de marcar este turno como completado. Esta
-                  acción registrará el servicio como finalizado.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Atrás</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleStatusChange(BookingStatus.COMPLETED)}
-                  disabled={isCompleting}
-                >
-                  {isCompleting && (
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  )}
-                  Sí, confirmar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button
+            variant="default"
+            disabled={isCompleting || isFutureBooking}
+            className="w-full"
+            onClick={() => setView("selectPayment")}
+          >
+            {isCompleting && (
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            )}
+            Marcar como Completado
+          </Button>
         </DialogFooter>
       )}
     </div>
@@ -446,6 +455,48 @@ export function BookingDetailsDialogContent({
     </div>
   );
 
+  const renderSelectPaymentView = () => (
+    <div className="space-y-4">
+      <p className="text-center text-sm text-muted-foreground mb-4">
+        ¿Cómo pagó el cliente?
+      </p>
+      <div className="grid grid-cols-1 gap-3">
+        <Button
+          variant="outline"
+          className="h-16 justify-start px-6 text-lg bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/50"
+          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "CASH")}
+          disabled={isCompleting}
+        >
+          <span className="text-2xl mr-4">💵</span>
+          Efectivo
+        </Button>
+        <Button
+          variant="outline"
+          className="h-16 justify-start px-6 text-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50"
+          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "TRANSFER")}
+          disabled={isCompleting}
+        >
+          <span className="text-2xl mr-4">📱</span>
+          Transferencia / MP
+        </Button>
+        <Button
+          variant="outline"
+          className="h-16 justify-start px-6 text-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/50"
+          onClick={() => handleStatusChange(BookingStatus.COMPLETED, "CARD")}
+          disabled={isCompleting}
+        >
+          <span className="text-2xl mr-4">💳</span>
+          Tarjeta
+        </Button>
+      </div>
+      <DialogFooter className="mt-4">
+        <Button variant="ghost" className="w-full" onClick={() => setView("details")} disabled={isCompleting}>
+          Volver
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
   const renderAddNoteView = () => (
     <div className="space-y-4">
       <Label htmlFor="quickNote" className="font-semibold">
@@ -519,6 +570,8 @@ export function BookingDetailsDialogContent({
         return renderConfirmDeleteClientView();
       case "editTime":
         return renderEditTimeView();
+      case "selectPayment":
+        return renderSelectPaymentView();
       case "details":
       default:
         return renderDetailsView();

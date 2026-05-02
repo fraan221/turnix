@@ -3,17 +3,9 @@ import { getUserForDashboard } from "@/lib/data";
 import { Suspense } from "react";
 import { Role } from "@prisma/client";
 import { ConnectionCodeView } from "@/components/team/ConnectionCodeView";
-import dynamic from "next/dynamic";
+import BarberCalendarWrapper from "@/components/BarberCalendarWrapper";
 import BarberCalendarSkeleton from "@/components/BarberCalendarSkeleton";
 import { BookingWithDetails } from "@/components/BookingDetailsDialog";
-
-const BarberCalendarWrapper = dynamic(
-  () => import("@/components/BarberCalendar"),
-  {
-    ssr: false,
-    loading: () => <BarberCalendarSkeleton />,
-  },
-);
 
 async function CalendarDataWrapper({
   targetBarberId,
@@ -55,7 +47,7 @@ export default async function DashboardPage({
   const user = await getUserForDashboard();
 
   if (!user) {
-    return <p>No estás autorizado.</p>;
+    return null; // El middleware se encarga de redirigir
   }
 
   if (

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Period, PersonalStatsData, ClientMetricsData, AnalyticsData } from "@/actions/analytics.actions";
+import type { Period, PersonalStatsData, ClientMetricsData, AnalyticsData, FinanceData } from "@/actions/analytics.actions";
 import { IncomeOverTimeChart } from "@/components/analytics/IncomeOverTimeChart";
 import { StatCard } from "@/components/analytics/StatCard";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
@@ -8,6 +8,7 @@ import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { ClientInsightsPanel } from "@/components/analytics/ClientInsightsPanel";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
 import { TopServicesCard } from "@/components/analytics/TopServicesCard";
+import { PaymentBreakdownCards } from "@/components/analytics/PaymentBreakdownCards";
 import { formatPrice } from "@/lib/utils";
 import { DollarSign, Scissors, Users, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,6 +17,7 @@ import React from "react";
 interface BarberStatsDashboardProps {
   initialData: PersonalStatsData;
   clientMetrics: ClientMetricsData;
+  financeData: FinanceData;
 }
 
 const periodDescriptions: Record<Period, string> = {
@@ -30,6 +32,7 @@ const periodDescriptions: Record<Period, string> = {
 export default function BarberStatsDashboard({
   initialData,
   clientMetrics,
+  financeData,
 }: BarberStatsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -97,6 +100,13 @@ export default function BarberStatsDashboard({
       <div className="max-w-7xl mx-auto">
         <IncomeOverTimeChart data={initialData.chartData} period={currentPeriod} />
       </div>
+
+      {financeData.breakdown?.length > 0 && (
+        <div className="max-w-7xl mx-auto pt-8">
+          <h3 className="text-xl font-bold tracking-tight mb-4">Métodos de cobro</h3>
+          <PaymentBreakdownCards breakdown={financeData.breakdown} />
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto space-y-8 pt-8">
         <div>
