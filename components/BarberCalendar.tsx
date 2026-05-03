@@ -8,8 +8,9 @@ import {
   useMemo,
   Suspense,
   lazy,
+  useActionState,
 } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
@@ -85,9 +86,9 @@ const BookingDetailsSkeleton = () => (
       <DialogTitle>
         <Skeleton className="w-40 h-6" />
       </DialogTitle>
-      <DialogDescription>
+      <div className="text-sm text-muted-foreground">
         <Skeleton className="w-56 h-4" />
-      </DialogDescription>
+      </div>
     </DialogHeader>
     <div className="py-4 space-y-4">
       <div className="space-y-2 text-sm">
@@ -97,7 +98,7 @@ const BookingDetailsSkeleton = () => (
         <Skeleton className="w-11/12 h-4" />
         <Skeleton className="w-full h-4" />
       </div>
-      <div className="flex justify-between gap-2 pt-4">
+      <div className="flex gap-2 justify-between pt-4">
         <Skeleton className="w-32 h-10" />
         <Skeleton className="w-48 h-10" />
       </div>
@@ -132,7 +133,7 @@ function SubmitButton({ isDisabled }: { isDisabled?: boolean }) {
     <Button type="submit" className="w-full" disabled={pending || isDisabled}>
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
           Agendando...
         </>
       ) : (
@@ -158,7 +159,7 @@ export default function BarberCalendar({
     useState<DateSelectArg | null>(null);
   const [selectedBooking, setSelectedBooking] =
     useState<BookingWithDetails | null>(null);
-  const [state, formAction] = useFormState(createBooking, initialState);
+  const [state, formAction] = useActionState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const hasSubmittedRef = useRef(false);
   const calendarRef = useRef<FullCalendar>(null);
@@ -184,8 +185,7 @@ export default function BarberCalendar({
 
     const unconfirmed = optimisticBookings.filter(
       (b) =>
-        b.status === BookingStatus.SCHEDULED &&
-        new Date(b.startTime) < now,
+        b.status === BookingStatus.SCHEDULED && new Date(b.startTime) < now,
     );
 
     for (const booking of unconfirmed) {
@@ -410,7 +410,11 @@ export default function BarberCalendar({
         end: endTime,
         backgroundColor: eventColor,
         borderColor: eventColor,
-        className: eventClassName + ((booking as any).recurringBookingId ? " border-2 border-dashed opacity-90" : ""),
+        className:
+          eventClassName +
+          ((booking as any).recurringBookingId
+            ? " border-2 border-dashed opacity-90"
+            : ""),
         extendedProps: {
           ...booking,
           isPastScheduled,
@@ -469,7 +473,7 @@ export default function BarberCalendar({
       dayGridMonth: {
         titleFormat: { month: "long" },
         dayCellContent: (arg: any) => (
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col justify-center items-center h-full">
             <span className="text-xs text-muted-foreground">
               {arg.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
             </span>
@@ -501,7 +505,7 @@ export default function BarberCalendar({
           const unconfirmedCount = unconfirmedByDate.get(dateKey)?.length ?? 0;
 
           return (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex gap-2 justify-center items-center">
               <span className="text-base font-normal">
                 {arg.date.toLocaleDateString("es-AR", { weekday: "long" })}
               </span>
@@ -526,7 +530,11 @@ export default function BarberCalendar({
       const isSelectableInSelectionMode =
         arg.event.extendedProps?.isSelectableInSelectionMode;
 
-      if (!isSelectionMode || !isPastScheduled || !isSelectableInSelectionMode) {
+      if (
+        !isSelectionMode ||
+        !isPastScheduled ||
+        !isSelectableInSelectionMode
+      ) {
         return {
           html: `<div class=\"fc-event-main-frame\"><div class=\"fc-event-title-container\"><div class=\"fc-event-title\">${arg.event.title}</div></div></div>`,
         };
@@ -543,12 +551,12 @@ export default function BarberCalendar({
   return (
     <>
       <div
-        className="mx-auto bg-white max-w-7xl"
+        className="mx-auto max-w-7xl bg-white"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2 items-center">
             {!isMobile && (
               <>
                 <Button variant="secondary" size="icon" onClick={handlePrev}>
@@ -586,15 +594,17 @@ export default function BarberCalendar({
         </div>
 
         {isSelectionMode && (
-          <div className="p-3 mb-4 text-sm rounded-lg border bg-sky-50 border-sky-200 text-sky-900">
+          <div className="p-3 mb-4 text-sm text-sky-900 bg-sky-50 rounded-lg border border-sky-200">
             <p className="font-semibold">
               {selectedDate
                 ? `Modo selección activo para ${new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-AR")}`
                 : "Modo selección activo"}
-              : {selectedCount} turno{selectedCount === 1 ? "" : "s"} seleccionado{selectedCount === 1 ? "" : "s"}.
+              : {selectedCount} turno{selectedCount === 1 ? "" : "s"}{" "}
+              seleccionado{selectedCount === 1 ? "" : "s"}.
             </p>
             <p className="mt-1 text-xs">
-              Tocá los turnos pasados sin confirmar de ese día para sumarlos o quitarlos.
+              Tocá los turnos pasados sin confirmar de ese día para sumarlos o
+              quitarlos.
             </p>
           </div>
         )}
@@ -758,9 +768,7 @@ export default function BarberCalendar({
       </Dialog>
 
       {/* Bulk Confirmation FAB */}
-      <BulkConfirmFAB
-        dayUnconfirmedIds={selectedDateUnconfirmedIds}
-      />
+      <BulkConfirmFAB dayUnconfirmedIds={selectedDateUnconfirmedIds} />
     </>
   );
 }

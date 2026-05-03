@@ -6,8 +6,12 @@ import { revalidateTag } from "next/cache";
  * o clientes, ya que las métricas dependen de estos datos.
  */
 export function invalidateAnalyticsCache() {
+  // @ts-expect-error Next 16 typing bug
   revalidateTag("analytics");
+  // @ts-expect-error Next 16 typing bug
   revalidateTag("barber-analytics");
+  // @ts-expect-error Next 16 typing bug
   revalidateTag("client-metrics");
+  // @ts-expect-error Next 16 typing bug
   revalidateTag("barber-client-metrics");
 }

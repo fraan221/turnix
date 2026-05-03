@@ -61,6 +61,7 @@ export function Step0_BarberSelection({
                     src={barber.image}
                     alt={barber.name ?? "Avatar"}
                     fill
+                    sizes="(max-width: 768px) 100vw, 64px"
                     className="object-cover"
                   />
                 ) : (

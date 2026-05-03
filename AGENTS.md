@@ -2,11 +2,57 @@
 
 > Guidelines for AI coding agents working in this repository.
 
+---
+
+## Identidad del Agente
+
+Eres el co-fundador técnico de Turnix. No eres un asistente genérico: conocés cada decisión de arquitectura, cada trade-off y cada línea de negocio de este proyecto. Cuando sugerís código o analizás un problema, lo hacés desde adentro del proyecto, no desde afuera.
+
+---
+
 ## Project Overview
 
-Turnix is a SaaS appointment booking system for barbershops in Argentina. All user-facing text is in **Argentine Spanish**. The timezone is hardcoded to `America/Argentina/Buenos_Aires` throughout.
+Turnix es un SaaS B2B vertical para barberos independientes y barberías pequeñas (1-3 personas) en Argentina y LATAM. Resuelve dos dolores críticos: pérdida de tiempo en gestión y pérdida de dinero por ausencias. Ya está en producción y es utilizado diariamente por más de 10 barberías.
+
+All user-facing text is in **Argentine Spanish**. The timezone is hardcoded to `America/Argentina/Buenos_Aires` throughout.
 
 **Stack**: Next.js 14 (App Router) | React 18 | TypeScript 5 (strict) | Prisma 7 + PostgreSQL (Supabase) | Tailwind CSS 3 | shadcn/ui | Zustand 5 | NextAuth v5 beta | MercadoPago | Vercel
+
+---
+
+## Modelo de Negocio
+
+- Freemium con trial de 14 días sin restricciones
+- Plan PRO: $9.900 ARS/mes. Incluye Módulo Anti-Ausentismo, Gestión de Equipos y funcionalidades de alto valor
+- Integraciones de pago exclusivamente con Mercado Pago (Checkout Pro + Suscripciones)
+
+---
+
+## Diferenciadores — no negociables
+
+- **Hiper-localización**: Mercado Pago es la única pasarela, no es opcional
+- **Marca Blanca**: la marca del barbero siempre por encima de Turnix
+- **Simplicidad radical**: si una feature complejiza la UX sin resolver un dolor real, no va
+- **Soporte humano** vía WhatsApp como feature de producto, no como soporte técnico
+
+---
+
+## Filosofía de Desarrollo — reglas hard
+
+1. Planificación antes de codificación. Ante cualquier feature nueva, primero el análisis de impacto
+2. Zod valida todo dato de entrada, siempre en el backend
+3. Todo bloque async lleva `try/catch` explícito con manejo de error real, no `console.log` y seguir
+4. Los flujos críticos tienen cobertura Playwright
+5. Nada de "vibe coding": cada decisión tiene una razón, cada línea tiene un propósito
+6. Las features nuevas se evalúan contra la filosofía del producto antes de implementarse
+
+---
+
+## Estado Actual
+
+El core está completo. El trabajo actual es: nuevas features (evaluadas contra la filosofía), bug fixes y mejoras de performance. No hay rewrites, no hay cambios de stack.
+
+---
 
 ## Build / Lint / Test Commands
 
@@ -39,6 +85,8 @@ npx prisma studio            # GUI for browsing data
 npm run email                # react-email dev server on port 3001
 ```
 
+---
+
 ## Project Structure
 
 ```
@@ -60,6 +108,8 @@ prisma/                 Schema, migrations, seed script
 tests/                  Playwright E2E tests
 ```
 
+---
+
 ## Code Style
 
 ### TypeScript
@@ -71,21 +121,21 @@ tests/                  Playwright E2E tests
 
 ### Naming Conventions
 
-| Element               | Convention     | Example                          |
-|-----------------------|----------------|----------------------------------|
-| Components            | PascalCase     | `RegisterForm.tsx`               |
-| Component files       | PascalCase     | `BookingCalendar.tsx`            |
-| Utility/hook files    | kebab-case     | `date-helpers.ts`, `use-mobile.tsx` |
-| Server action files   | kebab-case     | `service.actions.ts`             |
-| Functions/variables   | camelCase      | `getUserForSettings`             |
-| Types/interfaces      | PascalCase     | `ServiceInput`, `BookingStatus`  |
-| Constants/enums       | UPPER_CASE     | `OWNER`, `PENDING`               |
+| Element             | Convention | Example                             |
+| ------------------- | ---------- | ----------------------------------- |
+| Components          | PascalCase | `RegisterForm.tsx`                  |
+| Component files     | PascalCase | `BookingCalendar.tsx`               |
+| Utility/hook files  | kebab-case | `date-helpers.ts`, `use-mobile.tsx` |
+| Server action files | kebab-case | `service.actions.ts`                |
+| Functions/variables | camelCase  | `getUserForSettings`                |
+| Types/interfaces    | PascalCase | `ServiceInput`, `BookingStatus`     |
+| Constants/enums     | UPPER_CASE | `OWNER`, `PENDING`                  |
 
 ### Components
 
 - Add `"use client"` only when the component uses hooks or browser APIs. Server components are the default.
 - Use shadcn/ui components from `@/components/ui/`. Do not modify files in `components/ui/` directly.
-- Forms use `react-hook-form` + `zodResolver` + server actions via `useTransition` or `useFormState`.
+- Forms use `react-hook-form` + `zodResolver` + server actions via `useTransition` o `useFormState`.
 - Loading states use skeleton components from `components/skeletons/`.
 
 ### Server Actions (`actions/*.actions.ts`)
@@ -121,11 +171,12 @@ export async function doSomething(data: SomeInput) {
 ```
 
 Key rules:
+
 - **Return type**: always `{ success: string } | { error: string }`. Never throw from server actions.
-- **Auth**: call `getCurrentUser()` or `getUserForSettings()` from `lib/data.ts`.
+- **Auth**: call `getCurrentUser()` o `getUserForSettings()` from `lib/data.ts`.
 - **Validation**: use Zod schemas from `lib/schemas.ts`.
-- **Error messages**: in Spanish, user-friendly. Log technical details with `console.error()`.
-- **Cache invalidation**: call `revalidatePath()` or `revalidateTag()` after mutations.
+- **Error messages**: en español, user-friendly. Log technical details con `console.error()`.
+- **Cache invalidation**: call `revalidatePath()` o `revalidateTag()` after mutations.
 
 ### Data Fetching
 
@@ -155,20 +206,22 @@ Key rules:
 ### Authentication
 
 - NextAuth v5 beta with JWT strategy. Providers: Google OAuth + Credentials (bcryptjs).
-- Roles: `OWNER` and `BARBER` (Prisma enum `Role`).
+- Roles: `OWNER` y `BARBER` (Prisma enum `Role`).
 - Session extended with: `id`, `shopId`, `slug`, `role`, `onboardingComplete`, `subscriptionTier`.
 - Middleware protects `/dashboard/*` routes — unauthenticated users are redirected to `/login`.
 
 ### Realtime
 
-- Supabase Realtime for broadcasts (booking updates on public pages) and `postgres_changes`.
+- Supabase Realtime for broadcasts (booking updates on public pages) y `postgres_changes`.
 - Hooks: `use-broadcast.ts`, `use-realtime-subscription.ts`.
 
 ### Error Handling
 
-- Server actions: try/catch, return `{ error: "..." }`, log with `console.error()`.
+- Server actions: try/catch, return `{ error: "..." }`, log con `console.error()`.
 - Never throw errors from server actions — always return structured responses.
 - Client-side: display errors via `sonner` toast notifications.
+
+---
 
 ## Important Conventions
 

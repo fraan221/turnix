@@ -32,7 +32,8 @@ const config: NextAuthConfig = {
     Credentials({
       name: "Credentials",
       async authorize(credentials) {
-        const ip = headers().get("x-forwarded-for") ?? "127.0.0.1";
+        const headersList = await headers();
+        const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
         const now = Date.now();
 
         const attempt = loginAttempts.get(ip);

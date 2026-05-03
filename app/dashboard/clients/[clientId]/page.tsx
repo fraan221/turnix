@@ -10,12 +10,11 @@ import { BookingHistory } from "./BookingHistory";
 import { notFound } from "next/navigation";
 
 interface ClientDetailPageProps {
-  params: { clientId: string };
+  params: Promise<{ clientId: string }>;
 }
 
-export default async function ClientDetailPage({
-  params,
-}: ClientDetailPageProps) {
+export default async function ClientDetailPage(props: ClientDetailPageProps) {
+  const params = await props.params;
   const currentUser = await getUserForSettings();
   if (!currentUser) return notFound();
 

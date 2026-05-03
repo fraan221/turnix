@@ -1,6 +1,7 @@
 "use client";
+import { useActionState } from "react";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { requestPasswordReset } from "@/actions/auth.actions";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,7 @@ function SubmitButton() {
 }
 
 export function ForgotPasswordForm() {
-  const [state, dispatch] = useFormState(requestPasswordReset, undefined);
+  const [state, dispatch] = useActionState(requestPasswordReset, undefined);
 
   if (state?.success) {
     return (

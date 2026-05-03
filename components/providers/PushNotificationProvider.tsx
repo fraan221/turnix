@@ -94,8 +94,13 @@ export function PushNotificationProvider({
               description: "Recibirás avisos de tus nuevos turnos.",
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error al configurar las notificaciones push:", error);
+          
+          if (error.name === "AbortError" || (error.message && error.message.includes("AbortError"))) {
+            return;
+          }
+
           toast.error("Error al activar notificaciones", {
             description:
               "No se pudieron activar las notificaciones en este dispositivo.",

@@ -583,7 +583,7 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       });
     }
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     return {
@@ -634,7 +634,7 @@ export async function cancelFailedBooking(bookingId: string) {
       });
     }
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     return { success: true, barbershopSlug: booking.barbershop.slug };

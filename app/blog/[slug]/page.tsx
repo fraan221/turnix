@@ -9,11 +9,12 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const { meta } = await getPostData(params.slug);
   return {
     title: `${meta.title} | Turnix Blog`,
@@ -21,11 +22,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function PostPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function PostPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const { source, meta } = await getPostData(params.slug);
 
   if (!source) {

@@ -1,11 +1,11 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { resetPassword } from "@/actions/auth.actions";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "./PasswordInput";
-import { useEffect } from "react";
+import { useEffect, useActionState } from "react";
 import { useRouter } from "next/navigation";
 
 function SubmitButton() {
@@ -20,7 +20,7 @@ function SubmitButton() {
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
-  const [state, dispatch] = useFormState(resetPassword, undefined);
+  const [state, dispatch] = useActionState(resetPassword, undefined);
 
   useEffect(() => {
     if (state?.success) {

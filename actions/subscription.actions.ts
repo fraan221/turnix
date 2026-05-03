@@ -248,8 +248,8 @@ export async function cancelSubscription(
         where: { mercadopagoSubscriptionId },
         data: { status: result.status },
       });
-      revalidatePath("/dashboard/billing");
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/dashboard/billing", "layout");
+      revalidatePath("/dashboard/settings", "layout");
       return { success: "Tu suscripción ha sido cancelada con éxito." };
     } else {
       return { error: "Mercado Pago no pudo procesar la cancelación." };
@@ -294,8 +294,8 @@ export async function reactivateSubscription(
         where: { id: user.id },
         data: { trialEndsAt: null },
       });
-      revalidatePath("/dashboard/billing");
-      revalidatePath("/dashboard/settings");
+      revalidatePath("/dashboard/billing", "layout");
+      revalidatePath("/dashboard/settings", "layout");
       return { success: "Tu suscripción ha sido reactivada con éxito." };
     } else {
       return { error: "Mercado Pago no pudo procesar la reactivación." };
@@ -380,9 +380,9 @@ export async function refreshSubscriptionStatus() {
       };
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/billing");
-    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard/billing", "layout");
+    revalidatePath("/dashboard/settings", "layout");
 
     return {
       success: true,

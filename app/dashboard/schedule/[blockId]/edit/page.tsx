@@ -5,14 +5,13 @@ import { notFound } from "next/navigation";
 import EditTimeBlockForm from "@/components/EditTimeBlockForm";
 
 interface EditTimeBlockPageProps {
-  params: { blockId: string };
-  searchParams?: { barberId?: string };
+  params: Promise<{ blockId: string }>;
+  searchParams?: Promise<{ barberId?: string }>;
 }
 
-export default async function EditTimeBlockPage({
-  params,
-  searchParams,
-}: EditTimeBlockPageProps) {
+export default async function EditTimeBlockPage(props: EditTimeBlockPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await getCurrentUser();
   if (!user) {
     return notFound();

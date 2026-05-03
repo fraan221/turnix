@@ -148,6 +148,8 @@ export function PublicProfileClient({
                 src={barbershop.image}
                 alt={`Foto de ${barbershop.name}`}
                 fill
+                sizes="(max-width: 768px) 100vw, 96px"
+                priority
                 className="object-cover"
               />
             </div>

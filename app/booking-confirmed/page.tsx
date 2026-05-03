@@ -13,10 +13,10 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { cancelFailedBooking } from "@/actions/public.actions";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 
 interface BookingConfirmedPageProps {
-  searchParams: {
+  searchParams: Promise<{
     client?: string;
     phone?: string;
     barberName?: string;
@@ -25,7 +25,7 @@ interface BookingConfirmedPageProps {
     teamsEnabled?: string;
     payment?: string;
     booking?: string;
-  };
+  }>;
 }
 
 const capitalize = (str: string) => {
@@ -57,9 +57,8 @@ const formatBookingDateTime = (isoString?: string) => {
   )} de ${year}, ${time} hs`;
 };
 
-export default function BookingConfirmedPage({
-  searchParams,
-}: BookingConfirmedPageProps) {
+export default function BookingConfirmedPage(props: BookingConfirmedPageProps) {
+  const searchParams = use(props.searchParams);
   const {
     client,
     phone,

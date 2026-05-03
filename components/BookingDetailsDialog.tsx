@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition, useEffect, useMemo } from "react";
-import { Booking, Client, Service, BookingStatus } from "@prisma/client";
+import {
+  Booking,
+  Client,
+  Service,
+  BookingStatus,
+  PaymentMethod,
+} from "@prisma/client";
 import {
   DialogHeader,
   DialogTitle,
@@ -27,12 +33,23 @@ import {
   updateBookingStatus,
   updateClientNotes,
   checkBookingAvailability,
+  setPaymentMethod,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Banknote,
+  Smartphone,
+  CreditCard,
+  Lightbulb,
+  Clock,
+  Check,
+} from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
@@ -47,13 +64,119 @@ interface BookingDetailsDialogContentProps {
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
 }
 
-type DialogView = "details" | "addNote" | "confirmDeleteClient" | "editTime";
+type DialogView =
+  | "details"
+  | "addNote"
+  | "confirmDeleteClient"
+  | "editTime"
+  | "selectPayment";
 
 const statusMap = {
   [BookingStatus.SCHEDULED]: { text: "Agendado", color: "text-blue-600" },
   [BookingStatus.COMPLETED]: { text: "Completado", color: "text-green-600" },
   [BookingStatus.CANCELLED]: { text: "Cancelado", color: "text-red-600" },
 };
+
+const PAYMENT_METHODS = [
+  {
+    value: "CASH" as PaymentMethod,
+    label: "Efectivo",
+    shortLabel: "Efectivo",
+    icon: Banknote,
+    bgClass:
+      "bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-900/50",
+    textClass: "text-green-700 dark:text-green-300",
+    borderClass: "border-green-200 dark:border-green-800",
+    ringClass: "ring-green-500",
+  },
+  {
+    value: "TRANSFER" as PaymentMethod,
+    label: "Transferencia / MP",
+    shortLabel: "Transf.",
+    icon: Smartphone,
+    bgClass:
+      "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/50",
+    textClass: "text-blue-700 dark:text-blue-300",
+    borderClass: "border-blue-200 dark:border-blue-800",
+    ringClass: "ring-blue-500",
+  },
+  {
+    value: "CARD" as PaymentMethod,
+    label: "Tarjeta",
+    shortLabel: "Tarjeta",
+    icon: CreditCard,
+    bgClass:
+      "bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/50",
+    textClass: "text-purple-700 dark:text-purple-300",
+    borderClass: "border-purple-200 dark:border-purple-800",
+    ringClass: "ring-purple-500",
+  },
+] as const;
+
+function getPaymentMethodConfig(method: PaymentMethod) {
+  return PAYMENT_METHODS.find((m) => m.value === method) ?? PAYMENT_METHODS[0];
+}
+
+interface PaymentMethodPickerProps {
+  onSelect: (method: PaymentMethod) => void;
+  isLoading: boolean;
+  selectedMethod: PaymentMethod | null;
+  compact?: boolean;
+}
+
+function PaymentMethodPicker({
+  onSelect,
+  isLoading,
+  selectedMethod,
+  compact = false,
+}: PaymentMethodPickerProps) {
+  return (
+    <div
+      className={compact ? "grid grid-cols-3 gap-2" : "grid grid-cols-1 gap-3"}
+    >
+      {PAYMENT_METHODS.map((method) => {
+        const Icon = method.icon;
+        const isSelected = isLoading && selectedMethod === method.value;
+
+        return (
+          <Button
+            key={method.value}
+            variant="outline"
+            className={cn(
+              compact
+                ? "h-12 flex-col gap-1 px-2"
+                : "h-16 justify-start px-6 text-lg",
+              method.bgClass,
+              method.textClass,
+              method.borderClass,
+              isSelected && `ring-2 ${method.ringClass}`,
+            )}
+            onClick={() => onSelect(method.value)}
+            disabled={isLoading}
+          >
+            {isSelected ? (
+              <Loader2
+                className={cn(
+                  compact ? "w-5 h-5" : "mr-4 w-6 h-6",
+                  "animate-spin",
+                )}
+              />
+            ) : (
+              <Icon className={cn(compact ? "w-5 h-5" : "mr-4 w-6 h-6")} />
+            )}
+            {compact ? (
+              <span className="text-xs font-medium leading-none">
+                {method.shortLabel}
+              </span>
+            ) : (
+              method.label
+            )}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function BookingDetailsDialogContent({
   booking,
@@ -68,7 +191,11 @@ export function BookingDetailsDialogContent({
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
-  
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(
+    null,
+  );
+  const [optimisticPaymentSet, setOptimisticPaymentSet] = useState(false);
+
   const [editingStartTime, setEditingStartTime] = useState("");
   const [editingEndTime, setEditingEndTime] = useState("");
   const [availability, setAvailability] = useState<{
@@ -76,29 +203,45 @@ export function BookingDetailsDialogContent({
     reason?: string;
   }>({ status: "idle" });
 
-  const originalDuration = booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
+  const originalDuration =
+    booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
 
   useEffect(() => {
     setView("details");
     setNote(booking.client.notes || "");
-    
+
     const start = new Date(booking.startTime);
-    const duration = booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
+    const duration =
+      booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
     const end = new Date(start.getTime() + duration * 60000);
-    
+
     setEditingStartTime(
-      start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+      start.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
     );
     setEditingEndTime(
-      end.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+      end.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
     );
-  }, [booking.id, booking.client.notes, booking.startTime, booking.durationAtBooking, booking.service?.durationInMinutes]);
+  }, [
+    booking.id,
+    booking.client.notes,
+    booking.startTime,
+    booking.durationAtBooking,
+    booking.service?.durationInMinutes,
+  ]);
 
   const calculatedDuration = useMemo(() => {
     if (!editingStartTime || !editingEndTime) return 0;
     const [startH, startM] = editingStartTime.split(":").map(Number);
     const [endH, endM] = editingEndTime.split(":").map(Number);
-    return (endH * 60 + endM) - (startH * 60 + startM);
+    return endH * 60 + endM - (startH * 60 + startM);
   }, [editingStartTime, editingEndTime]);
 
   const debouncedStart = useDebounce(editingStartTime, 500);
@@ -106,48 +249,67 @@ export function BookingDetailsDialogContent({
 
   useEffect(() => {
     if (!debouncedStart || !debouncedEnd) return;
-    
+
     if (calculatedDuration <= 0) {
-      setAvailability({ status: "unavailable", reason: "La hora de fin debe ser posterior a la de inicio." });
+      setAvailability({
+        status: "unavailable",
+        reason: "La hora de fin debe ser posterior a la de inicio.",
+      });
       return;
     }
     if (calculatedDuration < 5) {
-      setAvailability({ status: "unavailable", reason: "La duración mínima es de 5 minutos." });
+      setAvailability({
+        status: "unavailable",
+        reason: "La duración mínima es de 5 minutos.",
+      });
       return;
     }
     if (calculatedDuration > 480) {
-      setAvailability({ status: "unavailable", reason: "La duración máxima es de 8 horas." });
+      setAvailability({
+        status: "unavailable",
+        reason: "La duración máxima es de 8 horas.",
+      });
       return;
     }
 
     const checkAvailability = async () => {
       setAvailability((prev) => ({ ...prev, status: "checking" }));
-      
+
       const [hours, minutes] = debouncedStart.split(":").map(Number);
       const newStartTime = new Date(booking.startTime);
       newStartTime.setHours(hours, minutes, 0, 0);
-      
+
       try {
         const result = await checkBookingAvailability(
           booking.barberId,
           newStartTime,
           calculatedDuration,
           calculatedDuration,
-          booking.id
+          booking.id,
         );
-        
+
         setAvailability(
-          result.available 
-            ? { status: "available" } 
-            : { status: "unavailable", reason: result.reason }
+          result.available
+            ? { status: "available" }
+            : { status: "unavailable", reason: result.reason },
         );
       } catch (error) {
-        setAvailability({ status: "unavailable", reason: "Error al verificar disponibilidad." });
+        setAvailability({
+          status: "unavailable",
+          reason: "Error al verificar disponibilidad.",
+        });
       }
     };
 
     checkAvailability();
-  }, [debouncedStart, debouncedEnd, calculatedDuration, booking.barberId, booking.id, booking.startTime]);
+  }, [
+    debouncedStart,
+    debouncedEnd,
+    calculatedDuration,
+    booking.barberId,
+    booking.id,
+    booking.startTime,
+  ]);
 
   const handleTimeChange = () => {
     if (!editingStartTime || !editingEndTime) {
@@ -169,7 +331,11 @@ export function BookingDetailsDialogContent({
     newStartTime.setHours(hours, minutes, 0, 0);
 
     startTimeUpdating(async () => {
-      const result = await updateBookingTime(booking.id, newStartTime, calculatedDuration);
+      const result = await updateBookingTime(
+        booking.id,
+        newStartTime,
+        calculatedDuration,
+      );
 
       if (result?.error) {
         toast.error("Error al cambiar horario", {
@@ -185,12 +351,19 @@ export function BookingDetailsDialogContent({
     });
   };
 
-  const handleStatusChange = (newStatus: BookingStatus) => {
+  const handleStatusChange = (
+    newStatus: BookingStatus,
+    paymentMethod?: PaymentMethod,
+  ) => {
     onOptimisticUpdate(booking.id, newStatus);
     const transition =
       newStatus === "COMPLETED" ? startCompleting : startCancelling;
     transition(async () => {
-      const result = await updateBookingStatus(booking.id, newStatus);
+      const result = await updateBookingStatus(
+        booking.id,
+        newStatus,
+        paymentMethod,
+      );
       if (result?.success) {
         toast.success("¡Éxito!", { description: result.success });
         if (newStatus === "COMPLETED") {
@@ -244,6 +417,28 @@ export function BookingDetailsDialogContent({
   const isFutureBooking = new Date(booking.startTime) > new Date();
   const currentStatus = statusMap[booking.status];
 
+  const handlePaymentMethodSelect = (
+    method: PaymentMethod,
+    isRetroactive: boolean = false,
+  ) => {
+    setSelectedPayment(method);
+    if (isRetroactive) {
+      setOptimisticPaymentSet(true);
+      startCompleting(async () => {
+        const result = await setPaymentMethod(booking.id, method);
+        if (result.success) {
+          toast.success(result.success);
+        } else if (result.error) {
+          toast.error(result.error);
+          setOptimisticPaymentSet(false);
+          setSelectedPayment(null);
+        }
+      });
+    } else {
+      handleStatusChange(BookingStatus.COMPLETED, method);
+    }
+  };
+
   const renderDetailsView = () => (
     <div className="space-y-4">
       <div className="space-y-1 text-sm">
@@ -272,7 +467,60 @@ export function BookingDetailsDialogContent({
             {currentStatus.text}
           </span>
         </p>
+        {booking.status === BookingStatus.COMPLETED &&
+          (booking.paymentMethod || optimisticPaymentSet) && (
+            <p className="flex items-center gap-1.5">
+              <strong>Cobro:</strong>{" "}
+              {(() => {
+                const method = booking.paymentMethod ?? selectedPayment;
+                if (!method) return null;
+                const config = getPaymentMethodConfig(method);
+                const Icon = config.icon;
+                return (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 font-medium",
+                      config.textClass,
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {config.label}
+                  </span>
+                );
+              })()}
+            </p>
+          )}
       </div>
+
+      {booking.status === BookingStatus.COMPLETED &&
+        !booking.paymentMethod &&
+        !optimisticPaymentSet && (
+          <div className="p-3 mt-4 space-y-3 bg-blue-50 rounded-md border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
+            <p className="flex items-center text-sm font-medium text-blue-800 dark:text-blue-200">
+              <Lightbulb className="flex-shrink-0 mr-2 w-4 h-4" />
+              Falta registrar el método de cobro
+            </p>
+            <PaymentMethodPicker
+              onSelect={(method) => handlePaymentMethodSelect(method, true)}
+              isLoading={isCompleting}
+              selectedMethod={selectedPayment}
+              compact
+            />
+          </div>
+        )}
+
+      {booking.status === BookingStatus.COMPLETED &&
+        !booking.paymentMethod &&
+        optimisticPaymentSet &&
+        selectedPayment && (
+          <div className="p-3 mt-4 bg-green-50 rounded-md border border-green-200 dark:bg-green-950/30 dark:border-green-800">
+            <p className="flex items-center text-sm font-medium text-green-700 dark:text-green-300">
+              <Check className="flex-shrink-0 mr-2 w-4 h-4" />
+              Cobro registrado: {getPaymentMethodConfig(selectedPayment).label}
+            </p>
+          </div>
+        )}
+
       {booking.status === BookingStatus.SCHEDULED && (
         <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Button
@@ -284,7 +532,11 @@ export function BookingDetailsDialogContent({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isCancelling} className="w-full">
+              <Button
+                variant="destructive"
+                disabled={isCancelling}
+                className="w-full"
+              >
                 {isCancelling && (
                   <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                 )}
@@ -314,41 +566,15 @@ export function BookingDetailsDialogContent({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="default"
-                disabled={isCompleting || isFutureBooking}
-                className="w-full"
-              >
-                {isCompleting && (
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                )}
-                Marcar como Completado
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Confirmar turno?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Estás a punto de marcar este turno como completado. Esta
-                  acción registrará el servicio como finalizado.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Atrás</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleStatusChange(BookingStatus.COMPLETED)}
-                  disabled={isCompleting}
-                >
-                  {isCompleting && (
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  )}
-                  Sí, confirmar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button
+            variant="default"
+            disabled={isCompleting || isFutureBooking}
+            className="w-full"
+            onClick={() => setView("selectPayment")}
+          >
+            {isCompleting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+            Marcar como Completado
+          </Button>
         </DialogFooter>
       )}
     </div>
@@ -362,7 +588,9 @@ export function BookingDetailsDialogContent({
         </p>
         <p>
           <strong>Fecha:</strong>{" "}
-          <span className="capitalize">{formatLongDate(booking.startTime)}</span>
+          <span className="capitalize">
+            {formatLongDate(booking.startTime)}
+          </span>
         </p>
       </div>
 
@@ -395,7 +623,7 @@ export function BookingDetailsDialogContent({
         <div className="text-sm font-medium">
           Duración: {calculatedDuration} min{" "}
           {calculatedDuration !== originalDuration && (
-            <span className="text-muted-foreground font-normal">
+            <span className="font-normal text-muted-foreground">
               (original: {originalDuration} min)
             </span>
           )}
@@ -404,19 +632,19 @@ export function BookingDetailsDialogContent({
         <div className="text-sm flex items-center min-h-[24px]">
           {availability.status === "checking" && (
             <div className="flex items-center text-muted-foreground">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
               Verificando disponibilidad...
             </div>
           )}
           {availability.status === "available" && (
             <div className="flex items-center text-green-600">
-              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <CheckCircle2 className="mr-2 w-4 h-4" />
               Horario disponible
             </div>
           )}
           {availability.status === "unavailable" && (
             <div className="flex items-center text-red-600">
-              <XCircle className="w-4 h-4 mr-2" />
+              <XCircle className="mr-2 w-4 h-4" />
               {availability.reason}
             </div>
           )}
@@ -441,6 +669,29 @@ export function BookingDetailsDialogContent({
         >
           {isTimeUpdating && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
           Guardar cambios
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
+  const renderSelectPaymentView = () => (
+    <div className="space-y-4">
+      <p className="mb-4 text-sm text-center text-muted-foreground">
+        ¿Cómo pagó el cliente?
+      </p>
+      <PaymentMethodPicker
+        onSelect={(method) => handlePaymentMethodSelect(method, false)}
+        isLoading={isCompleting}
+        selectedMethod={selectedPayment}
+      />
+      <DialogFooter className="mt-4">
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => setView("details")}
+          disabled={isCompleting}
+        >
+          Volver
         </Button>
       </DialogFooter>
     </div>
@@ -519,6 +770,8 @@ export function BookingDetailsDialogContent({
         return renderConfirmDeleteClientView();
       case "editTime":
         return renderEditTimeView();
+      case "selectPayment":
+        return renderSelectPaymentView();
       case "details":
       default:
         return renderDetailsView();
@@ -537,7 +790,7 @@ export function BookingDetailsDialogContent({
       {booking.paymentStatus === "PENDING" && view === "details" && (
         <div className="p-3 text-sm bg-amber-50 rounded-md border border-amber-300 dark:bg-amber-950/30 dark:border-amber-800">
           <p className="font-semibold text-amber-800 dark:text-amber-200">
-            ⏳ Esperando pago de seña
+            <Clock className="inline mr-1 w-4 h-4" /> Esperando pago de seña
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300">
             Este turno se cancelará automáticamente si el cliente no paga en los

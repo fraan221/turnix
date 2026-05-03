@@ -2,29 +2,12 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { User } from "@prisma/client";
-import dynamic from "next/dynamic";
+import PublicProfileClientWrapper from "@/components/public-profile/PublicProfileClientWrapper";
 import { Suspense } from "react";
+import { getCachedBarberProfile } from "@/lib/data";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookingWizardSkeleton } from "@/components/skeletons/BookingWizardSkeleton";
-import { getCachedBarberProfile } from "@/lib/data";
-
-const PublicProfileClient = dynamic(
-  () =>
-    import("@/components/public-profile/PublicProfileClient").then(
-      (mod) => mod.PublicProfileClient
-    ),
-  {
-    ssr: false,
-    loading: () => <ProfileSkeleton />,
-  }
-);
-
-interface BarberPublicPageProps {
-  params: {
-    slug: string;
-  };
-}
 
 function ProfileSkeleton() {
   return (
@@ -38,6 +21,12 @@ function ProfileSkeleton() {
       <BookingWizardSkeleton />
     </div>
   );
+}
+
+interface BarberPublicPageProps {
+  params: Promise<{
+    slug: string;
+  }>;
 }
 
 async function PublicProfileData({ slug }: { slug: string }) {
@@ -58,7 +47,7 @@ async function PublicProfileData({ slug }: { slug: string }) {
   ];
 
   return (
-    <PublicProfileClient
+    <PublicProfileClientWrapper
       barbershop={barbershop}
       allBarbers={allBarbers}
       whatsappUrl={whatsappUrl}
@@ -66,9 +55,8 @@ async function PublicProfileData({ slug }: { slug: string }) {
   );
 }
 
-export async function generateMetadata({
-  params,
-}: BarberPublicPageProps): Promise<Metadata> {
+export async function generateMetadata(props: BarberPublicPageProps): Promise<Metadata> {
+  const params = await props.params;
   const slug = decodeURIComponent(params.slug);
 
   const barbershop = await getCachedBarberProfile(slug);
@@ -102,9 +90,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function BarberPublicPage({
-  params,
-}: BarberPublicPageProps) {
+export default async function BarberPublicPage(props: BarberPublicPageProps) {
+  const params = await props.params;
   return (
     <main className="flex flex-col items-center p-4 min-h-screen bg-muted/40 md:p-12">
       <Suspense fallback={<ProfileSkeleton />}>

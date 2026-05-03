@@ -100,9 +100,9 @@ export async function createRecurringBooking(
       }
     });
 
-    revalidatePath("/dashboard/fixed");
-    revalidatePath("/dashboard/schedule");
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/fixed", "layout");
+    revalidatePath("/dashboard/schedule", "layout");
+    revalidatePath("/dashboard", "layout");
 
     return { success: "Turno fijo creado exitosamente." };
   } catch (error) {
@@ -166,9 +166,9 @@ export async function suspendRecurringBooking(
       });
     });
 
-    revalidatePath("/dashboard/fixed");
-    revalidatePath("/dashboard/schedule");
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/fixed", "layout");
+    revalidatePath("/dashboard/schedule", "layout");
+    revalidatePath("/dashboard", "layout");
 
     return {
       success:
@@ -249,9 +249,9 @@ export async function resumeRecurringBooking(id: string) {
       }
     });
 
-    revalidatePath("/dashboard/fixed");
-    revalidatePath("/dashboard/schedule");
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/fixed", "layout");
+    revalidatePath("/dashboard/schedule", "layout");
+    revalidatePath("/dashboard", "layout");
 
     return { success: "Turno fijo reactivado exitosamente." };
   } catch (error) {
@@ -286,9 +286,9 @@ export async function deleteRecurringBooking(id: string) {
       });
     });
 
-    revalidatePath("/dashboard/fixed");
-    revalidatePath("/dashboard/schedule");
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/fixed", "layout");
+    revalidatePath("/dashboard/schedule", "layout");
+    revalidatePath("/dashboard", "layout");
 
     return { success: "Turno fijo cancelado definitivamente." };
   } catch (error) {

@@ -81,15 +81,7 @@ function formatChartDataByPeriod(
       rawChartData.map((item) => [String(item.name), item.total]),
     );
     const chartData: ChartDataPoint[] = [];
-    const weekDays = [
-      "Lun",
-      "Mar",
-      "Mié",
-      "Jue",
-      "Vie",
-      "Sáb",
-      "Dom",
-    ];
+    const weekDays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
     for (let i = 1; i <= 7; i++) {
       const name = weekDays[i - 1];
@@ -100,7 +92,20 @@ function formatChartDataByPeriod(
   }
 
   const groupedData = new Map<string, { total: number; sortKey: number }>();
-  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const months = [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+  ];
 
   for (const item of rawChartData) {
     const [yearStr, monthStr, dayStr] = String(item.name).split("-");
@@ -110,7 +115,8 @@ function formatChartDataByPeriod(
     const month = parseInt(monthStr, 10) - 1;
     const day = parseInt(dayStr, 10);
 
-    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) continue;
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day))
+      continue;
 
     let groupKey = String(item.name);
     let sortKey = year * 10000 + (month + 1) * 100 + day;
@@ -261,15 +267,14 @@ function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfMonth(now),
         endDate: getEndOfMonth(now),
       };
-    case "quarter":
-      {
-        const startDate = getStartOfMonth(new Date(now));
-        startDate.setMonth(startDate.getMonth() - 2);
-        return {
-          startDate,
-          endDate: getEndOfDay(now),
-        };
-      }
+    case "quarter": {
+      const startDate = getStartOfMonth(new Date(now));
+      startDate.setMonth(startDate.getMonth() - 2);
+      return {
+        startDate,
+        endDate: getEndOfDay(now),
+      };
+    }
     case "year":
       return {
         startDate: getStartOfYear(now),
@@ -420,13 +425,17 @@ const getBarbershopAnalytics = cache(
         take: 5,
       });
 
-      const [completedBookings, cancelledBookingsCount, topServices, rawChartData] =
-        await Promise.all([
-          completedBookingsPromise,
-          cancelledBookingsCountPromise,
-          topServicesPromise,
-          chartPromise,
-        ]);
+      const [
+        completedBookings,
+        cancelledBookingsCount,
+        topServices,
+        rawChartData,
+      ] = await Promise.all([
+        completedBookingsPromise,
+        cancelledBookingsCountPromise,
+        topServicesPromise,
+        chartPromise,
+      ]);
 
       const totalRevenue = completedBookings.reduce(
         (acc, booking) =>
@@ -681,7 +690,12 @@ const getBarberAnalytics = cache(
         completedBookings: completedBookingsCount,
         cancelledBookings,
         uniqueClients,
-        chartData: formatChartDataByPeriod(rawChartData, period, startDate, endDate),
+        chartData: formatChartDataByPeriod(
+          rawChartData,
+          period,
+          startDate,
+          endDate,
+        ),
         topServices: formattedTopServices,
       };
     } catch (error) {
@@ -756,7 +770,10 @@ const getBarbershopClientMetrics = cache(
           where: { barbershopId, createdAt: { gte: startDate, lte: endDate } },
         }),
         prisma.client.count({
-          where: { barbershopId, createdAt: { gte: prevStartDate, lte: prevEndDate } },
+          where: {
+            barbershopId,
+            createdAt: { gte: prevStartDate, lte: prevEndDate },
+          },
         }),
         prisma.client.count({
           where: { barbershopId },
@@ -793,7 +810,11 @@ const getBarbershopClientMetrics = cache(
 
       const clientStatsMap = new Map<
         string,
-        { count: number; totalSpent: number; client: { id: string; name: string; phone: string } }
+        {
+          count: number;
+          totalSpent: number;
+          client: { id: string; name: string; phone: string };
+        }
       >();
 
       for (const b of currentBookings) {
@@ -1021,7 +1042,11 @@ const getBarberClientMetrics = cache(
 
       const clientStatsMap = new Map<
         string,
-        { count: number; totalSpent: number; client: { id: string; name: string; phone: string } }
+        {
+          count: number;
+          totalSpent: number;
+          client: { id: string; name: string; phone: string };
+        }
       >();
 
       for (const b of currentBookings) {
@@ -1095,7 +1120,10 @@ const getBarberClientMetrics = cache(
         averageVisitsPerClient,
       };
     } catch (error) {
-      console.error("Error en la consulta de métricas de clientes de barbero:", error);
+      console.error(
+        "Error en la consulta de métricas de clientes de barbero:",
+        error,
+      );
       return {
         newClientsCount: 0,
         newClientsChange: 0,
@@ -1151,4 +1179,194 @@ export async function getBarberClientMetricsData(
     prevStartDate,
     prevEndDate,
   );
+}
+
+export type PaymentMethodBreakdown = {
+  method: string;
+  count: number;
+  total: number;
+};
+
+export type FinanceData = {
+  breakdown: PaymentMethodBreakdown[];
+  teamBreakdown?: {
+    barberName: string;
+    barberId: string;
+    completedCount: number;
+    totalRevenue: number;
+  }[];
+  error?: string;
+};
+
+const getCachedFinanceData = cache(
+  async (
+    barbershopId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<FinanceData> => {
+    try {
+      const breakdownGroup = await prisma.booking.groupBy({
+        by: ["paymentMethod"],
+        where: {
+          barbershopId,
+          status: BookingStatus.COMPLETED,
+          startTime: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        _count: {
+          id: true,
+        },
+        _sum: {
+          priceAtBooking: true,
+        },
+      });
+
+      const teamGroup = await prisma.booking.groupBy({
+        by: ["barberId"],
+        where: {
+          barbershopId,
+          status: BookingStatus.COMPLETED,
+          startTime: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        _count: {
+          id: true,
+        },
+        _sum: {
+          priceAtBooking: true,
+        },
+      });
+
+      const teamUsers = await prisma.user.findMany({
+        where: {
+          id: { in: teamGroup.map((g) => g.barberId) },
+        },
+        select: { id: true, name: true },
+      });
+
+      const userMap = new Map(teamUsers.map((u) => [u.id, u.name]));
+
+      const breakdown = breakdownGroup.map((g) => ({
+        method: g.paymentMethod || "UNCLASSIFIED",
+        count: g._count.id,
+        total: g._sum.priceAtBooking || 0,
+      }));
+
+      const teamBreakdown = teamGroup.map((g) => ({
+        barberId: g.barberId,
+        barberName: userMap.get(g.barberId) || "Barbero Desconocido",
+        completedCount: g._count.id,
+        totalRevenue: g._sum.priceAtBooking || 0,
+      }));
+
+      return {
+        breakdown,
+        teamBreakdown,
+      };
+    } catch (error) {
+      console.error("Error getting cached finance data:", error);
+      return {
+        breakdown: [],
+        error: "Error al cargar datos financieros.",
+      };
+    }
+  },
+  ["getFinanceData"],
+  {
+    revalidate: 300,
+    tags: ["analytics"],
+  },
+);
+
+export async function getFinanceData(
+  period: Period = "month",
+): Promise<FinanceData> {
+  const user = await getUserForSettings();
+
+  if (!user || user.role !== Role.OWNER) {
+    return {
+      breakdown: [],
+      error: "No autorizado para ver estadísticas.",
+    };
+  }
+
+  const barbershopId = user.ownedBarbershop?.id;
+  if (!barbershopId) {
+    return {
+      breakdown: [],
+      error: "No se encontró la barbería del usuario.",
+    };
+  }
+
+  const { startDate, endDate } = getDateRangeForPeriod(period);
+  return getCachedFinanceData(barbershopId, startDate, endDate);
+}
+
+const getCachedBarberFinanceData = cache(
+  async (
+    barberId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<FinanceData> => {
+    try {
+      const breakdownGroup = await prisma.booking.groupBy({
+        by: ["paymentMethod"],
+        where: {
+          barberId,
+          status: BookingStatus.COMPLETED,
+          startTime: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        _count: {
+          id: true,
+        },
+        _sum: {
+          priceAtBooking: true,
+        },
+      });
+
+      const breakdown = breakdownGroup.map((g) => ({
+        method: g.paymentMethod || "UNCLASSIFIED",
+        count: g._count.id,
+        total: g._sum.priceAtBooking || 0,
+      }));
+
+      return {
+        breakdown,
+      };
+    } catch (error) {
+      console.error("Error getting cached barber finance data:", error);
+      return {
+        breakdown: [],
+        error: "Error al cargar datos financieros.",
+      };
+    }
+  },
+  ["getBarberFinanceData"],
+  {
+    revalidate: 300,
+    tags: ["analytics"],
+  },
+);
+
+export async function getBarberFinanceData(
+  period: Period = "month",
+): Promise<FinanceData> {
+  const user = await getUserForSettings();
+
+  if (!user || user.role !== Role.BARBER) {
+    return {
+      breakdown: [],
+      error: "No autorizado para ver estadísticas.",
+    };
+  }
+
+  const { startDate, endDate } = getDateRangeForPeriod(period);
+  return getCachedBarberFinanceData(user.id, startDate, endDate);
 }
