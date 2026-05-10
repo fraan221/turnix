@@ -174,8 +174,7 @@ export async function POST(request: Request) {
       revalidatePath("/dashboard/settings", "layout");
 
       if (finalBarbershop.slug) {
-        // @ts-expect-error Next 16 typing bug
-        revalidateTag(`barber-profile:${finalBarbershop.slug}`);
+        revalidateTag(`barber-profile:${finalBarbershop.slug}`, "max");
       }
 
       return NextResponse.json({
@@ -204,8 +203,7 @@ export async function POST(request: Request) {
 
       const barbershopSlug = updatedUser.teamMembership?.barbershop.slug;
       if (barbershopSlug) {
-        // @ts-expect-error Next 16 typing bug
-        revalidateTag(`barber-profile:${barbershopSlug}`);
+        revalidateTag(`barber-profile:${barbershopSlug}`, "max");
       }
 
       return NextResponse.json({

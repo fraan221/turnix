@@ -148,8 +148,7 @@ export async function linkBarberToShop(
     });
 
     revalidatePath("/dashboard/team", "layout");
-    // @ts-expect-error Next 16 typing bug
-    revalidateTag(`barber-profile:${barbershop.slug}`);
+    revalidateTag(`barber-profile:${barbershop.slug}`, "max");
     console.log(
       `[Cache Invalidation] Revalidando tag por nuevo miembro: barber-profile:${barbershop.slug}`,
     );
@@ -178,8 +177,7 @@ export async function enableTeamFeature(): Promise<TeamActionState> {
     });
 
     if (updatedBarbershop.slug) {
-      // @ts-expect-error Next 16 typing bug
-      revalidateTag(`barber-profile:${updatedBarbershop.slug}`);
+      revalidateTag(`barber-profile:${updatedBarbershop.slug}`, "max");
       console.log(
         `[Cache Invalidation] Revalidando tag por activar equipos: barber-profile:${updatedBarbershop.slug}`,
       );
@@ -287,8 +285,7 @@ export async function removeTeamMember(
 
     revalidatePath("/dashboard/team", "layout");
     if (user.ownedBarbershop.slug) {
-      // @ts-expect-error Next 16 typing bug
-      revalidateTag(`barber-profile:${user.ownedBarbershop.slug}`);
+      revalidateTag(`barber-profile:${user.ownedBarbershop.slug}`, "max");
     }
 
     return { success: "¡Miembro eliminado del equipo con éxito!" };
