@@ -744,8 +744,10 @@ export default function BarberCalendar({
               <Input id="clientName" name="clientName" required />
             </div>
             <div>
-              <Label htmlFor="clientPhone">Teléfono del Cliente</Label>
-              <Input id="clientPhone" name="clientPhone" required />
+              <Label htmlFor="clientPhone">
+                Teléfono del Cliente (opcional)
+              </Label>
+              <Input id="clientPhone" name="clientPhone" />
             </div>
             <div>
               <Label htmlFor="serviceId">Servicio</Label>

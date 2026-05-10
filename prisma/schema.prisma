@@ -82,7 +82,7 @@ model MercadoPagoCredentials {
 
 model Client {
   id        String   @id @default(cuid())
-  phone     String   @unique
+  phone     String?
   name      String
   notes     String?
   createdAt DateTime @default(now())

@@ -55,7 +55,7 @@ export default async function ClientDetailPage(props: ClientDetailPageProps) {
 
     if (currentUser.role === Role.BARBER) {
       const hasAttendedClient = client.bookings.some(
-        (booking) => booking.barberId === currentUser.id
+        (booking) => booking.barberId === currentUser.id,
       );
 
       if (!hasAttendedClient) {
@@ -68,15 +68,14 @@ export default async function ClientDetailPage(props: ClientDetailPageProps) {
       .filter((b) => new Date(b.startTime) > now && b.status === "SCHEDULED")
       .reverse();
     const historialDeTurnos = client.bookings.filter(
-      (b) => new Date(b.startTime) <= now || b.status !== "SCHEDULED"
+      (b) => new Date(b.startTime) <= now || b.status !== "SCHEDULED",
     );
-    const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`;
 
     return (
       <div className="mx-auto space-y-6 max-w-7xl">
-        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-16 h-16 text-2xl font-bold rounded-full bg-primary/10 text-primary">
+        <div className="flex flex-col gap-4 items-start md:flex-row md:items-center md:justify-between">
+          <div className="flex gap-4 items-center">
+            <div className="flex justify-center items-center w-16 h-16 text-2xl font-bold rounded-full bg-primary/10 text-primary">
               {client.name.charAt(0).toUpperCase()}
             </div>
             <div className="grid gap-1">
@@ -84,24 +83,27 @@ export default async function ClientDetailPage(props: ClientDetailPageProps) {
                 {client.name}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {client.phone}
+                {client.phone ? client.phone : "Sin teléfono"}
               </p>
             </div>
           </div>
-          <Link href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-            <Button className="gap-2 transition-shadow hover:shadow-md">
-              <WhatsAppIcon />
-              Contactar
-            </Button>
-          </Link>
+          {client.phone ? (
+            <Link
+              href={`https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button className="gap-2 transition-shadow hover:shadow-md">
+                <WhatsAppIcon />
+                Contactar
+              </Button>
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <ClientNotesForm
-              clientId={client.id}
-              currentNotes={client.notes}
-            />
+            <ClientNotesForm clientId={client.id} currentNotes={client.notes} />
           </div>
 
           <BookingHistory

@@ -445,9 +445,11 @@ export function BookingDetailsDialogContent({
         <p>
           <strong>Cliente:</strong> {booking.client.name}
         </p>
-        <p>
-          <strong>Teléfono:</strong> {booking.client.phone}
-        </p>
+        {booking.client.phone ? (
+          <p>
+            <strong>Teléfono:</strong> {booking.client.phone}
+          </p>
+        ) : null}
         <p>
           <strong>Servicio:</strong>{" "}
           {booking.service?.name ?? "Servicio eliminado"}

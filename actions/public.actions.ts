@@ -130,7 +130,11 @@ export async function getBarberAvailability(
   const slotGroups: TimeSlotGroup[] = [];
 
   for (const shift of shifts) {
-    const shiftSlots: { time: string; available: boolean; isRecurring?: boolean }[] = [];
+    const shiftSlots: {
+      time: string;
+      available: boolean;
+      isRecurring?: boolean;
+    }[] = [];
     const dayStartTime = createDateInArgentina(shift.startTime);
     const dayEndTime = createDateInArgentina(shift.endTime);
 
@@ -147,7 +151,11 @@ export async function getBarberAvailability(
       }
     }
 
-    const occupiedIntervals: { start: Date; end: Date; isRecurring: boolean }[] = [];
+    const occupiedIntervals: {
+      start: Date;
+      end: Date;
+      isRecurring: boolean;
+    }[] = [];
 
     for (const booking of bookings) {
       const bookingStart = new Date(booking.startTime);
@@ -161,7 +169,11 @@ export async function getBarberAvailability(
         bookingStart.getTime() + durationInMinutes * 60000,
       );
       if (bookingEnd > dayStartTime && bookingStart < dayEndTime) {
-        occupiedIntervals.push({ start: bookingStart, end: bookingEnd, isRecurring: !!(booking as any).recurringBookingId });
+        occupiedIntervals.push({
+          start: bookingStart,
+          end: bookingEnd,
+          isRecurring: !!(booking as any).recurringBookingId,
+        });
       }
     }
 
@@ -169,7 +181,11 @@ export async function getBarberAvailability(
       const blockStart = new Date(block.startTime);
       const blockEnd = new Date(block.endTime);
       if (blockEnd > dayStartTime && blockStart < dayEndTime) {
-        occupiedIntervals.push({ start: blockStart, end: blockEnd, isRecurring: false });
+        occupiedIntervals.push({
+          start: blockStart,
+          end: blockEnd,
+          isRecurring: false,
+        });
       }
     }
 
@@ -178,7 +194,8 @@ export async function getBarberAvailability(
     let slotStart = new Date(currentTime);
 
     while (
-      slotStart.getTime() + totalDuration * 60000 <= dayEndTime.getTime()
+      slotStart.getTime() + totalDuration * 60000 <=
+      dayEndTime.getTime()
     ) {
       const overlapDuration = totalActiveDuration ?? totalDuration;
       const slotEnd = new Date(slotStart.getTime() + overlapDuration * 60000);
@@ -187,7 +204,7 @@ export async function getBarberAvailability(
         (interval) => slotStart < interval.end && slotEnd > interval.start,
       );
       const isAvailable = overlappingIntervals.length === 0;
-      const isRecurring = overlappingIntervals.some(i => i.isRecurring);
+      const isRecurring = overlappingIntervals.some((i) => i.isRecurring);
 
       shiftSlots.push({
         time: formatTime(slotStart),
@@ -318,26 +335,34 @@ export async function createPublicBooking(prevState: any, formData: FormData) {
       };
     }
 
-    const [client, service] = await Promise.all([
-      prisma.client.upsert({
-        where: { phone: clientPhone },
-        update: { name: clientName },
-        create: {
+    let client = await prisma.client.findFirst({
+      where: { phone: clientPhone },
+    });
+
+    if (client) {
+      client = await prisma.client.update({
+        where: { id: client.id },
+        data: { name: clientName },
+      });
+    } else {
+      client = await prisma.client.create({
+        data: {
           name: clientName,
           phone: clientPhone,
           barbershopId: barbershopId,
         },
-      }),
-      prisma.service.findUnique({
-        where: { id: serviceId },
-        select: {
-          name: true,
-          price: true,
-          durationInMinutes: true,
-          activeDurationInMinutes: true,
-        },
-      }),
-    ]);
+      });
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: {
+        name: true,
+        price: true,
+        durationInMinutes: true,
+        activeDurationInMinutes: true,
+      },
+    });
 
     if (!service) {
       return { error: "El servicio seleccionado ya no existe." };

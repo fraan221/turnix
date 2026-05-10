@@ -37,7 +37,7 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
           <CardTitle>Mejores Clientes</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground py-6">
+          <p className="py-6 text-center text-muted-foreground">
             Aún no hay clientes con turnos en este período.
           </p>
         </CardContent>
@@ -69,16 +69,16 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => router.push(`/dashboard/clients/${client.id}`)}
                 >
-                  <TableCell className="font-medium text-muted-foreground tabular-nums">
+                  <TableCell className="font-medium tabular-nums text-muted-foreground">
                     {index + 1}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2 items-center">
                       <span className="font-medium">{client.name}</span>
                       {client.isVip && (
                         <Badge
                           variant="secondary"
-                          className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 border-transparent gap-1"
+                          className="gap-1 text-yellow-800 bg-yellow-100 border-transparent hover:bg-yellow-100/80"
                         >
                           <Star className="w-3 h-3 fill-current" />
                           VIP
@@ -86,11 +86,11 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{client.phone}</TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
+                  <TableCell>{client.phone ? client.phone : "—"}</TableCell>
+                  <TableCell className="font-medium tabular-nums text-right">
                     {client.visitsCount}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                  <TableCell className="tabular-nums text-right text-muted-foreground">
                     {formatPrice(client.totalSpent)}
                   </TableCell>
                 </TableRow>
@@ -98,9 +98,9 @@ export function TopClientsTable({ clients }: TopClientsTableProps) {
             </TableBody>
           </Table>
         </div>
-        
+
         {hasMore && (
-          <div className="mt-4 flex justify-center">
+          <div className="flex justify-center mt-4">
             <Button
               variant="outline"
               size="sm"
