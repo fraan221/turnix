@@ -234,8 +234,7 @@ export async function saveSchedule(
       barberUpdated?.teamMembership?.barbershop?.slug;
 
     if (slug) {
-      // @ts-expect-error Next 16 typing bug
-      revalidateTag(`barber-profile:${slug}`);
+      revalidateTag(`barber-profile:${slug}`, "max");
     }
 
     revalidatePath("/dashboard/schedule", "layout");

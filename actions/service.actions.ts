@@ -39,13 +39,18 @@ async function resolveCreateTargetBarberId(
   });
 
   if (!isTeamMember) {
-    return { error: "No tienes permiso para crear servicios para este barbero." };
+    return {
+      error: "No tienes permiso para crear servicios para este barbero.",
+    };
   }
 
   return { barberId: targetId };
 }
 
-export async function createService(data: ServiceInput, targetBarberId?: string) {
+export async function createService(
+  data: ServiceInput,
+  targetBarberId?: string,
+) {
   const user = await getUserForSettings();
   if (!user) {
     return { error: "No autorizado." };
@@ -97,10 +102,9 @@ export async function createService(data: ServiceInput, targetBarberId?: string)
     });
 
     revalidatePath("/dashboard/services", "layout");
-    // @ts-expect-error Next 16 typing bug
-    revalidateTag(`barber-profile:${barbershopSlug}`);
+    revalidateTag(`barber-profile:${barbershopSlug}`, "max");
     console.log(
-      `[Cache Invalidation] Revalidando tag por nuevo servicio: barber-profile:${barbershopSlug}`
+      `[Cache Invalidation] Revalidando tag por nuevo servicio: barber-profile:${barbershopSlug}`,
     );
 
     return { success: `Servicio "${name}" creado con éxito.` };
@@ -143,7 +147,8 @@ export async function updateService(serviceId: string, data: ServiceInput) {
 
   if (serviceToUpdate.barbershopId !== barbershopId) {
     return {
-      error: "Operación no permitida. No tienes permiso para editar este servicio.",
+      error:
+        "Operación no permitida. No tienes permiso para editar este servicio.",
     };
   }
 
@@ -181,10 +186,9 @@ export async function updateService(serviceId: string, data: ServiceInput) {
     // 2. Invalidamos el caché del perfil público
     const barbershopSlug = serviceToUpdate.barbershop.slug;
     if (barbershopSlug) {
-      // @ts-expect-error Next 16 typing bug
-      revalidateTag(`barber-profile:${barbershopSlug}`);
+      revalidateTag(`barber-profile:${barbershopSlug}`, "max");
       console.log(
-        `[Cache Invalidation] Revalidando tag por actualización de servicio: barber-profile:${barbershopSlug}`
+        `[Cache Invalidation] Revalidando tag por actualización de servicio: barber-profile:${barbershopSlug}`,
       );
     }
 
@@ -227,10 +231,9 @@ export async function deleteService(serviceId: string) {
     revalidatePath("/dashboard/services", "layout");
     const barbershopSlug = service.barbershop.slug;
     if (barbershopSlug) {
-      // @ts-expect-error Next 16 typing bug
-      revalidateTag(`barber-profile:${barbershopSlug}`);
+      revalidateTag(`barber-profile:${barbershopSlug}`, "max");
       console.log(
-        `[Cache Invalidation] Revalidando tag por eliminación de servicio: barber-profile:${barbershopSlug}`
+        `[Cache Invalidation] Revalidando tag por eliminación de servicio: barber-profile:${barbershopSlug}`,
       );
     }
 
