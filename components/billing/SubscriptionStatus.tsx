@@ -39,9 +39,17 @@ import {
   refreshSubscriptionStatus,
   cancelSubscription,
   reactivateSubscription,
+  requestAnnualUpgrade,
+  cancelAnnualUpgrade,
 } from "@/actions/subscription.actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import {
+  BILLING_PERIODS,
+  PLAN_PRICES,
+  getCurrentAnnualPrice,
+  getAnnualDiscountPercent,
+} from "@/lib/mercadopago/subscription-types";
 
 const calculateTimeLeft = (endDate: Date | string | null | undefined) => {
   if (!endDate) return "";
@@ -81,6 +89,8 @@ interface SubscriptionStatusProps {
     discountCode?: {
       overridePrice: number;
     } | null;
+    billingPeriod?: string | null;
+    pendingAnnualUpgrade?: boolean;
   } | null;
 }
 
@@ -91,6 +101,7 @@ export default function SubscriptionStatus({
   const router = useRouter();
   const [isPendingSync, startTransitionSync] = useTransition();
   const [isPendingCancel, startTransitionCancel] = useTransition();
+  const [isPendingUpgrade, startTransitionUpgrade] = useTransition();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 
   const trialEndsAt = session?.user?.trialEndsAt;
@@ -235,6 +246,40 @@ export default function SubscriptionStatus({
       }
     };
 
+    const handleUpgradeToAnnual = () => {
+      startTransitionUpgrade(async () => {
+        const result = await requestAnnualUpgrade();
+        if (result.success) {
+          toast.success("Cambio de plan programado", {
+            description: result.success,
+          });
+          await update();
+          router.refresh();
+        } else {
+          toast.error("No se pudo programar el cambio", {
+            description: result.error,
+          });
+        }
+      });
+    };
+
+    const handleCancelAnnualUpgrade = () => {
+      startTransitionUpgrade(async () => {
+        const result = await cancelAnnualUpgrade();
+        if (result.success) {
+          toast.success("Cambio cancelado", {
+            description: result.success,
+          });
+          await update();
+          router.refresh();
+        } else {
+          toast.error("No se pudo cancelar el cambio", {
+            description: result.error,
+          });
+        }
+      });
+    };
+
     return (
       <Card className="mx-auto max-w-md rounded-lg border">
         <CardHeader className="pb-4 space-y-1 border-b">
@@ -338,6 +383,47 @@ export default function SubscriptionStatus({
             </Button>
           ) : (
             <>
+              {subscription.billingPeriod !== BILLING_PERIODS.ANNUAL &&
+                !subscription.pendingAnnualUpgrade && (
+                  <Button
+                    className="w-full text-white bg-green-600 hover:bg-green-700"
+                    onClick={handleUpgradeToAnnual}
+                    disabled={isPendingUpgrade}
+                  >
+                    {isPendingUpgrade ? (
+                      <>
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 w-4 h-4" />
+                        Cambiar a Plan Anual
+                      </>
+                    )}
+                  </Button>
+                )}
+
+              {subscription.pendingAnnualUpgrade && (
+                <div className="p-3 space-y-2 w-full bg-green-50 rounded-md border border-green-200">
+                  <p className="text-sm font-medium text-center text-green-800">
+                    Tenés un cambio programado al Plan Anual para el final de tu
+                    ciclo actual.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full text-green-700 border-green-300 hover:bg-green-100"
+                    onClick={handleCancelAnnualUpgrade}
+                    disabled={isPendingUpgrade}
+                  >
+                    {isPendingUpgrade ? (
+                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    ) : null}
+                    Cancelar cambio
+                  </Button>
+                </div>
+              )}
+
               <Button
                 variant="outline"
                 className="w-full"

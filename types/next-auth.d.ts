@@ -6,6 +6,8 @@ interface SubscriptionInfo {
   status: string | null;
   currentPeriodEnd: Date | null;
   pendingSince: Date | null;
+  billingPeriod: string | null;
+  pendingAnnualUpgrade: boolean;
 }
 
 interface BarberShopSessionInfo {

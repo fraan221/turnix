@@ -23,9 +23,10 @@ module.exports = {
     return [
       {
         source: '/overcoming-',
-        destination: '/overcoming',
+        destination: "/overcoming",
         permanent: true,
       },
-    ]
+    ];
   },
-}
+  allowedDevOrigins: ["sections-nelson-show-course.trycloudflare.com"],
+};

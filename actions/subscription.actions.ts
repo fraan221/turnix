@@ -6,6 +6,12 @@ import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { revalidatePath } from "next/cache";
 import { getBaseUrl } from "@/lib/get-base-url";
 import { syncSubscriptionStatus } from "@/lib/mercadopago/sync";
+import {
+  BILLING_PERIODS,
+  PLAN_PRICES,
+  getCurrentAnnualPrice,
+  isAnnualPromoActive,
+} from "@/lib/mercadopago/subscription-types";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -19,7 +25,7 @@ type FormState = {
 export async function createSubscription(
   prevState: FormState,
 
-  formData: FormData
+  formData: FormData,
 ): Promise<FormState> {
   const user = await getCurrentUser();
 
@@ -28,8 +34,15 @@ export async function createSubscription(
   }
 
   const discountCodeString = formData.get("discountCode") as string | null;
+  const billingPeriod =
+    (formData.get("billingPeriod") as string) || BILLING_PERIODS.MONTHLY;
+  const isAnnual = billingPeriod === BILLING_PERIODS.ANNUAL;
 
-  const STANDARD_PRICE = 9900;
+  if (isAnnual && discountCodeString) {
+    return { error: "Los códigos de descuento no aplican al plan anual." };
+  }
+
+  const STANDARD_PRICE = PLAN_PRICES.MONTHLY;
 
   try {
     let validDiscount: {
@@ -68,9 +81,11 @@ export async function createSubscription(
       }
     }
 
-    const transaction_amount = validDiscount
-      ? validDiscount.overridePrice
-      : STANDARD_PRICE;
+    const transaction_amount = isAnnual
+      ? getCurrentAnnualPrice()
+      : validDiscount
+        ? validDiscount.overridePrice
+        : STANDARD_PRICE;
 
     console.log(`Verificando suscripción activa para el usuario: ${user.id}`);
 
@@ -85,7 +100,7 @@ export async function createSubscription(
     const preapproval = new PreApproval(client);
 
     console.log(
-      `Buscando suscripción pendiente en la DB para el usuario: ${user.id}`
+      `Buscando suscripción pendiente en la DB para el usuario: ${user.id}`,
     );
 
     const existingPendingSubscription = await prisma.subscription.findFirst({
@@ -98,7 +113,7 @@ export async function createSubscription(
 
     if (existingPendingSubscription) {
       console.log(
-        "Suscripción pendiente encontrada en DB. Verificando con Mercado Pago."
+        "Suscripción pendiente encontrada en DB. Verificando con Mercado Pago.",
       );
 
       try {
@@ -117,13 +132,13 @@ export async function createSubscription(
         });
 
         console.log(
-          "Suscripción en DB era inválida en MP. Registro local eliminado."
+          "Suscripción en DB era inválida en MP. Registro local eliminado.",
         );
       } catch (error) {
         console.error(
           "Error al verificar suscripción en MP. Eliminando registro local.",
 
-          error
+          error,
         );
 
         await prisma.subscription.delete({
@@ -133,7 +148,11 @@ export async function createSubscription(
     }
 
     console.log(
-      "No se encontró suscripción pendiente válida. Creando una nueva."
+      "No se encontró suscripción pendiente válida. Creando una nueva.",
+    );
+    console.log(
+      "Token a usar en createSubscription:",
+      process.env.MERCADOPAGO_ACCESS_TOKEN?.substring(0, 20) + "...",
     );
 
     const response = await preapproval.create({
@@ -141,7 +160,7 @@ export async function createSubscription(
         reason: "Suscripción Plan PRO Turnix",
 
         auto_recurring: {
-          frequency: 1,
+          frequency: isAnnual ? 12 : 1,
 
           frequency_type: "months",
 
@@ -167,11 +186,14 @@ export async function createSubscription(
 
       let discountedUntilDate: Date | undefined = undefined;
 
-      if (validDiscount) {
+      if (isAnnual && isAnnualPromoActive()) {
+        discountedUntilDate = new Date();
+        discountedUntilDate.setDate(discountedUntilDate.getDate() + 7);
+      } else if (!isAnnual && validDiscount) {
         discountedUntilDate = new Date();
 
         discountedUntilDate.setMonth(
-          discountedUntilDate.getMonth() + validDiscount.durationMonths
+          discountedUntilDate.getMonth() + validDiscount.durationMonths,
         );
       }
 
@@ -185,6 +207,7 @@ export async function createSubscription(
             currentPeriodEnd: tomorrow,
             appliedDiscountCodeId: validDiscount?.id,
             discountedUntil: discountedUntilDate,
+            billingPeriod,
           },
           update: {
             mercadopagoSubscriptionId: response.id!,
@@ -192,6 +215,7 @@ export async function createSubscription(
             currentPeriodEnd: tomorrow,
             appliedDiscountCodeId: validDiscount?.id,
             discountedUntil: discountedUntilDate,
+            billingPeriod,
           },
         });
 
@@ -219,7 +243,7 @@ export async function createSubscription(
 }
 
 export async function cancelSubscription(
-  mercadopagoSubscriptionId: string
+  mercadopagoSubscriptionId: string,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
   if (!user) {
@@ -261,7 +285,7 @@ export async function cancelSubscription(
 }
 
 export async function reactivateSubscription(
-  mercadopagoSubscriptionId: string
+  mercadopagoSubscriptionId: string,
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser();
   if (!user) {
@@ -370,7 +394,7 @@ export async function refreshSubscriptionStatus() {
     }
 
     const updatedSub = await syncSubscriptionStatus(
-      subscription.mercadopagoSubscriptionId
+      subscription.mercadopagoSubscriptionId,
     );
 
     if (!updatedSub) {
@@ -392,5 +416,82 @@ export async function refreshSubscriptionStatus() {
   } catch (error) {
     console.error("Error en refreshSubscriptionStatus:", error);
     return { success: false, message: "Error interno del servidor." };
+  }
+}
+
+export async function requestAnnualUpgrade(): Promise<{
+  error?: string;
+  success?: string;
+}> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  try {
+    const activeSubscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!activeSubscription || activeSubscription.status !== "authorized") {
+      return { error: "No tienes una suscripción activa." };
+    }
+
+    if (activeSubscription.billingPeriod === BILLING_PERIODS.ANNUAL) {
+      return { error: "Ya estás en el plan anual." };
+    }
+
+    if (activeSubscription.pendingAnnualUpgrade) {
+      return { error: "Ya tienes un cambio al plan anual programado." };
+    }
+
+    await prisma.subscription.update({
+      where: { id: activeSubscription.id },
+      data: { pendingAnnualUpgrade: true },
+    });
+
+    revalidatePath("/dashboard/billing", "layout");
+    revalidatePath("/dashboard/settings", "layout");
+
+    return {
+      success:
+        "Cambio al Plan Anual programado para el final de tu ciclo actual.",
+    };
+  } catch (error) {
+    console.error("Error al programar cambio de plan:", error);
+    return { error: "Ocurrió un error al procesar tu solicitud." };
+  }
+}
+
+export async function cancelAnnualUpgrade(): Promise<{
+  error?: string;
+  success?: string;
+}> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  try {
+    const activeSubscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!activeSubscription || !activeSubscription.pendingAnnualUpgrade) {
+      return { error: "No hay ningún cambio programado para cancelar." };
+    }
+
+    await prisma.subscription.update({
+      where: { id: activeSubscription.id },
+      data: { pendingAnnualUpgrade: false },
+    });
+
+    revalidatePath("/dashboard/billing", "layout");
+    revalidatePath("/dashboard/settings", "layout");
+
+    return { success: "Cambio al Plan Anual cancelado." };
+  } catch (error) {
+    console.error("Error al cancelar cambio de plan:", error);
+    return { error: "Ocurrió un error al procesar tu solicitud." };
   }
 }
