@@ -82,7 +82,7 @@ model MercadoPagoCredentials {
 
 model Client {
   id        String   @id @default(cuid())
-  phone     String   @unique
+  phone     String?
   name      String
   notes     String?
   createdAt DateTime @default(now())
@@ -256,6 +256,8 @@ model Subscription {
   status                    String
   currentPeriodEnd          DateTime
   pendingSince              DateTime?
+  billingPeriod             String    @default("monthly")
+  pendingAnnualUpgrade      Boolean   @default(false)
 
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique

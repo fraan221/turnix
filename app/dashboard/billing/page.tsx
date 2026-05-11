@@ -21,6 +21,12 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import {
+  BILLING_PERIODS,
+  getAnnualMonthlyDisplay,
+  PLAN_PRICES,
+  getCurrentAnnualPrice,
+} from "@/lib/mercadopago/subscription-types";
 
 async function BillingPageContent() {
   const user = await getUserForLayout();
@@ -90,7 +96,19 @@ async function BillingPageContent() {
             <Sparkles className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">Tus beneficios activos</h2>
           </div>
-          <SubscriptionFeatures price={9900} />
+          <SubscriptionFeatures
+            price={
+              user.subscription?.billingPeriod === BILLING_PERIODS.ANNUAL
+                ? getAnnualMonthlyDisplay()
+                : PLAN_PRICES.MONTHLY
+            }
+            billingPeriod={user.subscription?.billingPeriod || undefined}
+            totalAnnual={
+              user.subscription?.billingPeriod === BILLING_PERIODS.ANNUAL
+                ? getCurrentAnnualPrice()
+                : undefined
+            }
+          />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">

@@ -21,12 +21,12 @@ export function ClientListClient({ clients }: ClientListClientProps) {
 
   const filteredClients = useMemo(() => {
     if (!searchQuery.trim()) return clients;
-    
+
     const query = searchQuery.toLowerCase();
     return clients.filter(
       (client) =>
         client.name.toLowerCase().includes(query) ||
-        (client.phone && client.phone.includes(query))
+        (client.phone && client.phone.includes(query)),
     );
   }, [clients, searchQuery]);
 
@@ -34,7 +34,7 @@ export function ClientListClient({ clients }: ClientListClientProps) {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedClients = filteredClients.slice(
     startIndex,
-    startIndex + ITEMS_PER_PAGE
+    startIndex + ITEMS_PER_PAGE,
   );
 
   // Reset to page 1 when search query changes
@@ -47,7 +47,7 @@ export function ClientListClient({ clients }: ClientListClientProps) {
     <div className="space-y-4">
       {/* Barra de Búsqueda */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Buscar por nombre o teléfono…"
           value={searchQuery}
@@ -59,46 +59,58 @@ export function ClientListClient({ clients }: ClientListClientProps) {
 
       {/* Lista de Clientes */}
       {filteredClients.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground border rounded-md bg-muted/20">
-          <p className="text-sm">No se encontraron clientes para «{searchQuery}»</p>
+        <div className="py-8 text-center rounded-md border text-muted-foreground bg-muted/20">
+          <p className="text-sm">
+            No se encontraron clientes para «{searchQuery}»
+          </p>
         </div>
       ) : (
-        <div className="rounded-md border divide-y overflow-hidden">
+        <div className="overflow-hidden rounded-md border divide-y">
           {paginatedClients.map((client) => {
-            const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`;
-            
             return (
               <div
                 key={client.id}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 transition-colors hover:bg-accent/50 gap-4 sm:gap-0"
+                className="flex flex-col gap-4 justify-between p-4 transition-colors group sm:flex-row sm:items-center hover:bg-accent/50 sm:gap-0"
               >
                 {/* Clickable Area for Profile */}
                 <Link
                   href={`/dashboard/clients/${client.id}`}
-                  className="flex items-center gap-4 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                  className="flex flex-1 gap-4 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div className="flex items-center justify-center shrink-0 w-12 h-12 text-lg font-bold rounded-full bg-primary/10 text-primary">
+                  <div className="flex justify-center items-center w-12 h-12 text-lg font-bold rounded-full shrink-0 bg-primary/10 text-primary">
                     {client.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                    <p className="font-medium transition-colors text-foreground group-hover:text-primary">
                       {client.name}
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                       <Phone className="w-3 h-3" />
-                      {client.phone}
+                      {client.phone ? client.phone : "Sin teléfono"}
                     </p>
                   </div>
                 </Link>
 
                 {/* Quick Actions */}
-                <div className="flex items-center gap-2 sm:pl-4">
-                  <Link href={whatsappUrl} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-green-600 hover:text-green-700 hover:bg-green-50" title="Contactar por WhatsApp">
-                      <WhatsAppIcon className="w-5 h-5" />
-                      <span className="sr-only">WhatsApp</span>
-                    </Button>
-                  </Link>
+                <div className="flex gap-2 items-center sm:pl-4">
+                  {client.phone ? (
+                    <Link
+                      href={`https://wa.me/${formatPhoneNumberForWhatsApp(client.phone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      tabIndex={-1}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-9 h-9 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        title="Contactar por WhatsApp"
+                      >
+                        <WhatsAppIcon className="w-5 h-5" />
+                        <span className="sr-only">WhatsApp</span>
+                      </Button>
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             );
@@ -108,18 +120,20 @@ export function ClientListClient({ clients }: ClientListClientProps) {
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex justify-between items-center pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredClients.length)} de {filteredClients.length}
+            Mostrando {startIndex + 1} -{" "}
+            {Math.min(startIndex + ITEMS_PER_PAGE, filteredClients.length)} de{" "}
+            {filteredClients.length}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2 items-center">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
+              <ChevronLeft className="mr-1 w-4 h-4" />
               Anterior
             </Button>
             <Button
@@ -129,7 +143,7 @@ export function ClientListClient({ clients }: ClientListClientProps) {
               disabled={currentPage === totalPages}
             >
               Siguiente
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <ChevronRight className="ml-1 w-4 h-4" />
             </Button>
           </div>
         </div>

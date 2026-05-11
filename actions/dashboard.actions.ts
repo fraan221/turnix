@@ -469,14 +469,21 @@ export async function createBooking(
     clientName: z.string().min(1, "El nombre del cliente es requerido."),
     clientPhone: z
       .string()
-      .min(1, "El teléfono del cliente es requerido.")
-      .transform((val) => val.replace(/[\s-()]/g, ""))
-      .pipe(z.string().min(8, "El teléfono debe tener al menos 8 dígitos."))
-      .pipe(z.string().max(15, "El teléfono no puede tener más de 15 dígitos."))
+      .optional()
+      .default("")
+      .transform((val) => {
+        const cleaned = val.replace(/[\s-()]/g, "");
+        return cleaned === "" ? null : cleaned;
+      })
       .pipe(
-        z
-          .string()
-          .regex(/^[0-9]+$/, "El teléfono solo puede contener números."),
+        z.union([
+          z.null(),
+          z
+            .string()
+            .min(8, "El teléfono debe tener al menos 8 dígitos.")
+            .max(15, "El teléfono no puede tener más de 15 dígitos.")
+            .regex(/^[0-9]+$/, "El teléfono solo puede contener números."),
+        ]),
       ),
     startTime: z
       .string()
@@ -675,19 +682,30 @@ export async function createBooking(
         throw new Error("SLOT_TAKEN");
       }
 
-      const existingClient = await tx.client.findUnique({
-        where: { phone: clientPhone },
-      });
-
       let client: Client;
-      if (existingClient) {
-        client = existingClient;
-        finalClientName = existingClient.name;
+      if (clientPhone) {
+        const existingClient = await tx.client.findFirst({
+          where: { phone: clientPhone },
+        });
+
+        if (existingClient) {
+          client = existingClient;
+          finalClientName = existingClient.name;
+        } else {
+          client = await tx.client.create({
+            data: {
+              name: clientName,
+              phone: clientPhone,
+              barbershopId: barbershopId!,
+            },
+          });
+          finalClientName = client.name;
+        }
       } else {
         client = await tx.client.create({
           data: {
             name: clientName,
-            phone: clientPhone,
+            phone: null,
             barbershopId: barbershopId!,
           },
         });

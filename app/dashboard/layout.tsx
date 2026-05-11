@@ -26,14 +26,14 @@ export default function DashboardLayout({
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog
-            version="v2026.01"
-            title="¡Novedades en Turnix!"
+            version="v2026.05.annual"
+            title="¡Ya está disponible el Plan Anual!"
             items={[
-              "Sistema de señas habilitado para reservas",
-              "Mejor manejo de pagos de suscripción pendientes",
-              "Notificaciones claras si hay problemas de pago",
+              "Suscripción Anual: Pagá 12 meses juntos y olvidate de los vencimientos.",
+              "Teléfono opcional: Ya no es obligatorio pedirle el teléfono a tus clientes al agendarlos manualmente.",
+              "Métodos de pago: Registrá con qué método te pagó cada cliente para un mejor control de ingresos.",
+              "Mejoras de sistema: Actualizamos nuestros servidores para que Turnix sea más rápido y estable.",
             ]}
-            blogSlug="novedades-enero-2026"
           />
           <SiteHeaderServer />
           <main className="p-4 sm:p-6 lg:p-8">{children}</main>

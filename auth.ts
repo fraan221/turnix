@@ -126,6 +126,8 @@ const config: NextAuthConfig = {
                             status: true,
                             currentPeriodEnd: true,
                             pendingSince: true,
+                            billingPeriod: true,
+                            pendingAnnualUpgrade: true,
                           },
                         },
                       },
@@ -150,6 +152,8 @@ const config: NextAuthConfig = {
                 status: dbUser.subscription.status,
                 currentPeriodEnd: dbUser.subscription.currentPeriodEnd,
                 pendingSince: dbUser.subscription.pendingSince,
+                billingPeriod: dbUser.subscription.billingPeriod,
+                pendingAnnualUpgrade: dbUser.subscription.pendingAnnualUpgrade,
               }
             : null;
 
@@ -182,6 +186,8 @@ const config: NextAuthConfig = {
                   status: owner.subscription.status,
                   currentPeriodEnd: owner.subscription.currentPeriodEnd,
                   pendingSince: owner.subscription.pendingSince,
+                  billingPeriod: owner.subscription.billingPeriod,
+                  pendingAnnualUpgrade: owner.subscription.pendingAnnualUpgrade,
                 }
               : null;
             token.trialEndsAt = owner.trialEndsAt;
@@ -202,6 +208,8 @@ const config: NextAuthConfig = {
                           status: true,
                           currentPeriodEnd: true,
                           pendingSince: true,
+                          billingPeriod: true,
+                          pendingAnnualUpgrade: true,
                         },
                       },
                     },
@@ -218,6 +226,8 @@ const config: NextAuthConfig = {
                   status: owner.subscription.status,
                   currentPeriodEnd: owner.subscription.currentPeriodEnd,
                   pendingSince: owner.subscription.pendingSince,
+                  billingPeriod: owner.subscription.billingPeriod,
+                  pendingAnnualUpgrade: owner.subscription.pendingAnnualUpgrade,
                 }
               : null;
             token.trialEndsAt = owner.trialEndsAt;
@@ -232,6 +242,8 @@ const config: NextAuthConfig = {
               status: true,
               currentPeriodEnd: true,
               pendingSince: true,
+              billingPeriod: true,
+              pendingAnnualUpgrade: true,
             },
           });
 
@@ -245,6 +257,8 @@ const config: NextAuthConfig = {
                 status: subscription.status,
                 currentPeriodEnd: subscription.currentPeriodEnd,
                 pendingSince: subscription.pendingSince,
+                billingPeriod: subscription.billingPeriod,
+                pendingAnnualUpgrade: subscription.pendingAnnualUpgrade,
               }
             : null;
 

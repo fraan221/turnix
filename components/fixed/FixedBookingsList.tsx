@@ -17,12 +17,12 @@ interface FixedBookingsListProps {
   barbers: any[];
 }
 
-export function FixedBookingsList({ 
-  initialBookings, 
+export function FixedBookingsList({
+  initialBookings,
   role,
   clients,
   services,
-  barbers
+  barbers,
 }: FixedBookingsListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -30,14 +30,15 @@ export function FixedBookingsList({
   const filteredBookings = initialBookings.filter(
     (booking) =>
       booking.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.client.phone.includes(searchTerm) ||
+      (booking.client.phone?.includes(searchTerm) ?? false) ||
       booking.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (role === "OWNER" && booking.barber.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      (role === "OWNER" &&
+        booking.barber.name.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -48,26 +49,29 @@ export function FixedBookingsList({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
+        <Button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="w-full sm:w-auto"
+        >
+          <Plus className="mr-2 w-4 h-4" />
           Nuevo Turno Fijo
         </Button>
       </div>
 
       {filteredBookings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center border rounded-lg bg-muted/20 border-dashed">
-          <div className="rounded-full bg-muted p-3 mb-4">
-            <Search className="h-6 w-6 text-muted-foreground" />
+        <div className="flex flex-col justify-center items-center p-12 text-center rounded-lg border border-dashed bg-muted/20">
+          <div className="p-3 mb-4 rounded-full bg-muted">
+            <Search className="w-6 h-6 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium">No hay turnos fijos</h3>
-          <p className="text-sm text-muted-foreground max-w-sm mt-1">
-            {searchTerm 
-              ? "No se encontraron resultados para tu búsqueda." 
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            {searchTerm
+              ? "No se encontraron resultados para tu búsqueda."
               : "Todavía no configuraste ningún turno recurrente."}
           </p>
           {!searchTerm && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-4"
               onClick={() => setIsCreateModalOpen(true)}
             >
@@ -76,7 +80,7 @@ export function FixedBookingsList({
           )}
         </div>
       ) : (
-        <div className="rounded-md border overflow-hidden">
+        <div className="overflow-hidden rounded-md border">
           <div className="grid grid-cols-[1fr_auto] md:grid-cols-6 lg:grid-cols-7 gap-4 p-4 bg-muted/50 text-sm font-medium text-muted-foreground">
             <div className="col-span-1 md:col-span-2">Cliente & Servicio</div>
             <div className="hidden md:block">Día y Hora</div>
@@ -87,19 +91,15 @@ export function FixedBookingsList({
           </div>
           <div className="divide-y">
             {filteredBookings.map((booking) => (
-              <FixedBookingRow 
-                key={booking.id} 
-                booking={booking} 
-                role={role} 
-              />
+              <FixedBookingRow key={booking.id} booking={booking} role={role} />
             ))}
           </div>
         </div>
       )}
 
-      <CreateFixedBookingModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
+      <CreateFixedBookingModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
         role={role}
         clients={clients}
         services={services}

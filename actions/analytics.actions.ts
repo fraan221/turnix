@@ -46,7 +46,7 @@ export type ClientMetricsData = {
   topClients: {
     id: string;
     name: string;
-    phone: string;
+    phone: string | null;
     visitsCount: number;
     totalSpent: number;
     isVip: boolean;
@@ -813,7 +813,7 @@ const getBarbershopClientMetrics = cache(
         {
           count: number;
           totalSpent: number;
-          client: { id: string; name: string; phone: string };
+          client: { id: string; name: string; phone: string | null };
         }
       >();
 
@@ -1045,7 +1045,7 @@ const getBarberClientMetrics = cache(
         {
           count: number;
           totalSpent: number;
-          client: { id: string; name: string; phone: string };
+          client: { id: string; name: string; phone: string | null };
         }
       >();
 

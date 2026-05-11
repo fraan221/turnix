@@ -14,17 +14,17 @@ function SubmitButton({ isTrial }: { isTrial: boolean }) {
     <Button type="submit" className="w-full" size="lg" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
           Redirigiendo a Mercado Pago...
         </>
       ) : isTrial ? (
         <>
-          <CreditCard className="w-4 h-4 mr-2" />
+          <CreditCard className="mr-2 w-4 h-4" />
           Suscribirme al Plan PRO
         </>
       ) : (
         <>
-          <CreditCard className="w-4 h-4 mr-2" />
+          <CreditCard className="mr-2 w-4 h-4" />
           Reactivar mi Plan PRO
         </>
       )}
@@ -35,9 +35,11 @@ function SubmitButton({ isTrial }: { isTrial: boolean }) {
 export default function SubscriptionButton({
   isTrial,
   discountCode,
+  billingPeriod,
 }: {
   isTrial: boolean;
   discountCode?: string | null;
+  billingPeriod?: string;
 }) {
   const [state, formAction] = useActionState(createSubscription, {});
 
@@ -59,6 +61,9 @@ export default function SubscriptionButton({
     <form action={formAction} className="w-full">
       {discountCode && (
         <input type="hidden" name="discountCode" value={discountCode} />
+      )}
+      {billingPeriod && (
+        <input type="hidden" name="billingPeriod" value={billingPeriod} />
       )}
       <SubmitButton isTrial={isTrial} />
     </form>

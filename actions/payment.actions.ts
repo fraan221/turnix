@@ -78,9 +78,9 @@ export async function createDepositPreference(
 
         payer: {
           name: booking.client.name,
-          phone: {
-            number: booking.client.phone.replace(/\D/g, ""),
-          },
+          ...(booking.client.phone
+            ? { phone: { number: booking.client.phone.replace(/\D/g, "") } }
+            : {}),
         },
 
         metadata: {
