@@ -112,38 +112,56 @@ export async function createSubscription(
     });
 
     if (existingPendingSubscription) {
-      console.log(
-        "Suscripción pendiente encontrada en DB. Verificando con Mercado Pago.",
-      );
-
-      try {
-        const mpSubscription = await preapproval.get({
-          id: existingPendingSubscription.mercadopagoSubscriptionId,
-        });
-
-        if (mpSubscription?.init_point && mpSubscription.status === "pending") {
-          console.log("Link de pago existente y válido. Redirigiendo.");
-
-          return { init_point: mpSubscription.init_point };
-        }
-
-        await prisma.subscription.delete({
-          where: { id: existingPendingSubscription.id },
-        });
-
+      const discountChanged =
+        existingPendingSubscription.appliedDiscountCodeId !==
+        (validDiscount?.id || null);
+      if (
+        existingPendingSubscription.billingPeriod !== billingPeriod ||
+        discountChanged
+      ) {
         console.log(
-          "Suscripción en DB era inválida en MP. Registro local eliminado.",
+          "El usuario cambió de plan o descuento. Eliminando suscripción pendiente anterior.",
         );
-      } catch (error) {
-        console.error(
-          "Error al verificar suscripción en MP. Eliminando registro local.",
-
-          error,
-        );
-
         await prisma.subscription.delete({
           where: { id: existingPendingSubscription.id },
         });
+      } else {
+        console.log(
+          "Suscripción pendiente encontrada en DB. Verificando con Mercado Pago.",
+        );
+
+        try {
+          const mpSubscription = await preapproval.get({
+            id: existingPendingSubscription.mercadopagoSubscriptionId,
+          });
+
+          if (
+            mpSubscription?.init_point &&
+            mpSubscription.status === "pending"
+          ) {
+            console.log("Link de pago existente y válido. Redirigiendo.");
+
+            return { init_point: mpSubscription.init_point };
+          }
+
+          await prisma.subscription.delete({
+            where: { id: existingPendingSubscription.id },
+          });
+
+          console.log(
+            "Suscripción en DB era inválida en MP. Registro local eliminado.",
+          );
+        } catch (error) {
+          console.error(
+            "Error al verificar suscripción en MP. Eliminando registro local.",
+
+            error,
+          );
+
+          await prisma.subscription.delete({
+            where: { id: existingPendingSubscription.id },
+          });
+        }
       }
     }
 
