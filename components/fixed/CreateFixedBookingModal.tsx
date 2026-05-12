@@ -35,16 +35,22 @@ interface CreateFixedBookingModalProps {
 }
 
 const DAYS_ES = [
-  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
 ];
 
-export function CreateFixedBookingModal({ 
-  isOpen, 
-  onClose, 
+export function CreateFixedBookingModal({
+  isOpen,
+  onClose,
   role,
   clients,
   services,
-  barbers
+  barbers,
 }: CreateFixedBookingModalProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,11 +85,11 @@ export function CreateFixedBookingModal({
       dayOfWeek: parseInt(dayOfWeek),
       startTime,
       frequency: frequency as any,
-      ...(barberId && barberId !== "unassigned" ? { barberId } : {})
+      ...(barberId && barberId !== "unassigned" ? { barberId } : {}),
     };
 
     const parsed = RecurringBookingSchema.safeParse(payload);
-    
+
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
       setIsSubmitting(false);
@@ -104,8 +110,8 @@ export function CreateFixedBookingModal({
   };
 
   return (
-    <Dialog 
-      open={isOpen} 
+    <Dialog
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           resetForm();
@@ -117,13 +123,14 @@ export function CreateFixedBookingModal({
         <DialogHeader>
           <DialogTitle>Nuevo Turno Fijo</DialogTitle>
           <DialogDescription>
-            Configurá un turno recurrente. Se generarán automáticamente las reservas en el calendario.
+            Configurá un turno recurrente. Se generarán automáticamente las
+            reservas en el calendario.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {error && (
-            <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+            <div className="p-3 text-sm rounded-md bg-destructive/15 text-destructive">
               {error}
             </div>
           )}
@@ -137,7 +144,9 @@ export function CreateFixedBookingModal({
               <SelectContent>
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
-                    {client.name} {client.phone ? `- ${client.phone}` : ""}
+                    <span className="block truncate max-w-[240px] sm:max-w-[320px]">
+                      {client.name} {client.phone ? `- ${client.phone}` : ""}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -153,7 +162,11 @@ export function CreateFixedBookingModal({
               <SelectContent>
                 {services.map((service) => (
                   <SelectItem key={service.id} value={service.id}>
-                    {service.name}
+                    <span className="block truncate max-w-[240px] sm:max-w-[320px]">
+                      {barbers.length > 1 && service.barber
+                        ? `${service.name} (${service.barber.name})`
+                        : service.name}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -198,12 +211,12 @@ export function CreateFixedBookingModal({
 
             <div className="space-y-2">
               <Label htmlFor="startTime">Horario</Label>
-              <Input 
-                id="startTime" 
-                type="time" 
+              <Input
+                id="startTime"
+                type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                required 
+                required
               />
             </div>
           </div>
@@ -215,26 +228,37 @@ export function CreateFixedBookingModal({
                 <SelectValue placeholder="Seleccioná frecuencia" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="WEEKLY">Semanal (Todas las semanas)</SelectItem>
-                <SelectItem value="BIWEEKLY">Quincenal (Semana por medio)</SelectItem>
+                <SelectItem value="WEEKLY">
+                  Semanal (Todas las semanas)
+                </SelectItem>
+                <SelectItem value="BIWEEKLY">
+                  Quincenal (Semana por medio)
+                </SelectItem>
                 <SelectItem value="MONTHLY">Mensual (1 vez al mes)</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-[0.8rem] text-muted-foreground mt-1">
-              {frequency === "MONTHLY" 
+              {frequency === "MONTHLY"
                 ? "Se agendará el primer día de semana del mes."
                 : frequency === "BIWEEKLY"
-                ? "Se agendará empezando desde esta semana."
-                : ""}
+                  ? "Se agendará empezando desde esta semana."
+                  : ""}
             </p>
           </div>
 
-          <div className="pt-4 flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && (
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              )}
               Crear Turno Fijo
             </Button>
           </div>
