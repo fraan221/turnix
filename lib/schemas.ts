@@ -213,3 +213,9 @@ export const CompleteBookingSchema = z.object({
     message: "Seleccioná un método de pago.",
   }),
 });
+
+export const UpdateBookingServiceSchema = z.object({
+  bookingId: z.string().cuid({ message: "ID de turno inválido." }),
+  serviceId: z.string().cuid({ message: "ID de servicio inválido." }),
+  force: z.boolean().optional().default(false),
+});

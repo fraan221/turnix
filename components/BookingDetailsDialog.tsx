@@ -34,11 +34,19 @@ import {
   updateClientNotes,
   checkBookingAvailability,
   setPaymentMethod,
+  updateBookingService,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Loader2,
   CheckCircle2,
@@ -49,6 +57,9 @@ import {
   Lightbulb,
   Clock,
   Check,
+  X,
+  Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -60,8 +71,20 @@ export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
 
 interface BookingDetailsDialogContentProps {
   booking: BookingWithDetails;
+  services: Service[];
   onClose: () => void;
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
+  onOptimisticServiceUpdate?: (
+    bookingId: string,
+    serviceId: string,
+    durationAtBooking: number,
+    activeDurationAtBooking: number,
+    priceAtBooking: number,
+  ) => void;
+  onOptimisticPaymentUpdate?: (
+    bookingId: string,
+    method: PaymentMethod,
+  ) => void;
 }
 
 type DialogView =
@@ -180,14 +203,18 @@ function PaymentMethodPicker({
 
 export function BookingDetailsDialogContent({
   booking,
+  services,
   onClose,
   onOptimisticUpdate,
+  onOptimisticServiceUpdate,
+  onOptimisticPaymentUpdate,
 }: BookingDetailsDialogContentProps) {
   const [isCompleting, startCompleting] = useTransition();
   const [isCancelling, startCancelling] = useTransition();
   const [isNoteSaving, startNoteSaving] = useTransition();
   const [isClientDeleting, startClientDeleting] = useTransition();
   const [isTimeUpdating, startTimeUpdating] = useTransition();
+  const [isServiceUpdating, startServiceUpdating] = useTransition();
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
@@ -195,6 +222,11 @@ export function BookingDetailsDialogContent({
     null,
   );
   const [optimisticPaymentSet, setOptimisticPaymentSet] = useState(false);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [isSavingPayment, startSavingPayment] = useTransition();
+  const [isInlineEditingService, setIsInlineEditingService] = useState(false);
+  const [isInlineEditingPayment, setIsInlineEditingPayment] = useState(false);
+  const [showOverlapAlert, setShowOverlapAlert] = useState(false);
 
   const [editingStartTime, setEditingStartTime] = useState("");
   const [editingEndTime, setEditingEndTime] = useState("");
@@ -203,12 +235,26 @@ export function BookingDetailsDialogContent({
     reason?: string;
   }>({ status: "idle" });
 
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [serviceAvailability, setServiceAvailability] = useState<{
+    status: "idle" | "checking" | "available" | "unavailable";
+    reason?: string;
+  }>({ status: "idle" });
+  const [overlapMessage, setOverlapMessage] = useState("");
+
   const originalDuration =
     booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
 
   useEffect(() => {
     setView("details");
     setNote(booking.client.notes || "");
+    setIsInlineEditingPayment(false);
+    setIsInlineEditingService(false);
+    setShowOverlapAlert(false);
+    setPendingPaymentMethod(null);
+    setSelectedServiceId(booking.serviceId || "");
+    setServiceAvailability({ status: "idle" });
+    setOverlapMessage("");
 
     const start = new Date(booking.startTime);
     const duration =
@@ -235,6 +281,7 @@ export function BookingDetailsDialogContent({
     booking.startTime,
     booking.durationAtBooking,
     booking.service?.durationInMinutes,
+    booking.serviceId,
   ]);
 
   const calculatedDuration = useMemo(() => {
@@ -428,6 +475,7 @@ export function BookingDetailsDialogContent({
         const result = await setPaymentMethod(booking.id, method);
         if (result.success) {
           toast.success(result.success);
+          setIsInlineEditingPayment(false);
         } else if (result.error) {
           toast.error(result.error);
           setOptimisticPaymentSet(false);
@@ -437,6 +485,139 @@ export function BookingDetailsDialogContent({
     } else {
       handleStatusChange(BookingStatus.COMPLETED, method);
     }
+  };
+
+  const handleSavePayment = () => {
+    if (!pendingPaymentMethod || pendingPaymentMethod === booking.paymentMethod) {
+      return;
+    }
+    startSavingPayment(async () => {
+      const result = await setPaymentMethod(booking.id, pendingPaymentMethod);
+      if (result.success) {
+        toast.success(result.success);
+        onOptimisticPaymentUpdate?.(booking.id, pendingPaymentMethod);
+        setIsInlineEditingPayment(false);
+        setPendingPaymentMethod(null);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  };
+
+  const handleCancelPayment = () => {
+    setPendingPaymentMethod(null);
+    setIsInlineEditingPayment(false);
+  };
+
+  useEffect(() => {
+    if (!selectedServiceId || selectedServiceId === booking.serviceId) {
+      setServiceAvailability({ status: "idle" });
+      return;
+    }
+
+    const service = services.find((s) => s.id === selectedServiceId);
+    if (!service) return;
+
+    const duration = service.durationInMinutes ?? 60;
+    const activeDuration = service.activeDurationInMinutes ?? duration;
+
+    const checkAvailability = async () => {
+      setServiceAvailability((prev) => ({ ...prev, status: "checking" }));
+      try {
+        const result = await checkBookingAvailability(
+          booking.barberId,
+          new Date(booking.startTime),
+          duration,
+          activeDuration,
+          booking.id,
+        );
+        setServiceAvailability(
+          result.available
+            ? { status: "available" }
+            : { status: "unavailable", reason: result.reason },
+        );
+      } catch {
+        setServiceAvailability({
+          status: "unavailable",
+          reason: "Error al verificar disponibilidad.",
+        });
+      }
+    };
+
+    checkAvailability();
+  }, [selectedServiceId, booking.barberId, booking.startTime, booking.id, services, booking.serviceId]);
+
+  const handleServiceChange = () => {
+    if (!selectedServiceId) {
+      toast.error("Error", { description: "Seleccioná un servicio." });
+      return;
+    }
+
+    if (selectedServiceId === booking.serviceId) {
+      toast.info("No hiciste ningún cambio.");
+      return;
+    }
+
+    startServiceUpdating(async () => {
+      const result = await updateBookingService(booking.id, selectedServiceId);
+
+      if (result.type === "error") {
+        toast.error(result.message);
+        return;
+      }
+
+      if (result.type === "warning" && result.allowOverride) {
+        setOverlapMessage(result.message);
+        setShowOverlapAlert(true);
+        return;
+      }
+
+      if (result.type === "success") {
+        const service = services.find((s) => s.id === selectedServiceId);
+        const newDuration = service?.durationInMinutes ?? 60;
+        const newActiveDuration = service?.activeDurationInMinutes ?? newDuration;
+        const newPrice = service ? Number(service.price) : (booking.priceAtBooking ? Number(booking.priceAtBooking) : newDuration * 100);
+
+        onOptimisticServiceUpdate?.(
+          booking.id,
+          selectedServiceId,
+          newDuration,
+          newActiveDuration,
+          newPrice,
+        );
+        toast.success(result.message);
+        setIsInlineEditingService(false);
+      }
+    });
+  };
+
+  const handleForceServiceChange = () => {
+    startServiceUpdating(async () => {
+      const result = await updateBookingService(booking.id, selectedServiceId, true);
+
+      if (result.type === "error") {
+        toast.error(result.message);
+        return;
+      }
+
+      if (result.type === "success") {
+        const service = services.find((s) => s.id === selectedServiceId);
+        const newDuration = service?.durationInMinutes ?? 60;
+        const newActiveDuration = service?.activeDurationInMinutes ?? newDuration;
+        const newPrice = service ? Number(service.price) : (booking.priceAtBooking ? Number(booking.priceAtBooking) : newDuration * 100);
+
+        onOptimisticServiceUpdate?.(
+          booking.id,
+          selectedServiceId,
+          newDuration,
+          newActiveDuration,
+          newPrice,
+        );
+        toast.success(result.message);
+        setShowOverlapAlert(false);
+        setIsInlineEditingService(false);
+      }
+    });
   };
 
   const renderDetailsView = () => (
@@ -450,53 +631,232 @@ export function BookingDetailsDialogContent({
             <strong>Teléfono:</strong> {booking.client.phone}
           </p>
         ) : null}
-        <p>
-          <strong>Servicio:</strong>{" "}
-          {booking.service?.name ?? "Servicio eliminado"}
-        </p>
+        <div className="flex items-center gap-2">
+          <strong>Servicio:</strong>
+          {isInlineEditingService ? (
+            <div className="flex items-center gap-2 flex-1">
+              <Select
+                value={selectedServiceId}
+                onValueChange={setSelectedServiceId}
+                data-testid="service-select"
+              >
+                <SelectTrigger className="h-7 text-xs py-0 pr-1 flex-1">
+                  <SelectValue placeholder="Seleccioná un servicio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {services.map((service) => (
+                    <SelectItem
+                      key={service.id}
+                      value={service.id}
+                      className="text-xs"
+                    >
+                      {service.name} ({service.durationInMinutes} min)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedServiceId &&
+                selectedServiceId !== booking.serviceId && (
+                  <span className="flex items-center min-h-[24px]">
+                    {serviceAvailability.status === "checking" ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                    ) : serviceAvailability.status === "available" ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : serviceAvailability.status === "unavailable" ? (
+                      <XCircle className="w-3 h-3 text-red-600" />
+                    ) : null}
+                  </span>
+                )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleServiceChange}
+                data-testid="save-service-button"
+                disabled={
+                  isServiceUpdating ||
+                  !selectedServiceId ||
+                  selectedServiceId === booking.serviceId ||
+                  serviceAvailability.status === "checking"
+                }
+              >
+                {isServiceUpdating ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Check className="w-3 h-3" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => {
+                  setSelectedServiceId(booking.serviceId || "");
+                  setServiceAvailability({ status: "idle" });
+                  setIsInlineEditingService(false);
+                }}
+                data-testid="cancel-service-button"
+                disabled={isServiceUpdating}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span data-testid="service-value">
+                {booking.service?.name ?? "Servicio eliminado"}
+              </span>
+              {(booking.status === BookingStatus.SCHEDULED ||
+                booking.status === BookingStatus.COMPLETED) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0.5 text-muted-foreground"
+                  onClick={() => setIsInlineEditingService(true)}
+                  data-testid="edit-service-button"
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
         <p>
           <strong>Fecha:</strong>{" "}
           <span className="capitalize">
             {formatLongDate(booking.startTime)}
           </span>
         </p>
-        <p>
-          <strong>Hora:</strong> {`${formatTime(booking.startTime)} hs`}
-        </p>
+        <div className="flex items-center gap-2">
+          <strong>Hora:</strong>
+          <span data-testid="time-value">{`${formatTime(booking.startTime)} hs`}</span>
+          {(booking.status === BookingStatus.SCHEDULED ||
+            booking.status === BookingStatus.COMPLETED) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto p-0.5 text-muted-foreground"
+              onClick={() => setView("editTime")}
+              data-testid="edit-time-button"
+            >
+              <Pencil className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
         <p>
           <strong>Estado:</strong>{" "}
           <span className={cn("font-semibold", currentStatus.color)}>
             {currentStatus.text}
           </span>
         </p>
-        {booking.status === BookingStatus.COMPLETED &&
-          (booking.paymentMethod || optimisticPaymentSet) && (
-            <p className="flex items-center gap-1.5">
-              <strong>Cobro:</strong>{" "}
-              {(() => {
-                const method = booking.paymentMethod ?? selectedPayment;
-                if (!method) return null;
-                const config = getPaymentMethodConfig(method);
-                const Icon = config.icon;
-                return (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 font-medium",
-                      config.textClass,
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {config.label}
-                  </span>
-                );
-              })()}
-            </p>
+        <div className="flex items-center gap-2">
+          <strong>Cobro:</strong>
+          {isInlineEditingPayment ? (
+            <div className="flex items-center gap-1.5 flex-1">
+              <Select
+                value={pendingPaymentMethod ?? booking.paymentMethod ?? undefined}
+                onValueChange={(v) => setPendingPaymentMethod(v as PaymentMethod)}
+                data-testid="payment-select"
+              >
+                <SelectTrigger className="h-7 text-xs py-0 pr-1 flex-1">
+                  <SelectValue placeholder="Seleccioná método" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((method) => {
+                    const Icon = method.icon;
+                    return (
+                      <SelectItem
+                        key={method.value}
+                        value={method.value}
+                        className="text-xs"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Icon className="w-3 h-3" />
+                          {method.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleSavePayment}
+                data-testid="save-payment-button"
+                disabled={
+                  isSavingPayment ||
+                  !pendingPaymentMethod ||
+                  pendingPaymentMethod === booking.paymentMethod
+                }
+              >
+                {isSavingPayment ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Check className="w-3 h-3" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleCancelPayment}
+                data-testid="cancel-payment-button"
+                disabled={isSavingPayment}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              {booking.paymentMethod || optimisticPaymentSet ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 font-medium",
+                    getPaymentMethodConfig(
+                      booking.paymentMethod ?? selectedPayment!,
+                    ).textClass,
+                  )}
+                  data-testid="payment-value"
+                >
+                  {(() => {
+                    const method = booking.paymentMethod ?? selectedPayment;
+                    if (!method) return null;
+                    const config = getPaymentMethodConfig(method);
+                    const Icon = config.icon;
+                    return (
+                      <>
+                        <Icon className="w-4 h-4" />
+                        {config.label}
+                      </>
+                    );
+                  })()}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  Sin registrar
+                </span>
+              )}
+              {booking.status === BookingStatus.COMPLETED && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0.5 text-muted-foreground"
+                  onClick={() => setIsInlineEditingPayment(true)}
+                  data-testid="edit-payment-button"
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              )}
+            </>
           )}
+        </div>
       </div>
 
       {booking.status === BookingStatus.COMPLETED &&
         !booking.paymentMethod &&
-        !optimisticPaymentSet && (
+        !optimisticPaymentSet && !isInlineEditingPayment && (
           <div className="p-3 mt-4 space-y-3 bg-blue-50 rounded-md border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
             <p className="flex items-center text-sm font-medium text-blue-800 dark:text-blue-200">
               <Lightbulb className="flex-shrink-0 mr-2 w-4 h-4" />
@@ -511,27 +871,8 @@ export function BookingDetailsDialogContent({
           </div>
         )}
 
-      {booking.status === BookingStatus.COMPLETED &&
-        !booking.paymentMethod &&
-        optimisticPaymentSet &&
-        selectedPayment && (
-          <div className="p-3 mt-4 bg-green-50 rounded-md border border-green-200 dark:bg-green-950/30 dark:border-green-800">
-            <p className="flex items-center text-sm font-medium text-green-700 dark:text-green-300">
-              <Check className="flex-shrink-0 mr-2 w-4 h-4" />
-              Cobro registrado: {getPaymentMethodConfig(selectedPayment).label}
-            </p>
-          </div>
-        )}
-
       {booking.status === BookingStatus.SCHEDULED && (
-        <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setView("editTime")}
-          >
-            Cambiar horario
-          </Button>
+        <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -808,6 +1149,32 @@ export function BookingDetailsDialogContent({
           </div>
         )}
       {renderContent()}
+      <AlertDialog open={showOverlapAlert} onOpenChange={setShowOverlapAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              Solapamiento detectado
+            </AlertDialogTitle>
+            <AlertDialogDescription>{overlapMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              onClick={() => {
+                setShowOverlapAlert(false);
+              }}
+            >
+              Volver
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceServiceChange}>
+              {isServiceUpdating && (
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              )}
+              Guardar igual
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

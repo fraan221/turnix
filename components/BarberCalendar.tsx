@@ -157,8 +157,8 @@ export default function BarberCalendar({
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [selectedDateInfo, setSelectedDateInfo] =
     useState<DateSelectArg | null>(null);
-  const [selectedBooking, setSelectedBooking] =
-    useState<BookingWithDetails | null>(null);
+  const [selectedBookingId, setSelectedBookingId] =
+    useState<string | null>(null);
   const [state, formAction] = useActionState(createBooking, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const hasSubmittedRef = useRef(false);
@@ -170,6 +170,10 @@ export default function BarberCalendar({
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [calendarTitle, setCalendarTitle] = useState("");
   const [optimisticBookings, setOptimisticBookings] = useState(bookings);
+  const selectedBooking = useMemo(
+    () => optimisticBookings.find((b) => b.id === selectedBookingId) ?? null,
+    [optimisticBookings, selectedBookingId],
+  );
 
   // Bulk selection store
   const isSelectionMode = useBulkSelectionStore(selectIsSelectionMode);
@@ -340,6 +344,43 @@ export default function BarberCalendar({
     );
   };
 
+  const handleOptimisticServiceUpdate = (
+    bookingId: string,
+    serviceId: string,
+    durationAtBooking: number,
+    activeDurationAtBooking: number,
+    priceAtBooking: number,
+  ) => {
+    const newService = services.find((s) => s.id === serviceId);
+    setOptimisticBookings((currentBookings) =>
+      currentBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              serviceId,
+              service: newService ?? booking.service,
+              durationAtBooking,
+              activeDurationAtBooking,
+              priceAtBooking,
+            }
+          : booking,
+      ),
+    );
+  };
+
+  const handleOptimisticPaymentUpdate = (
+    bookingId: string,
+    method: "CASH" | "TRANSFER" | "CARD",
+  ) => {
+    setOptimisticBookings((currentBookings) =>
+      currentBookings.map((booking) =>
+        booking.id === bookingId
+          ? { ...booking, paymentMethod: method }
+          : booking,
+      ),
+    );
+  };
+
   const handlePrev = () => calendarRef.current?.getApi().prev();
   const handleNext = () => calendarRef.current?.getApi().next();
   const handleToday = () => calendarRef.current?.getApi().today();
@@ -459,7 +500,7 @@ export default function BarberCalendar({
     }
 
     // Normal mode: open booking details
-    setSelectedBooking(bookingData);
+    setSelectedBookingId(bookingData.id);
   };
 
   const calendarOptions = {
@@ -644,15 +685,18 @@ export default function BarberCalendar({
 
       <Dialog
         open={!!selectedBooking}
-        onOpenChange={(isOpen) => !isOpen && setSelectedBooking(null)}
+        onOpenChange={(isOpen) => !isOpen && setSelectedBookingId(null)}
       >
         <DialogContent className="sm:max-w-[640px]">
           {selectedBooking && (
             <Suspense fallback={<BookingDetailsSkeleton />}>
               <BookingDetailsDialogContent
                 booking={selectedBooking}
-                onClose={() => setSelectedBooking(null)}
+                services={services}
+                onClose={() => setSelectedBookingId(null)}
                 onOptimisticUpdate={handleOptimisticUpdate}
+                onOptimisticServiceUpdate={handleOptimisticServiceUpdate}
+                onOptimisticPaymentUpdate={handleOptimisticPaymentUpdate}
               />
             </Suspense>
           )}

@@ -13,6 +13,7 @@ import {
   getArgentinaMinutesOfDay,
   parseTimeToMinutes,
 } from "@/lib/date-helpers";
+import { UpdateBookingServiceSchema } from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
@@ -1398,5 +1399,172 @@ export async function updateBookingTime(
 
     console.error("[Booking] Error al mover turno:", error);
     return { error: "No se pudo mover el turno. Inténtalo de nuevo." };
+  }
+}
+
+type UpdateServiceResult =
+  | { type: "success"; message: string }
+  | { type: "error"; message: string }
+  | { type: "warning"; message: string; allowOverride: true };
+
+export async function updateBookingService(
+  bookingId: string,
+  serviceId: string,
+  force: boolean = false,
+): Promise<UpdateServiceResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { type: "error", message: "No autorizado" };
+  }
+
+  const validated = UpdateBookingServiceSchema.safeParse({
+    bookingId,
+    serviceId,
+    force,
+  });
+  if (!validated.success) {
+    return { type: "error", message: validated.error.issues[0].message };
+  }
+
+  try {
+    const [booking, newService] = await Promise.all([
+      prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          id: true,
+          barberId: true,
+          status: true,
+          startTime: true,
+          barbershop: { select: { ownerId: true } },
+          service: {
+            select: { durationInMinutes: true, activeDurationInMinutes: true },
+          },
+        },
+      }),
+      prisma.service.findUnique({
+        where: { id: serviceId },
+        select: {
+          id: true,
+          name: true,
+          durationInMinutes: true,
+          activeDurationInMinutes: true,
+          price: true,
+        },
+      }),
+    ]);
+
+    if (!booking) {
+      return { type: "error", message: "El turno no fue encontrado." };
+    }
+
+    if (!["SCHEDULED", "COMPLETED"].includes(booking.status)) {
+      return {
+        type: "error",
+        message: "No se puede editar el servicio de este turno.",
+      };
+    }
+
+    const isOwner = booking.barbershop.ownerId === user.id;
+    const isAssignedBarber = booking.barberId === user.id;
+
+    if (!isOwner && !isAssignedBarber) {
+      return {
+        type: "error",
+        message: "No tienes permiso para modificar este turno.",
+      };
+    }
+
+    if (!newService) {
+      return { type: "error", message: "El servicio seleccionado no existe." };
+    }
+
+    const newDuration = newService.durationInMinutes ?? 60;
+    const newActiveDuration =
+      newService.activeDurationInMinutes ?? newDuration;
+    const newActiveEndTime = new Date(
+      booking.startTime.getTime() + newActiveDuration * 60000,
+    );
+
+    const overlapResult = await prisma.$transaction(async (tx) => {
+      const otherBookings = await tx.booking.findMany({
+        where: {
+          id: { not: bookingId },
+          barberId: booking.barberId,
+          status: { not: "CANCELLED" },
+          startTime: {
+            gte: getStartOfDay(booking.startTime),
+            lt: getEndOfDay(booking.startTime),
+          },
+        },
+        include: {
+          service: {
+            select: {
+              durationInMinutes: true,
+              activeDurationInMinutes: true,
+            },
+          },
+        },
+      });
+
+      const overlaps = otherBookings.some((existing) => {
+        const existingStart = existing.startTime;
+        const existingDuration =
+          existing.activeDurationAtBooking ??
+          existing.service?.activeDurationInMinutes ??
+          existing.durationAtBooking ??
+          existing.service?.durationInMinutes ??
+          60;
+        const existingEnd = new Date(
+          existingStart.getTime() + existingDuration * 60000,
+        );
+        return (
+          new Date(booking.startTime) < existingEnd &&
+          newActiveEndTime > existingStart
+        );
+      });
+
+      return { overlaps, otherBookings };
+    });
+
+    if (overlapResult.overlaps && !force) {
+      return {
+        type: "warning",
+        message:
+          "El nuevo servicio se solapa con otro turno existente. ¿Deseás guardar igual?",
+        allowOverride: true,
+      };
+    }
+
+    if (overlapResult.overlaps && force && !isOwner) {
+      return {
+        type: "error",
+        message:
+          "No tenés permiso para forzar un solapamiento de turnos.",
+      };
+    }
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        serviceId,
+        durationAtBooking: newDuration,
+        activeDurationAtBooking: newActiveDuration,
+        priceAtBooking: Number(newService.price),
+      },
+    });
+
+    revalidatePath("/dashboard", "layout");
+    invalidateAnalyticsCache();
+
+    return {
+      type: "success",
+      message: "Servicio actualizado con éxito.",
+    };
+  } catch (error) {
+    console.error("Error al actualizar servicio del turno:", error);
+    return {
+      type: "error",
+      message: "No se pudo actualizar el servicio del turno.",
+    };
   }
 }
