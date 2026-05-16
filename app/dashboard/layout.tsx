@@ -26,13 +26,12 @@ export default function DashboardLayout({
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog
-            version="v2026.05.annual"
-            title="¡Ya está disponible el Plan Anual!"
+            version="v2026.05.e2"
+            title="Nuevas mejoras en Turnix"
             items={[
-              "Suscripción Anual: Pagá 12 meses juntos y olvidate de los vencimientos.",
-              "Teléfono opcional: Ya no es obligatorio pedirle el teléfono a tus clientes al agendarlos manualmente.",
-              "Métodos de pago: Registrá con qué método te pagó cada cliente para un mejor control de ingresos.",
-              "Mejoras de sistema: Actualizamos nuestros servidores para que Turnix sea más rápido y estable.",
+              "Editá el servicio, el horario y el método de cobro de un turno directamente desde el detalle.",
+              "Eliminá servicios que ya no usas, con avisos si tienen turnos asociados.",
+              "Mejoramos la estabilidad y el rendimiento de la plataforma.",
             ]}
           />
           <SiteHeaderServer />

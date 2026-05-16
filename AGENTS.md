@@ -231,3 +231,39 @@ Key rules:
 - The package manager is **pnpm** (not npm/yarn/bun). Use `pnpm install` for dependencies.
 - Node.js >= 20 required (.nvmrc specifies v22).
 - No explicit Prettier or ESLint config files — formatting relies on VSCode settings (2-space indent, format on save).
+
+---
+
+## Protocolo de Verificación de Skills (Obligatorio)
+
+Antes de planificar, implementar o auditar cualquier tarea no trivial, el agente DEBE:
+
+1. **Mapear la tarea contra el catálogo de skills disponibles** en este entorno.
+2. **Cargar explícitamente** cada skill relevante usando la herramienta `skill`.
+3. **Asegurar que el plan de acción o la auditoría** cumple con TODAS las directrices de las skills activadas.
+4. **Reportar al usuario** qué skills se activaron antes de proceder o como parte de la revisión.
+
+### Matriz de activación rápida (referencia obligatoria)
+
+| Si la tarea involucra...                 | Activar obligatoriamente...                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
+| Accesibilidad / a11y                     | `accessibility`                                                               |
+| Despliegue / Vercel                      | `deploy-to-vercel`                                                            |
+| Diseño UI / Frontend                     | `frontend-design`                                                             |
+| Git / Commits                            | `git-commit`                                                                  |
+| Next.js (App Router, RSC, Data Fetching) | `next-best-practices`, `vercel-react-best-practices`                          |
+| Cache / Next.js 16                       | `next-cache-components`                                                       |
+| Upgrade de Next.js                       | `next-upgrade`                                                                |
+| Backend / APIs / Seguridad               | `nodejs-backend-patterns`, `nodejs-best-practices`                            |
+| Tests E2E / Playwright                   | `playwright-best-practices`                                                   |
+| Dependencias / pnpm                      | `pnpm`                                                                        |
+| Prisma / DB / Migraciones                | `prisma-cli`, `prisma-client-api`, `prisma-database-setup`, `prisma-postgres` |
+| SEO / Meta tags                          | `seo`                                                                         |
+| shadcn/ui / Componentes                  | `shadcn`                                                                      |
+| Supabase / PostgreSQL / Performance      | `supabase-postgres-best-practices`                                            |
+| Tailwind / CSS / Theming                 | `tailwind-css-patterns`, `tailwind-v4-shadcn`                                 |
+| TypeScript avanzado                      | `typescript-advanced-types`                                                   |
+| Patrones de composición React            | `vercel-composition-patterns`                                                 |
+| Zustand / Estado                         | `zustand`                                                                     |
+
+**Regla de oro:** Si existe una skill para el problema que estás resolviendo, esa skill es la fuente de verdad. No usar el conocimiento general si una skill está disponible.
