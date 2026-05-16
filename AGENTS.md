@@ -58,31 +58,31 @@ El core está completo. El trabajo actual es: nuevas features (evaluadas contra 
 
 ```bash
 # Development
-npm run dev                  # next dev (Turbopack)
+pnpm dev                     # next dev (Turbopack)
 
 # Build (includes prisma generate)
-npm run build                # prisma generate && next build
+pnpm build                   # prisma generate && next build
 
 # Lint
-npm run lint                 # next lint (built-in ESLint)
+pnpm lint                    # next lint (built-in ESLint)
 
 # Type check (no dedicated script; use tsc directly)
-npx tsc --noEmit
+pnpm dlx tsc --noEmit
 
 # E2E tests (Playwright, chromium only)
-npx playwright test                          # run all tests
-npx playwright test tests/booking.spec.ts    # run a single test file
-npx playwright test -g "test name"           # run a single test by name
-npx playwright test --headed                 # run with visible browser
+pnpm dlx playwright test                          # run all tests
+pnpm dlx playwright test tests/booking.spec.ts    # run a single test file
+pnpm dlx playwright test -g "test name"           # run a single test by name
+pnpm dlx playwright test --headed                 # run with visible browser
 
 # Database
-npx prisma migrate dev       # create/apply migrations
-npx prisma db push           # push schema without migration
-npx prisma db seed           # seed database (ts-node prisma/seed.ts)
-npx prisma studio            # GUI for browsing data
+pnpm dlx prisma migrate dev    # create/apply migrations
+pnpm dlx prisma db push        # push schema without migration
+pnpm dlx prisma db seed        # seed database (ts-node prisma/seed.ts)
+pnpm dlx prisma studio         # GUI for browsing data
 
 # Email templates
-npm run email                # react-email dev server on port 3001
+pnpm email                   # react-email dev server on port 3001
 ```
 
 ---
@@ -228,6 +228,6 @@ Key rules:
 - All user-facing strings (errors, success messages, labels) must be in **Argentine Spanish**.
 - Currency formatting uses `es-AR` locale and `ARS` currency (`lib/utils.ts:formatPrice`).
 - Date handling uses `date-fns-tz` with the `America/Argentina/Buenos_Aires` timezone.
-- The package manager is **npm** (not yarn/pnpm/bun). Use `npm install` for dependencies.
+- The package manager is **pnpm** (not npm/yarn/bun). Use `pnpm install` for dependencies.
 - Node.js >= 20 required (.nvmrc specifies v22).
 - No explicit Prettier or ESLint config files — formatting relies on VSCode settings (2-space indent, format on save).

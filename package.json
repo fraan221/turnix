@@ -57,8 +57,10 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
+    "framer-motion": "^12.38.0",
     "gray-matter": "^4.0.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.475.0",
@@ -87,6 +89,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
+    "@prisma/config": "^7.8.0",
     "@react-email/preview-server": "^5.0.5",
     "@tailwindcss/typography": "^0.5.18",
     "@types/bcryptjs": "^2.4.6",
@@ -96,6 +99,8 @@
     "@types/react-dom": "19.2.3",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.15",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
     "postcss": "^8.4.29",
     "prisma": "^7.2.0",
     "react-email": "^4.2.12",
@@ -103,15 +108,23 @@
     "tailwindcss": "^3.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
-    "typescript": "^5.2.2",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4"
+    "typescript": "^5.2.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "24.x"
   },
-  "overrides": {
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "supabase",
+      "unrs-resolver"
+    ]
   }
 }
