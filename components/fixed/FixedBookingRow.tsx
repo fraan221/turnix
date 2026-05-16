@@ -98,9 +98,9 @@ export function FixedBookingRow({ booking, role }: FixedBookingRowProps) {
           {booking.client.name}
         </div>
         <div className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
-          <span>{booking.service.name}</span>
+          <span>{booking.service?.name ?? "Servicio eliminado"}</span>
           <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-sm tabular-nums">
-            {formatPrice(booking.service.price)}
+            {booking.service ? formatPrice(booking.service.price) : ""}
           </span>
         </div>
       </div>

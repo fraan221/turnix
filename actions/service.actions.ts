@@ -226,6 +226,23 @@ export async function deleteService(serviceId: string) {
       return { error: "No tienes permiso para borrar este servicio." };
     }
 
+    const [recurringCount, futureBookingsCount] = await Promise.all([
+      prisma.recurringBooking.count({ where: { serviceId } }),
+      prisma.booking.count({
+        where: {
+          serviceId,
+          startTime: { gte: new Date() },
+          status: "SCHEDULED",
+        },
+      }),
+    ]);
+
+    if (recurringCount > 0) {
+      return {
+        error: "No podés borrar este servicio porque tiene turnos fijos asociados. Cancelalos primero desde la sección de Turnos Fijos.",
+      };
+    }
+
     await prisma.service.delete({ where: { id: serviceId } });
 
     revalidatePath("/dashboard/services", "layout");
@@ -239,6 +256,13 @@ export async function deleteService(serviceId: string) {
 
     return { success: "Servicio eliminado con éxito." };
   } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error) {
+      if (error.code === "P2003") {
+        return {
+          error: "No se puede eliminar el servicio porque tiene datos vinculados.",
+        };
+      }
+    }
     console.error("Error al eliminar el servicio:", error);
     return { error: "No se pudo eliminar el servicio." };
   }

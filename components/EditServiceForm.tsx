@@ -8,14 +8,24 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Service } from "@prisma/client";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Trash2 } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
-import { updateService } from "@/actions/service.actions";
+import { updateService, deleteService } from "@/actions/service.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
 
@@ -36,6 +46,8 @@ interface EditServiceFormProps {
 export default function EditServiceForm({ service }: EditServiceFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState(() =>
     service.price ? formatPrice(service.price.toString()) : ""
   );
@@ -99,6 +111,24 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
       }
       if (result?.error) {
         toast.error("No se pudieron guardar los cambios", {
+          description: result.error,
+        });
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+      setIsDeleteDialogOpen(false);
+      const result = await deleteService(service.id);
+      if (result?.success) {
+        toast.success("Servicio eliminado.", {
+          description: `"${service.name}" fue eliminado correctamente.`,
+        });
+        router.push("/dashboard/services");
+      }
+      if (result?.error) {
+        toast.error("No se pudo eliminar.", {
           description: result.error,
         });
       }
@@ -303,7 +333,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
           )}
         </div>
 
-        <div className="flex flex-col-reverse justify-end gap-3 pt-4 border-t sm:flex-row">
+        <div className="flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row sm:items-center">
           <Link href="/dashboard/services" className="w-full sm:w-auto">
             <Button
               type="button"
@@ -324,11 +354,59 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
                 Guardando…
               </>
             ) : (
-              "Guardar Cambios"
+              "Guardar cambios"
             )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="size-9 text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+          >
+            <Trash2 className="size-4" />
+            <span className="sr-only">Eliminar servicio</span>
           </Button>
         </div>
       </form>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar &quot;{service.name}&quot;?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Esta acción es irreversible.</p>
+                <p className="text-sm text-muted-foreground">
+                  Los turnos asociados quedarán sin servicio.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeletePending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletePending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Eliminando…
+                </>
+              ) : (
+                "Eliminar"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

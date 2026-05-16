@@ -193,6 +193,10 @@ export async function resumeRecurringBooking(id: string) {
 
     if (!recurringBooking) return { error: "Turno fijo no encontrado." };
 
+    if (!recurringBooking.service) {
+      return { error: "El servicio asociado a este turno fijo ya no existe." };
+    }
+
     await prisma.$transaction(async (tx) => {
       // 1. Quitar la suspensión
       await tx.recurringBooking.update({

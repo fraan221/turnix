@@ -31,7 +31,7 @@ export function FixedBookingsList({
     (booking) =>
       booking.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (booking.client.phone?.includes(searchTerm) ?? false) ||
-      booking.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.service?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (role === "OWNER" &&
         booking.barber.name.toLowerCase().includes(searchTerm.toLowerCase())),
   );
