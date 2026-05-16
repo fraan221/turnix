@@ -1,0 +1,11 @@
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sharp: true
+  supabase: true
+  unrs-resolver: true
+
+settings:
+  auto-install-peers: true
+  strict-peer-dependencies: false
