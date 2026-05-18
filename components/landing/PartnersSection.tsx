@@ -1,29 +1,27 @@
 import Image from "next/image";
+import { getPartners } from "@/lib/data";
 
-const partners = [
-  { name: "Overcoming", logo: "/images/partners/barberia_1.png" },
-  { name: "Yankee Barber", logo: "/images/partners/barberia_2.png" },
-  { name: "Break Barber", logo: "/images/partners/barberia_3.png" },
-  { name: "Lupa Estudio", logo: "/images/partners/barberia_4.png" },
-  { name: "HAIRVANA SALON", logo: "/images/partners/barberia_5.png" },
-  { name: "KC Barbería", logo: "/images/partners/barberia_6.png" },
-  { name: "Barbería NA", logo: "/images/partners/barberia_7.png" },
-];
+export async function PartnersSection() {
+  const partners = await getPartners();
 
-export function PartnersSection() {
+  if (partners.length === 0) return null;
+
   return (
-    <section className="w-full py-12 md:py-16">
+    <section className="py-12 w-full md:py-16">
       <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+        <div className="flex flex-col justify-center items-center space-y-4 text-center">
           <h1 className="text-lg font-semibold tracking-wide text-muted-foreground font-heading">
             Barberías reales, resultados reales
           </h1>
-          <div className="relative w-full max-w-5xl mt-6 overflow-hidden">
+          <div className="overflow-hidden relative mt-6 w-full max-w-5xl">
             <div className="flex w-max animate-marquee">
               {[...partners, ...partners].map((partner, index) => (
-                <div key={index} className="flex-shrink-0 w-48 mx-4">
+                <div
+                  key={`${partner.slug}-${index}`}
+                  className="flex-shrink-0 mx-4 w-48"
+                >
                   <Image
-                    src={partner.logo}
+                    src={partner.logoUrl}
                     alt={`Logo de ${partner.name}`}
                     width={158}
                     height={48}

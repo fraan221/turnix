@@ -1,3 +1,7 @@
+packages:
+  - "**"
+  - "!video"
+
 allowBuilds:
   '@prisma/engines': true
   esbuild: true

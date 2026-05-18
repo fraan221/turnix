@@ -319,10 +319,7 @@ export const getRecurringBookings = cache(async (barbershopId: string) => {
         },
       },
     },
-    orderBy: [
-      { dayOfWeek: "asc" },
-      { startTime: "asc" }
-    ],
+    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
   });
 });
 
@@ -332,3 +329,44 @@ export const getRecurringBookings = cache(async (barbershopId: string) => {
 export const preloadRecurringBookings = (barbershopId: string) => {
   void getRecurringBookings(barbershopId);
 };
+
+/**
+ * Obtiene los partners (barbershops con suscripción authorized y logo cargado).
+ * Cacheado por 1 hora con invalidación via revalidateTag("landing:partners").
+ */
+export const getPartners = nextCache(
+  async () => {
+    const barbershops = await prisma.barbershop.findMany({
+      where: {
+        owner: {
+          subscription: {
+            status: "authorized",
+          },
+        },
+      },
+      select: {
+        name: true,
+        slug: true,
+        image: true,
+        owner: {
+          select: {
+            image: true,
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return barbershops
+      .filter((b) => b.image || b.owner.image)
+      .map((b) => ({
+        name: b.name,
+        slug: b.slug,
+        logoUrl: b.image || b.owner.image!,
+      }));
+  },
+  ["landing:partners"],
+  { tags: ["landing:partners"], revalidate: 3600 },
+);

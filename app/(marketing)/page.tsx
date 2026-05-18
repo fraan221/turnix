@@ -7,6 +7,8 @@ import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { PartnersSection } from "@/components/landing/PartnersSection";
 import { FeaturesGridSection } from "@/components/landing/FeaturesGridSection";
 
+export const dynamic = "force-dynamic";
+
 export default function LandingPage() {
   return (
     <>

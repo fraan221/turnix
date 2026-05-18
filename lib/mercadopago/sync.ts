@@ -1,6 +1,6 @@
 import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { isAuthorizedStatus } from "@/lib/mercadopago/subscription-types";
 
 const client = new MercadoPagoConfig({
@@ -97,6 +97,7 @@ export async function syncSubscriptionStatus(
 
     revalidatePath("/dashboard", "layout");
     revalidatePath("/subscribe", "layout");
+    revalidateTag("landing:partners", "max");
 
     console.log(`Éxito. Estado local actualizado a: ${subscription.status}`);
     return subscription;

@@ -3,65 +3,35 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getPartners } from "@/lib/data";
 
-const SocialProof = () => (
-  <div className="flex items-center gap-4 px-3 py-1.5 border rounded-full bg-muted w-fit">
-    <div className="flex -space-x-2 overflow-hidden">
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_1.png"
-          alt="Overcoming Logo"
-        />
-        <AvatarFallback>B1</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_2.png"
-          alt="Yankee Barber Logo"
-        />
-        <AvatarFallback>B2</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_3.png"
-          alt="Break Barber Logo"
-        />
-        <AvatarFallback>B3</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_4.png"
-          alt="Lupa Estudio Logo"
-        />
-        <AvatarFallback>+1</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_5.png"
-          alt="HAIRVANA SALON Logo"
-        />
-        <AvatarFallback>+1</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_6.png"
-          alt="KC Barberia Logo"
-        />
-        <AvatarFallback>+1</AvatarFallback>
-      </Avatar>
-      <Avatar className="w-6 h-6 border-2 border-background">
-        <AvatarImage
-          src="/images/partners/barberia_7.png"
-          alt="Barberia NA Logo"
-        />
-        <AvatarFallback>+1</AvatarFallback>
-      </Avatar>
+const SocialProof = async () => {
+  const partners = await getPartners();
+  const displayPartners = partners.slice(0, 8);
+
+  if (displayPartners.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-4 px-3 py-1.5 border rounded-full bg-muted w-fit">
+      <div className="flex -space-x-2 overflow-hidden">
+        {displayPartners.map((partner) => (
+          <Avatar key={partner.slug} className="w-6 h-6 border-2 border-background">
+            <AvatarImage
+              src={partner.logoUrl}
+              alt={`Logo de ${partner.name}`}
+            />
+            <AvatarFallback>
+              {partner.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+      </div>
+      <span className="pr-2 text-sm font-medium text-muted-foreground">
+        +{partners.length} barberías usan Turnix diariamente
+      </span>
     </div>
-    <span className="pr-2 text-sm font-medium text-muted-foreground">
-      +10 barberías usan Turnix diariamente
-    </span>
-  </div>
-);
+  );
+};
 
 export function HeroSection() {
   return (

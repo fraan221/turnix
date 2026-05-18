@@ -12,6 +12,7 @@ export function CtaSection() {
         src="/images/cta-background.jpg"
         alt="Letrero de neón de una barbería"
         fill
+        sizes="100vw"
         className="object-cover"
         placeholder="blur"
         blurDataURL="/images/cta-background.jpg"
