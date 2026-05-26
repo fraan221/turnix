@@ -219,3 +219,39 @@ export const UpdateBookingServiceSchema = z.object({
   serviceId: z.string().cuid({ message: "ID de servicio inválido." }),
   force: z.boolean().optional().default(false),
 });
+
+export const CashflowCategorySchema = z.object({
+  name: z.string()
+    .min(2, "El nombre debe tener al menos 2 caracteres.")
+    .max(50, "El nombre no puede superar los 50 caracteres.")
+    .trim(),
+});
+
+export const CashflowTransactionSchema = z.object({
+  amount: z.coerce.number()
+    .positive("El monto debe ser mayor a 0.")
+    .max(100_000_000, "Monto demasiado alto."),
+  type: z.enum(["INFLOW", "OUTFLOW"], {
+    message: "Seleccioná si es un ingreso o egreso.",
+  }),
+  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD"], {
+    message: "Seleccioná el método de pago/caja.",
+  }),
+  categoryId: z.string({ message: "Seleccioná una categoría." }),
+  fixedExpenseId: z.string().optional().nullable().or(z.literal("")),
+  description: z.string().max(200, "La descripción no puede superar los 200 caracteres.").optional().or(z.literal("")),
+  date: z.coerce.date({ message: "La fecha es obligatoria." }),
+});
+
+export const FixedExpenseSchema = z.object({
+  name: z.string()
+    .min(2, "El nombre del ítem debe tener al menos 2 caracteres.")
+    .max(100, "El nombre no puede superar los 100 caracteres.")
+    .trim(),
+  amount: z.coerce.number()
+    .positive("El monto debe ser mayor a 0.")
+    .max(100_000_000, "Monto demasiado alto."),
+  startDate: z.coerce.date({ message: "La fecha de inicio es obligatoria." }),
+  active: z.boolean().default(true),
+});
+

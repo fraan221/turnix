@@ -15,6 +15,7 @@ const pageTitles: { [key: string]: string } = {
   "/dashboard/billing": "Suscripción",
   "/dashboard/team": "Equipo",
   "/dashboard/analytics": "Estadísticas",
+  "/dashboard/cashflow": "Caja",
   "/dashboard/connect": "Conectar",
   "/dashboard/fixed": "Turnos Fijos",
   "/dashboard": "Agenda",

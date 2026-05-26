@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserForSettings } from "@/lib/data";
-import { Role } from "@prisma/client";
+import prisma from "@/lib/prisma";
+import { Role, CashflowType, PaymentMethod } from "@prisma/client";
 import { z } from "zod";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
 
     const { format, period } = validatedParams.data;
 
-    // 3. Obtener fechas y bookings
+    // 3. Obtener fechas, bookings y transacciones manuales
     const { startDate, endDate } = getDateRangeForPeriod(period);
     const bookings = await getDetailedBookingsForReport(
       barbershop.id,
@@ -57,36 +58,78 @@ export async function GET(request: Request) {
       endDate
     );
 
+    const transactions = await prisma.cashflowTransaction.findMany({
+      where: {
+        barbershopId: barbershop.id,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        category: true,
+      },
+      orderBy: {
+        date: "asc",
+      },
+    });
+
     const periodLabel = formatPeriodLabel(period, startDate, endDate);
 
-    // Calcular resúmenes por forma de pago
-    const summary = {
+    // Calcular resúmenes por forma de pago (Ingresos por Turnos)
+    const bookingSummary = {
       CASH: { count: 0, total: 0 },
       TRANSFER: { count: 0, total: 0 },
       CARD: { count: 0, total: 0 },
-      UNCLASSIFIED: { count: 0, total: 0 },
     };
 
     bookings.forEach((b) => {
       const method = b.paymentMethod;
       const amount = b.amount;
-      if (method === "CASH") {
-        summary.CASH.count++;
-        summary.CASH.total += amount;
-      } else if (method === "TRANSFER") {
-        summary.TRANSFER.count++;
-        summary.TRANSFER.total += amount;
-      } else if (method === "CARD") {
-        summary.CARD.count++;
-        summary.CARD.total += amount;
-      } else {
-        summary.UNCLASSIFIED.count++;
-        summary.UNCLASSIFIED.total += amount;
+      if (method === "CASH" || method === "TRANSFER" || method === "CARD") {
+        bookingSummary[method].count++;
+        bookingSummary[method].total += amount;
       }
     });
 
-    const totalRevenue = bookings.reduce((sum, b) => sum + b.amount, 0);
-    const totalCount = bookings.length;
+    // Calcular resúmenes por forma de pago (Movimientos Manuales)
+    const manualInflowSummary = {
+      CASH: { count: 0, total: 0 },
+      TRANSFER: { count: 0, total: 0 },
+      CARD: { count: 0, total: 0 },
+    };
+
+    const manualOutflowSummary = {
+      CASH: { count: 0, total: 0 },
+      TRANSFER: { count: 0, total: 0 },
+      CARD: { count: 0, total: 0 },
+    };
+
+    transactions.forEach((t) => {
+      const method = t.paymentMethod;
+      const amount = t.amount;
+      if (method === "CASH" || method === "TRANSFER" || method === "CARD") {
+        if (t.type === CashflowType.INFLOW) {
+          manualInflowSummary[method].count++;
+          manualInflowSummary[method].total += amount;
+        } else {
+          manualOutflowSummary[method].count++;
+          manualOutflowSummary[method].total += amount;
+        }
+      }
+    });
+
+    const totalBookingIncome = bookings.reduce((sum, b) => sum + b.amount, 0);
+    const totalManualInflow = transactions
+      .filter((t) => t.type === CashflowType.INFLOW)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalIncome = totalBookingIncome + totalManualInflow;
+    const totalExpenses = transactions
+      .filter((t) => t.type === CashflowType.OUTFLOW)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const netBalance = totalIncome - totalExpenses;
 
     const formattedDate = formatToDateInput(new Date());
     const filename = `reporte-${barbershop.slug}-${period}-${formattedDate}.${format}`;
@@ -99,49 +142,174 @@ export async function GET(request: Request) {
       workbook.created = new Date();
       workbook.modified = new Date();
 
-      // --- Hoja 1: Detalle de turnos ---
-      const sheet1 = workbook.addWorksheet("Detalle de turnos");
-      
-      // Título
-      sheet1.mergeCells("A1:H1");
-      sheet1.getCell("A1").value = `REPORTE DE INGRESOS - ${barbershop.name.toUpperCase()}`;
-      sheet1.getCell("A1").font = { name: "Arial", size: 14, bold: true, color: { argb: "1E293B" } };
-      sheet1.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+      // --- HOJA 1: RESUMEN FINANCIERO ---
+      const sheetSummary = workbook.addWorksheet("Resumen Financiero");
+      sheetSummary.mergeCells("A1:D1");
+      sheetSummary.getCell("A1").value = `RESUMEN FINANCIERO - ${barbershop.name.toUpperCase()}`;
+      sheetSummary.getCell("A1").font = { name: "Arial", size: 14, bold: true, color: { argb: "1E293B" } };
+      sheetSummary.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
 
-      // Subtítulo
-      sheet1.mergeCells("A2:H2");
-      sheet1.getCell("A2").value = `Período: ${periodLabel} | Generado el ${formatDate(new Date())}`;
-      sheet1.getCell("A2").font = { name: "Arial", size: 10, italic: true, color: { argb: "475569" } };
-      sheet1.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+      sheetSummary.mergeCells("A2:D2");
+      sheetSummary.getCell("A2").value = `Período: ${periodLabel} | Generado el ${formatDate(new Date())}`;
+      sheetSummary.getCell("A2").font = { name: "Arial", size: 10, italic: true, color: { argb: "475569" } };
+      sheetSummary.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
 
-      // Espaciador en fila 3
-      sheet1.getRow(3).height = 15;
+      sheetSummary.getRow(3).height = 15;
 
-      // Cabecera de Tabla
-      const headers = [
-        "Fecha",
-        "Hora",
-        "Cliente",
-        "Teléfono",
-        "Servicio",
-        "Barbero",
-        "Monto",
-        "Forma de Pago",
+      // Tabla de Balance General
+      sheetSummary.getRow(4).values = ["Concepto", "", "", "Monto"];
+      sheetSummary.mergeCells("A4:C4");
+      sheetSummary.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
+      sheetSummary.getRow(4).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1E293B" } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+      sheetSummary.columns = [
+        { key: "concept", width: 35 },
+        { key: "dummy1", width: 10 },
+        { key: "dummy2", width: 10 },
+        { key: "amount", width: 20 },
       ];
-      sheet1.getRow(4).values = headers;
-      sheet1.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
-      sheet1.getRow(4).height = 24;
-      sheet1.getRow(4).eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "1E293B" },
+
+      const balanceData = [
+        ["(+) Ingresos por Turnos Completados", totalBookingIncome],
+        ["(+) Entradas Manuales de Caja", totalManualInflow],
+        ["(=) TOTAL INGRESOS", totalIncome],
+        ["(-) Egresos y Gastos de Caja", totalExpenses],
+        ["(=) BALANCE NETO", netBalance],
+      ];
+
+      balanceData.forEach((rowVal, idx) => {
+        const rowNum = 5 + idx;
+        sheetSummary.mergeCells(`A${rowNum}:C${rowNum}`);
+        const label = rowVal[0];
+        sheetSummary.getCell(`A${rowNum}`).value = label;
+        const isBold = typeof label === "string" && label.startsWith("(=)");
+        sheetSummary.getCell(`A${rowNum}`).font = { name: "Arial", size: 10, bold: isBold };
+        
+        const amtCell = sheetSummary.getCell(`D${rowNum}`);
+        amtCell.value = rowVal[1];
+        amtCell.numFmt = '"$"#,##0';
+        amtCell.alignment = { horizontal: "right" };
+        amtCell.font = { name: "Arial", size: 10, bold: isBold };
+
+        sheetSummary.getRow(rowNum).eachCell((cell) => {
+          cell.border = {
+            bottom: { style: isBold ? "medium" : "thin", color: { argb: "E2E8F0" } },
+          };
+          if (isBold) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F1F5F9" } };
+          }
+        });
+      });
+
+      // Espaciador
+      let nextRow = 11;
+      sheetSummary.getRow(nextRow++).height = 15;
+
+      // Desglose por Método de Pago
+      sheetSummary.mergeCells(`A${nextRow}:D${nextRow}`);
+      sheetSummary.getCell(`A${nextRow}`).value = "DESGLOSE POR MEDIO DE COBRO / CAJA";
+      sheetSummary.getCell(`A${nextRow}`).font = { name: "Arial", size: 11, bold: true, color: { argb: "1E293B" } };
+      nextRow++;
+
+      sheetSummary.getRow(nextRow).values = ["Caja / Medio", "Ingresos", "Egresos", "Neto"];
+      sheetSummary.getRow(nextRow).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
+      sheetSummary.getRow(nextRow).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "475569" } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+      const headerRowIndex = nextRow;
+      nextRow++;
+
+      const methodRows = [
+        [
+          "Efectivo", 
+          bookingSummary.CASH.total + manualInflowSummary.CASH.total, 
+          manualOutflowSummary.CASH.total
+        ],
+        [
+          "Transferencia", 
+          bookingSummary.TRANSFER.total + manualInflowSummary.TRANSFER.total, 
+          manualOutflowSummary.TRANSFER.total
+        ],
+        [
+          "Tarjeta", 
+          bookingSummary.CARD.total + manualInflowSummary.CARD.total, 
+          manualOutflowSummary.CARD.total
+        ],
+      ];
+
+      methodRows.forEach((rowVal, idx) => {
+        const rowNum = nextRow + idx;
+        const row = sheetSummary.getRow(rowNum);
+        const inc = rowVal[1] as number;
+        const exp = rowVal[2] as number;
+        row.values = [
+          rowVal[0],
+          inc,
+          exp,
+          inc - exp,
+        ];
+
+        row.getCell(2).numFmt = '"$"#,##0';
+        row.getCell(3).numFmt = '"$"#,##0';
+        row.getCell(4).numFmt = '"$"#,##0';
+
+        row.eachCell((cell) => {
+          cell.font = { name: "Arial", size: 10 };
+          cell.border = { bottom: { style: "thin", color: { argb: "E2E8F0" } } };
+        });
+      });
+
+      // Total general del desglose
+      const totalDesgloseRow = sheetSummary.getRow(nextRow + 3);
+      totalDesgloseRow.getCell(1).value = "TOTAL CONSOLIDADO";
+      totalDesgloseRow.getCell(1).font = { name: "Arial", size: 10, bold: true };
+      
+      totalDesgloseRow.getCell(2).value = { formula: `SUM(B${headerRowIndex + 1}:B${headerRowIndex + 3})` };
+      totalDesgloseRow.getCell(2).font = { name: "Arial", size: 10, bold: true };
+      totalDesgloseRow.getCell(2).numFmt = '"$"#,##0';
+      
+      totalDesgloseRow.getCell(3).value = { formula: `SUM(C${headerRowIndex + 1}:C${headerRowIndex + 3})` };
+      totalDesgloseRow.getCell(3).font = { name: "Arial", size: 10, bold: true };
+      totalDesgloseRow.getCell(3).numFmt = '"$"#,##0';
+
+      totalDesgloseRow.getCell(4).value = { formula: `B${headerRowIndex + 4}-C${headerRowIndex + 4}` };
+      totalDesgloseRow.getCell(4).font = { name: "Arial", size: 10, bold: true };
+      totalDesgloseRow.getCell(4).numFmt = '"$"#,##0';
+
+      totalDesgloseRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: "medium", color: { argb: "94A3B8" } },
+          bottom: { style: "double", color: { argb: "1E293B" } },
         };
+      });
+
+      // --- HOJA 2: DETALLE DE TURNOS COMPLETADOS ---
+      const sheetBookings = workbook.addWorksheet("Ingresos por Turnos");
+      sheetBookings.mergeCells("A1:H1");
+      sheetBookings.getCell("A1").value = `INGRESOS POR TURNOS COMPLETADOS - ${barbershop.name.toUpperCase()}`;
+      sheetBookings.getCell("A1").font = { name: "Arial", size: 12, bold: true, color: { argb: "1E293B" } };
+      sheetBookings.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+
+      sheetBookings.mergeCells("A2:H2");
+      sheetBookings.getCell("A2").value = `Período: ${periodLabel}`;
+      sheetBookings.getCell("A2").font = { name: "Arial", size: 9, italic: true, color: { argb: "475569" } };
+      sheetBookings.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+
+      sheetBookings.getRow(3).height = 15;
+      
+      const bookingHeaders = ["Fecha", "Hora", "Cliente", "Teléfono", "Servicio", "Barbero", "Monto", "Forma de Pago"];
+      sheetBookings.getRow(4).values = bookingHeaders;
+      sheetBookings.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
+      sheetBookings.getRow(4).height = 24;
+      sheetBookings.getRow(4).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1E293B" } };
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
 
-      // Anchos de columna
-      sheet1.columns = [
+      sheetBookings.columns = [
         { key: "date", width: 14 },
         { key: "time", width: 8 },
         { key: "client", width: 22 },
@@ -152,10 +320,9 @@ export async function GET(request: Request) {
         { key: "paymentMethod", width: 16 },
       ];
 
-      // Filas de datos
       bookings.forEach((booking, idx) => {
         const rowNum = 5 + idx;
-        const row = sheet1.getRow(rowNum);
+        const row = sheetBookings.getRow(rowNum);
         row.values = [
           formatDate(booking.date),
           formatTime(booking.date),
@@ -167,125 +334,122 @@ export async function GET(request: Request) {
           formatPaymentMethod(booking.paymentMethod),
         ];
 
-        // Alinear hora y forma de pago al centro
         row.getCell(2).alignment = { horizontal: "center" };
         row.getCell(8).alignment = { horizontal: "center" };
-
-        // Formatear monto como moneda
-        const amountCell = row.getCell(7);
-        amountCell.numFmt = '"$"#,##0';
-        amountCell.alignment = { horizontal: "right" };
+        row.getCell(7).numFmt = '"$"#,##0';
+        row.getCell(7).alignment = { horizontal: "right" };
 
         row.eachCell((cell) => {
           cell.font = { name: "Arial", size: 10 };
-          cell.border = {
-            bottom: { style: "thin", color: { argb: "E2E8F0" } },
-          };
+          cell.border = { bottom: { style: "thin", color: { argb: "E2E8F0" } } };
         });
       });
 
-      // Fila de Total general
-      const totalRowNum = 5 + bookings.length;
-      const totalRow = sheet1.getRow(totalRowNum);
-      sheet1.mergeCells(`A${totalRowNum}:F${totalRowNum}`);
-      sheet1.getCell(`A${totalRowNum}`).value = "TOTAL GENERAL";
-      sheet1.getCell(`A${totalRowNum}`).font = { name: "Arial", size: 10, bold: true, color: { argb: "1E293B" } };
-      sheet1.getCell(`A${totalRowNum}`).alignment = { horizontal: "right", vertical: "middle" };
+      // Total bookings
+      const bTotalRowIndex = 5 + bookings.length;
+      const bTotalRow = sheetBookings.getRow(bTotalRowIndex);
+      sheetBookings.mergeCells(`A${bTotalRowIndex}:F${bTotalRowIndex}`);
+      sheetBookings.getCell(`A${bTotalRowIndex}`).value = "TOTAL TURNOS";
+      sheetBookings.getCell(`A${bTotalRowIndex}`).font = { name: "Arial", size: 10, bold: true };
+      sheetBookings.getCell(`A${bTotalRowIndex}`).alignment = { horizontal: "right" };
 
-      const totalAmountCell = totalRow.getCell(7);
-      if (bookings.length === 0) {
-        totalAmountCell.value = 0;
-      } else {
-        totalAmountCell.value = { formula: `SUM(G5:G${totalRowNum - 1})` };
-      }
-      totalAmountCell.font = { name: "Arial", size: 10, bold: true };
-      totalAmountCell.numFmt = '"$"#,##0';
-      totalAmountCell.alignment = { horizontal: "right" };
+      bTotalRow.getCell(7).value = { formula: `SUM(G5:G${bTotalRowIndex - 1})` };
+      bTotalRow.getCell(7).font = { name: "Arial", size: 10, bold: true };
+      bTotalRow.getCell(7).numFmt = '"$"#,##0';
+      bTotalRow.getCell(7).alignment = { horizontal: "right" };
 
-      totalRow.eachCell((cell) => {
+      bTotalRow.eachCell((cell) => {
         cell.border = {
           top: { style: "medium", color: { argb: "94A3B8" } },
           bottom: { style: "double", color: { argb: "1E293B" } },
         };
       });
 
-      // --- Hoja 2: Resumen por forma de pago ---
-      const sheet2 = workbook.addWorksheet("Resumen de Ventas");
+      // --- HOJA 3: MOVIMIENTOS MANUALES DE CAJA ---
+      const sheetTransactions = workbook.addWorksheet("Movimientos de Caja");
+      sheetTransactions.mergeCells("A1:G1");
+      sheetTransactions.getCell("A1").value = `MOVIMIENTOS MANUALES DE CAJA - ${barbershop.name.toUpperCase()}`;
+      sheetTransactions.getCell("A1").font = { name: "Arial", size: 12, bold: true, color: { argb: "1E293B" } };
+      sheetTransactions.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
 
-      // Título
-      sheet2.mergeCells("A1:C1");
-      sheet2.getCell("A1").value = "RESUMEN DE INGRESOS POR FORMA DE PAGO";
-      sheet2.getCell("A1").font = { name: "Arial", size: 12, bold: true, color: { argb: "1E293B" } };
-      sheet2.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+      sheetTransactions.mergeCells("A2:G2");
+      sheetTransactions.getCell("A2").value = `Período: ${periodLabel}`;
+      sheetTransactions.getCell("A2").font = { name: "Arial", size: 9, italic: true, color: { argb: "475569" } };
+      sheetTransactions.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
 
-      // Subtítulo
-      sheet2.mergeCells("A2:C2");
-      sheet2.getCell("A2").value = `Período: ${periodLabel}`;
-      sheet2.getCell("A2").font = { name: "Arial", size: 9, italic: true, color: { argb: "475569" } };
-      sheet2.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+      sheetTransactions.getRow(3).height = 15;
 
-      sheet2.getRow(3).height = 15;
-
-      // Cabeceras
-      sheet2.getRow(4).values = ["Forma de Pago", "Cantidad de Turnos", "Total Recaudado"];
-      sheet2.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
-      sheet2.getRow(4).height = 24;
-      sheet2.getRow(4).eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "1E293B" },
-        };
+      const txHeaders = ["Fecha", "Tipo", "Categoría", "Descripción", "Medio de Pago", "Monto", "Registrado Por"];
+      sheetTransactions.getRow(4).values = txHeaders;
+      sheetTransactions.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
+      sheetTransactions.getRow(4).height = 24;
+      sheetTransactions.getRow(4).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1E293B" } };
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
 
-      sheet2.columns = [
-        { key: "method", width: 22 },
-        { key: "count", width: 20 },
-        { key: "total", width: 20 },
+      sheetTransactions.columns = [
+        { key: "date", width: 14 },
+        { key: "type", width: 12 },
+        { key: "category", width: 20 },
+        { key: "description", width: 35 },
+        { key: "method", width: 16 },
+        { key: "amount", width: 14 },
+        { key: "createdBy", width: 18 },
       ];
 
-      // Datos
-      const paymentSummaryRows = [
-        ["Efectivo", summary.CASH.count, summary.CASH.total],
-        ["Transferencia", summary.TRANSFER.count, summary.TRANSFER.total],
-        ["Tarjeta", summary.CARD.count, summary.CARD.total],
-        ["Sin clasificar", summary.UNCLASSIFIED.count, summary.UNCLASSIFIED.total],
-      ];
-
-      paymentSummaryRows.forEach((rowVal, idx) => {
+      transactions.forEach((tx, idx) => {
         const rowNum = 5 + idx;
-        const row = sheet2.getRow(rowNum);
-        row.values = rowVal;
+        const row = sheetTransactions.getRow(rowNum);
+        row.values = [
+          formatDate(tx.date),
+          tx.type === CashflowType.INFLOW ? "Ingreso" : "Egreso",
+          tx.category?.name || "Otros",
+          tx.description || "-",
+          formatPaymentMethod(tx.paymentMethod),
+          tx.amount,
+          user.name, // creador
+        ];
 
         row.getCell(2).alignment = { horizontal: "center" };
-        const totalCell = row.getCell(3);
-        totalCell.numFmt = '"$"#,##0';
-        totalCell.alignment = { horizontal: "right" };
+        row.getCell(5).alignment = { horizontal: "center" };
+        
+        const sign = tx.type === CashflowType.INFLOW ? "" : "-";
+        row.getCell(6).value = tx.amount;
+        row.getCell(6).numFmt = sign + '"$"#,##0';
+        row.getCell(6).alignment = { horizontal: "right" };
 
         row.eachCell((cell) => {
           cell.font = { name: "Arial", size: 10 };
-          cell.border = {
-            bottom: { style: "thin", color: { argb: "E2E8F0" } },
-          };
+          cell.border = { bottom: { style: "thin", color: { argb: "E2E8F0" } } };
         });
       });
 
-      // Total general de resumen
-      const summaryTotalRow = sheet2.getRow(9);
-      summaryTotalRow.getCell(1).value = "TOTAL";
-      summaryTotalRow.getCell(1).font = { name: "Arial", size: 10, bold: true };
+      // Totales
+      const tTotalRowIndex = 5 + transactions.length;
+      const tTotalRow = sheetTransactions.getRow(tTotalRowIndex);
+      sheetTransactions.mergeCells(`A${tTotalRowIndex}:E${tTotalRowIndex}`);
+      sheetTransactions.getCell(`A${tTotalRowIndex}`).value = "TOTAL MOVIMIENTOS";
+      sheetTransactions.getCell(`A${tTotalRowIndex}`).font = { name: "Arial", size: 10, bold: true };
+      sheetTransactions.getCell(`A${tTotalRowIndex}`).alignment = { horizontal: "right" };
 
-      summaryTotalRow.getCell(2).value = { formula: "SUM(B5:B8)" };
-      summaryTotalRow.getCell(2).font = { name: "Arial", size: 10, bold: true };
-      summaryTotalRow.getCell(2).alignment = { horizontal: "center" };
+      // Se calcula sumando ingresos y restando egresos
+      let computedTotalManual = 0;
+      transactions.forEach((tx) => {
+        if (tx.type === CashflowType.INFLOW) {
+          computedTotalManual += tx.amount;
+        } else {
+          computedTotalManual -= tx.amount;
+        }
+      });
 
-      summaryTotalRow.getCell(3).value = { formula: "SUM(C5:C8)" };
-      summaryTotalRow.getCell(3).font = { name: "Arial", size: 10, bold: true };
-      summaryTotalRow.getCell(3).numFmt = '"$"#,##0';
-      summaryTotalRow.getCell(3).alignment = { horizontal: "right" };
+      const manualTotalCell = tTotalRow.getCell(6);
+      manualTotalCell.value = computedTotalManual;
+      manualTotalCell.font = { name: "Arial", size: 10, bold: true };
+      manualTotalCell.numFmt = computedTotalManual >= 0 ? '"$"#,##0' : '-"$"#,##0';
+      manualTotalCell.alignment = { horizontal: "right" };
 
-      summaryTotalRow.eachCell((cell) => {
+      tTotalRow.eachCell((cell) => {
         cell.border = {
           top: { style: "medium", color: { argb: "94A3B8" } },
           bottom: { style: "double", color: { argb: "1E293B" } },
@@ -309,7 +473,6 @@ export async function GET(request: Request) {
     if (format === "pdf") {
       const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
 
-      // Generar PDF en Buffer
       const pdfBufferPromise = new Promise<Buffer>((resolve, reject) => {
         const chunks: Buffer[] = [];
         doc.on("data", (chunk) => chunks.push(chunk));
@@ -321,7 +484,7 @@ export async function GET(request: Request) {
       doc.fillColor("#94a3b8").fontSize(8).font("Helvetica-Bold").text("Turnix", 40, 40, { align: "right" });
       
       // Título y barbershop
-      doc.fillColor("#1e293b").fontSize(18).font("Helvetica-Bold").text("REPORTE DE INGRESOS", 40, 40);
+      doc.fillColor("#1e293b").fontSize(18).font("Helvetica-Bold").text("REPORTE FINANCIERO DE CAJA", 40, 40);
       doc.fillColor("#475569").fontSize(12).font("Helvetica-Bold").text(barbershop.name.toUpperCase(), 40, 60);
       
       doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(`Período: ${periodLabel}`, 40, 80);
@@ -332,53 +495,161 @@ export async function GET(request: Request) {
       }).format(new Date());
       doc.text(`Generado: ${nowFormatted} hs`, 40, 93);
 
-      // Línea divisoria
       doc.moveTo(40, 110).lineTo(555, 110).strokeColor("#e2e8f0").lineWidth(1).stroke();
 
-      // Sección 1: Resumen por forma de pago
-      doc.fillColor("#1e293b").fontSize(11).font("Helvetica-Bold").text("RESUMEN POR FORMA DE PAGO", 40, 130);
+      // Sección 1: Balance General
+      doc.fillColor("#1e293b").fontSize(11).font("Helvetica-Bold").text("BALANCE CONSOLIDADO", 40, 130);
 
       let y = 150;
       doc.rect(40, y, 515, 18).fill("#1e293b");
       doc.fillColor("#ffffff").fontSize(8).font("Helvetica-Bold");
-      doc.text("Forma de pago", 48, y + 5);
-      doc.text("Cantidad de turnos", 220, y + 5, { width: 100, align: "center" });
-      doc.text("Total recaudado", 400, y + 5, { width: 140, align: "right" });
+      doc.text("Concepto", 48, y + 5);
+      doc.text("Monto", 400, y + 5, { width: 140, align: "right" });
 
       y += 18;
 
-      const summaryRows = [
-        { label: "Efectivo", count: summary.CASH.count, total: summary.CASH.total },
-        { label: "Transferencia", count: summary.TRANSFER.count, total: summary.TRANSFER.total },
-        { label: "Tarjeta", count: summary.CARD.count, total: summary.CARD.total },
-        { label: "Sin clasificar", count: summary.UNCLASSIFIED.count, total: summary.UNCLASSIFIED.total },
+      const balanceRows = [
+        { label: "(+) Ingresos por Turnos Completados", amount: totalBookingIncome, isBold: false },
+        { label: "(+) Entradas Manuales de Caja", amount: totalManualInflow, isBold: false },
+        { label: "(=) TOTAL INGRESOS", amount: totalIncome, isBold: true },
+        { label: "(-) Egresos y Gastos de Caja", amount: totalExpenses, isBold: false },
+        { label: "(=) BALANCE NETO DE CAJA", amount: netBalance, isBold: true },
       ];
 
-      summaryRows.forEach((row, idx) => {
+      balanceRows.forEach((row) => {
+        if (row.isBold) {
+          doc.rect(40, y, 515, 18).fill("#f1f5f9");
+          doc.fillColor("#0f172a").fontSize(8).font("Helvetica-Bold");
+        } else {
+          doc.fillColor("#334155").fontSize(8).font("Helvetica");
+        }
+
+        doc.text(row.label, 48, y + 5);
+        
+        const sign = row.label.startsWith("(-)") ? "-" : "";
+        doc.text(sign + formatPrice(row.amount), 400, y + 5, { width: 140, align: "right" });
+        y += 18;
+      });
+
+      y += 20;
+
+      // Sección 2: Resumen consolidado por método de pago
+      doc.fillColor("#1e293b").fontSize(11).font("Helvetica-Bold").text("RESUMEN POR FORMA DE PAGO", 40, y);
+      y += 18;
+
+      doc.rect(40, y, 515, 18).fill("#475569");
+      doc.fillColor("#ffffff").fontSize(8).font("Helvetica-Bold");
+      doc.text("Caja / Medio", 48, y + 5);
+      doc.text("Ingresos", 220, y + 5, { width: 100, align: "right" });
+      doc.text("Egresos", 330, y + 5, { width: 100, align: "right" });
+      doc.text("Neto", 440, y + 5, { width: 100, align: "right" });
+
+      y += 18;
+
+      const methodSummaryRows = [
+        {
+          label: "Efectivo (Caja Física)",
+          income: bookingSummary.CASH.total + manualInflowSummary.CASH.total,
+          expense: manualOutflowSummary.CASH.total,
+        },
+        {
+          label: "Transferencia / Débito",
+          income: bookingSummary.TRANSFER.total + manualInflowSummary.TRANSFER.total,
+          expense: manualOutflowSummary.TRANSFER.total,
+        },
+        {
+          label: "Tarjeta de Crédito",
+          income: bookingSummary.CARD.total + manualInflowSummary.CARD.total,
+          expense: manualOutflowSummary.CARD.total,
+        },
+      ];
+
+      methodSummaryRows.forEach((row, idx) => {
         if (idx % 2 === 1) {
           doc.rect(40, y, 515, 18).fill("#f8fafc");
         }
         doc.fillColor("#334155").fontSize(8).font("Helvetica");
         doc.text(row.label, 48, y + 5);
-        doc.text(row.count.toString(), 220, y + 5, { width: 100, align: "center" });
-        doc.text(formatPrice(row.total), 400, y + 5, { width: 140, align: "right" });
+        doc.text(formatPrice(row.income), 220, y + 5, { width: 100, align: "right" });
+        doc.text(formatPrice(row.expense), 330, y + 5, { width: 100, align: "right" });
+        
+        const net = row.income - row.expense;
+        doc.text(formatPrice(net), 440, y + 5, { width: 100, align: "right" });
         y += 18;
       });
 
-      // Fila de Total de resumen
+      // Fila total consolidado
       doc.rect(40, y, 515, 18).fill("#f1f5f9");
       doc.fillColor("#0f172a").fontSize(8).font("Helvetica-Bold");
-      doc.text("TOTAL GENERAL", 48, y + 5);
-      doc.text(totalCount.toString(), 220, y + 5, { width: 100, align: "center" });
-      doc.text(formatPrice(totalRevenue), 400, y + 5, { width: 140, align: "right" });
+      doc.text("TOTAL CONSOLIDADO", 48, y + 5);
+      doc.text(formatPrice(totalIncome), 220, y + 5, { width: 100, align: "right" });
+      doc.text(formatPrice(totalExpenses), 330, y + 5, { width: 100, align: "right" });
+      doc.text(formatPrice(netBalance), 440, y + 5, { width: 100, align: "right" });
 
-      y += 35;
+      // --- PAGINA 2: MOVIMIENTOS DE CAJA ---
+      doc.addPage();
+      let currentY = 50;
 
-      // Sección 2: Detalle de turnos
-      doc.fillColor("#1e293b").fontSize(11).font("Helvetica-Bold").text("DETALLE DE TURNOS COMPLETADOS", 40, y);
-      y += 18;
+      doc.fillColor("#1e293b").fontSize(12).font("Helvetica-Bold").text("MOVIMIENTOS DE CAJA DETALLADOS", 40, currentY);
+      currentY += 20;
 
-      const drawDetailTableHeader = (d: typeof doc, headerY: number) => {
+      const drawTxTableHeader = (d: typeof doc, headerY: number) => {
+        d.rect(40, headerY, 515, 18).fill("#1e293b");
+        d.fillColor("#ffffff").fontSize(7).font("Helvetica-Bold");
+        
+        d.text("Fecha", 46, headerY + 5);
+        d.text("Tipo", 96, headerY + 5);
+        d.text("Categoría", 136, headerY + 5);
+        d.text("Descripción", 216, headerY + 5);
+        d.text("Caja / Medio", 376, headerY + 5);
+        d.text("Monto", 476, headerY + 5, { width: 74, align: "right" });
+        
+        return headerY + 18;
+      };
+
+      currentY = drawTxTableHeader(doc, currentY);
+
+      if (transactions.length === 0) {
+        doc.fillColor("#64748b").fontSize(8).font("Helvetica-Oblique").text("No hay movimientos de caja registrados en este período.", 48, currentY + 10);
+        currentY += 30;
+      } else {
+        transactions.forEach((tx, idx: number) => {
+          if (currentY > 730) {
+            doc.addPage();
+            currentY = 50;
+            currentY = drawTxTableHeader(doc, currentY);
+          }
+
+          if (idx % 2 === 1) {
+            doc.rect(40, currentY, 515, 18).fill("#f8fafc");
+          }
+
+          doc.fillColor("#334155").fontSize(7).font("Helvetica");
+          doc.text(formatDate(tx.date), 46, currentY + 5);
+          
+          const typeStr = tx.type === CashflowType.INFLOW ? "Ingreso" : "Egreso";
+          doc.text(typeStr, 96, currentY + 5);
+          doc.text(tx.category?.name || "Otros", 136, currentY + 5, { width: 75, height: 10, lineBreak: false });
+          doc.text(tx.description || "-", 216, currentY + 5, { width: 155, height: 10, lineBreak: false });
+          doc.text(formatPaymentMethod(tx.paymentMethod), 376, currentY + 5);
+
+          const sign = tx.type === CashflowType.INFLOW ? "+" : "-";
+          const color = tx.type === CashflowType.INFLOW ? "#059669" : "#dc2626";
+          doc.fillColor(color).font("Helvetica-Bold");
+          doc.text(sign + formatPrice(tx.amount), 476, currentY + 5, { width: 74, align: "right" });
+
+          currentY += 18;
+        });
+      }
+
+      // --- PAGINA 3+: INGRESOS POR TURNOS ---
+      doc.addPage();
+      currentY = 50;
+
+      doc.fillColor("#1e293b").fontSize(12).font("Helvetica-Bold").text("DETALLE DE INGRESOS POR TURNOS", 40, currentY);
+      currentY += 20;
+
+      const drawBookingsTableHeader = (d: typeof doc, headerY: number) => {
         d.rect(40, headerY, 515, 18).fill("#1e293b");
         d.fillColor("#ffffff").fontSize(7).font("Helvetica-Bold");
         
@@ -393,43 +664,49 @@ export async function GET(request: Request) {
         return headerY + 18;
       };
 
-      y = drawDetailTableHeader(doc, y);
+      currentY = drawBookingsTableHeader(doc, currentY);
 
-      bookings.forEach((booking, idx) => {
-        // Paginación si supera límite (730 para evitar desborde con el footer a 785)
-        if (y > 720) {
-          doc.addPage();
-          y = 50;
-          y = drawDetailTableHeader(doc, y);
-        }
+      if (bookings.length === 0) {
+        doc.fillColor("#64748b").fontSize(8).font("Helvetica-Oblique").text("No hay turnos completados registrados en este período.", 48, currentY + 10);
+        currentY += 30;
+      } else {
+        bookings.forEach((booking, idx) => {
+          if (currentY > 730) {
+            doc.addPage();
+            currentY = 50;
+            currentY = drawBookingsTableHeader(doc, currentY);
+          }
 
-        if (idx % 2 === 1) {
-          doc.rect(40, y, 515, 18).fill("#f8fafc");
-        }
+          if (idx % 2 === 1) {
+            doc.rect(40, currentY, 515, 18).fill("#f8fafc");
+          }
 
-        doc.fillColor("#334155").fontSize(7).font("Helvetica");
-        doc.text(formatDate(booking.date), 46, y + 5);
-        doc.text(formatTime(booking.date), 96, y + 5);
-        doc.text(booking.clientName, 136, y + 5, { width: 105, height: 10, lineBreak: false });
-        doc.text(booking.serviceName, 246, y + 5, { width: 105, height: 10, lineBreak: false });
-        doc.text(booking.barberName, 356, y + 5, { width: 75, height: 10, lineBreak: false });
-        doc.text(formatPrice(booking.amount), 436, y + 5, { width: 50, align: "right" });
-        doc.text(formatPaymentMethod(booking.paymentMethod), 496, y + 5, { width: 54, align: "right" });
+          doc.fillColor("#334155").fontSize(7).font("Helvetica");
+          doc.text(formatDate(booking.date), 46, currentY + 5);
+          doc.text(formatTime(booking.date), 96, currentY + 5);
+          doc.text(booking.clientName, 136, currentY + 5, { width: 105, height: 10, lineBreak: false });
+          doc.text(booking.serviceName, 246, currentY + 5, { width: 105, height: 10, lineBreak: false });
+          doc.text(booking.barberName, 356, currentY + 5, { width: 75, height: 10, lineBreak: false });
+          
+          doc.font("Helvetica-Bold");
+          doc.text(formatPrice(booking.amount), 436, currentY + 5, { width: 50, align: "right" });
+          doc.font("Helvetica");
+          doc.text(formatPaymentMethod(booking.paymentMethod), 496, currentY + 5, { width: 54, align: "right" });
 
-        y += 18;
-      });
-
-      // Fila de Total de detalle
-      if (y > 720) {
-        doc.addPage();
-        y = 50;
-        y = drawDetailTableHeader(doc, y);
+          currentY += 18;
+        });
       }
 
-      doc.rect(40, y, 515, 18).fill("#f1f5f9");
+      // Fila de total de turnos al final
+      if (currentY > 730) {
+        doc.addPage();
+        currentY = 50;
+        currentY = drawBookingsTableHeader(doc, currentY);
+      }
+      doc.rect(40, currentY, 515, 18).fill("#f1f5f9");
       doc.fillColor("#0f172a").fontSize(7).font("Helvetica-Bold");
-      doc.text("TOTAL FACTURADO", 46, y + 5);
-      doc.text(formatPrice(totalRevenue), 436, y + 5, { width: 50, align: "right" });
+      doc.text("TOTAL INGRESOS POR TURNOS", 46, currentY + 5);
+      doc.text(formatPrice(totalBookingIncome), 436, currentY + 5, { width: 50, align: "right" });
 
       // Agregar pie de página dinámico (Página X de Y)
       const range = doc.bufferedPageRange();

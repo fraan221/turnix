@@ -37,6 +37,7 @@ model User {
   ownedBarbershop  Barbershop?        @relation("BarbershopOwner")
   teamMembership   Team?
   PushSubscription PushSubscription[]
+  cashflowTransactionsCreated CashflowTransaction[] @relation("CashflowTransactionsCreated")
 }
 
 model Barbershop {
@@ -64,6 +65,10 @@ model Barbershop {
   bookings          Booking[]
   clients           Client[]
   recurringBookings RecurringBooking[]
+  
+  cashflowCategories  CashflowCategory[]
+  cashflowTransactions CashflowTransaction[]
+  fixedExpenses        FixedExpense[]
 }
 
 model MercadoPagoCredentials {
@@ -359,3 +364,65 @@ model RecurringBooking {
 
   @@unique([barberId, dayOfWeek, startTime, frequency])
 }
+
+enum CashflowType {
+  INFLOW
+  OUTFLOW
+}
+
+model CashflowCategory {
+  id           String     @id @default(cuid())
+  name         String
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  
+  transactions CashflowTransaction[]
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([barbershopId, name])
+}
+
+model FixedExpense {
+  id           String     @id @default(cuid())
+  name         String
+  amount       Float
+  startDate    DateTime
+  active       Boolean    @default(true)
+  
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  
+  transactions CashflowTransaction[]
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model CashflowTransaction {
+  id            String           @id @default(cuid())
+  amount        Float
+  type          CashflowType
+  description   String?
+  date          DateTime
+  paymentMethod PaymentMethod
+  
+  categoryId    String
+  category      CashflowCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  fixedExpenseId String?
+  fixedExpense   FixedExpense?   @relation(fields: [fixedExpenseId], references: [id], onDelete: SetNull)
+  
+  barbershopId  String
+  barbershop    Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  
+  createdById   String
+  createdBy     User             @relation("CashflowTransactionsCreated", fields: [createdById], references: [id])
+  
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([barbershopId, date])
+}
+

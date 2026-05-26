@@ -41,6 +41,7 @@ import {
   Bug,
   Siren,
   Repeat,
+  Wallet,
 } from "lucide-react";
 import { WhatsAppIcon } from "./icons/WhatsAppIcon";
 
@@ -80,6 +81,7 @@ export function DashboardSidebar() {
           label: "Estadísticas",
           icon: BarChart2,
         },
+        { href: "/dashboard/cashflow", label: "Caja", icon: Wallet },
       ];
     }
 
