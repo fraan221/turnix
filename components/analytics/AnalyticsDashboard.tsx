@@ -13,6 +13,7 @@ import type {
   Period,
 } from "@/actions/analytics.actions";
 import { PeriodDropdown } from "@/components/analytics/PeriodDropdown";
+import { ExportReportDropdown } from "@/components/analytics/ExportReportDropdown";
 import { ClientMetricsCards } from "@/components/analytics/ClientMetricsCards";
 import { TopClientsTable } from "@/components/analytics/TopClientsTable";
 import { TopServicesCard } from "@/components/analytics/TopServicesCard";
@@ -63,10 +64,13 @@ export default function AnalyticsDashboard({
           <h2 className="text-xl font-semibold tracking-tight">
             Tu facturación
           </h2>
-          <PeriodDropdown
-            currentPeriod={currentPeriod}
-            onPeriodChange={handlePeriodChange}
-          />
+          <div className="flex items-center gap-2">
+            <PeriodDropdown
+              currentPeriod={currentPeriod}
+              onPeriodChange={handlePeriodChange}
+            />
+            <ExportReportDropdown currentPeriod={currentPeriod} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
