@@ -26,12 +26,12 @@ export default function DashboardLayout({
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog
-            version="v2026.05.e2"
-            title="Nuevas mejoras en Turnix"
+            version="v2026.05.e4"
+            title="Nuevas herramientas para tu negocio"
             items={[
-              "Editá el servicio, el horario y el método de cobro de un turno directamente desde el detalle.",
-              "Eliminá servicios que ya no usas, con avisos si tienen turnos asociados.",
-              "Mejoramos la estabilidad y el rendimiento de la plataforma.",
+              "Nuevo módulo de Caja: registrá tus ingresos, egresos y gastos fijos para saber cuánto te queda realmente cada mes.",
+              "Exportá tus reportes financieros en Excel o PDF para compartirlos con tu contador.",
+              "Actualizamos la seguridad y estabilidad de la plataforma.",
             ]}
           />
           <SiteHeaderServer />
