@@ -34,9 +34,9 @@ model User {
   Notification      Notification[]
   recurringBookings RecurringBooking[] @relation("BarberRecurringBookings")
 
-  ownedBarbershop  Barbershop?        @relation("BarbershopOwner")
-  teamMembership   Team?
-  PushSubscription PushSubscription[]
+  ownedBarbershop             Barbershop?           @relation("BarbershopOwner")
+  teamMembership              Team?
+  PushSubscription            PushSubscription[]
   cashflowTransactionsCreated CashflowTransaction[] @relation("CashflowTransactionsCreated")
 }
 
@@ -65,8 +65,8 @@ model Barbershop {
   bookings          Booking[]
   clients           Client[]
   recurringBookings RecurringBooking[]
-  
-  cashflowCategories  CashflowCategory[]
+
+  cashflowCategories   CashflowCategory[]
   cashflowTransactions CashflowTransaction[]
   fixedExpenses        FixedExpense[]
 }
@@ -99,6 +99,8 @@ model Client {
   barbershop   Barbershop     @relation(fields: [barbershopId], references: [id])
   barbershopId String
   Notification Notification[]
+
+  @@index([barbershopId, createdAt])
 }
 
 model Service {
@@ -155,6 +157,9 @@ model Booking {
   recurringBookingId String?
 
   @@index([barberId, status, startTime])
+  @@index([barbershopId, status, startTime])
+  @@index([clientId])
+  @@index([serviceId])
 }
 
 model Account {
@@ -375,54 +380,53 @@ model CashflowCategory {
   name         String
   barbershopId String
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  
+
   transactions CashflowTransaction[]
-  
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([barbershopId, name])
 }
 
 model FixedExpense {
-  id           String     @id @default(cuid())
-  name         String
-  amount       Float
-  startDate    DateTime
-  active       Boolean    @default(true)
-  
+  id        String   @id @default(cuid())
+  name      String
+  amount    Float
+  startDate DateTime
+  active    Boolean  @default(true)
+
   barbershopId String
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  
+
   transactions CashflowTransaction[]
-  
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CashflowTransaction {
-  id            String           @id @default(cuid())
+  id            String        @id @default(cuid())
   amount        Float
   type          CashflowType
   description   String?
   date          DateTime
   paymentMethod PaymentMethod
-  
-  categoryId    String
-  category      CashflowCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+
+  categoryId String
+  category   CashflowCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   fixedExpenseId String?
-  fixedExpense   FixedExpense?   @relation(fields: [fixedExpenseId], references: [id], onDelete: SetNull)
-  
-  barbershopId  String
-  barbershop    Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  
-  createdById   String
-  createdBy     User             @relation("CashflowTransactionsCreated", fields: [createdById], references: [id])
-  
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  fixedExpense   FixedExpense? @relation(fields: [fixedExpenseId], references: [id], onDelete: SetNull)
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("CashflowTransactionsCreated", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([barbershopId, date])
 }
-
