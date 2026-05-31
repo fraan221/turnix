@@ -61,13 +61,10 @@ export default async function AnalyticsPage(props: AnalyticsPageProps) {
 
   return (
     <div className="mx-auto space-y-8 max-w-7xl">
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Estadísticas</h1>
-          <p className="text-sm text-muted-foreground">
-            Monitoreá el rendimiento de tu barbería
-          </p>
-        </div>
+      <div className="flex flex-col gap-2 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Monitoreá el rendimiento de tu barbería
+        </p>
         <RoutePeriodSelector baseUrl="/dashboard/analytics" />
       </div>
 
