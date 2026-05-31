@@ -26,11 +26,9 @@ export default function DashboardLayout({
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog
-            version="v2026.05.e4"
-            title="Nuevas herramientas para tu negocio"
+            version="v2026.05.e5"
+            title="Mejoras de rendimiento"
             items={[
-              "Nuevo módulo de Caja: registrá tus ingresos, egresos y gastos fijos para saber cuánto te queda realmente cada mes.",
-              "Exportá tus reportes financieros en Excel o PDF para compartirlos con tu contador.",
               "Analytics carga más rápido: optimizamos la base de datos para que tus reportes no se queden trabados.",
             ]}
           />
