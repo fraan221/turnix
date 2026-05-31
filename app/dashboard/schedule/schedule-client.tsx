@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { TimeBlock } from "@prisma/client";
-import { Plus, CalendarX } from "lucide-react";
+import { Plus, CalendarX, User } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -87,11 +87,12 @@ export function ScheduleClient({
   return (
     <div className="px-4 pb-6 mx-auto space-y-8 w-full max-w-6xl sm:px-6">
       {isOwner && teamMembers.length > 1 && (
-        <div className="flex justify-end mb-4">
-          <div className="w-full sm:w-[280px]">
-            <label className="text-xs font-medium mb-1.5 block text-muted-foreground uppercase tracking-wider">
-              Gestionando horarios de:
-            </label>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/30 p-3 rounded-lg border mb-6">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <User className="w-4 h-4 text-primary" />
+            <span>Horarios de atención</span>
+          </div>
+          <div className="w-full sm:w-[240px]">
             <Select value={selectedBarberId} onValueChange={handleBarberChange}>
               <SelectTrigger className="w-full bg-background">
                 <SelectValue placeholder="Seleccionar barbero" />

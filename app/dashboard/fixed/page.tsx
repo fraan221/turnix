@@ -39,14 +39,6 @@ export default async function FixedBookingsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6 mx-auto w-full max-w-6xl md:p-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Turnos Fijos</h1>
-        <p className="text-muted-foreground">
-          Gestioná las reservas automáticas y recurrentes de tus clientes
-          frecuentes.
-        </p>
-      </div>
-
       <Suspense fallback={<FixedBookingsListSkeleton />}>
         <FixedBookingsLoader
           barbershopId={barbershopId}

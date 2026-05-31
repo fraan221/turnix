@@ -63,10 +63,7 @@ export default function BarberStatsDashboard({
 
   return (
     <div className="mx-auto space-y-8 max-w-7xl">
-      <div className="flex flex-col gap-2 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Revisá tu desempeño y métricas personales
-        </p>
+      <div className="flex justify-end mb-6">
         <PeriodDropdown
           currentPeriod={currentPeriod}
           onPeriodChange={handlePeriodChange}

@@ -151,16 +151,21 @@ export default function CashflowDashboard({
 
   return (
     <div className="mx-auto space-y-6 max-w-7xl">
-      {/* SECCIÓN CONTROLES / FILTROS */}
-      <div className="flex justify-end items-center gap-2">
-        <PeriodDropdown
-          currentPeriod={period as any}
-          onPeriodChange={handlePeriodChange}
-        />
-        <ExportReportDropdown currentPeriod={period} />
-        <Button variant="outline" size="icon" onClick={handleRefresh} title="Actualizar datos">
-          <RefreshCw className="w-4 h-4" />
-        </Button>
+      {/* Barra de herramientas integrada */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/30 p-4 rounded-xl border border-border/60">
+        <div className="text-sm font-medium text-muted-foreground">
+          Resumen de caja y transacciones
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <PeriodDropdown
+            currentPeriod={period as any}
+            onPeriodChange={handlePeriodChange}
+          />
+          <ExportReportDropdown currentPeriod={period} />
+          <Button variant="outline" size="icon" onClick={handleRefresh} className="shrink-0" title="Actualizar datos">
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* TARJETAS RESUMEN PERSONALIZADAS (DISEÑO PREMIUM) */}

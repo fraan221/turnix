@@ -85,50 +85,47 @@ export function ServicesClient({
 
   return (
     <>
-      <Card className="w-full max-w-6xl mx-auto border-2">
-        <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-2xl font-bold">Mis Servicios</CardTitle>
+      <div className="space-y-6">
+        <div className="flex justify-end items-center">
           <Button
             onClick={() => setModalOpen(true)}
-            size="lg"
+            size="default"
             className="w-full sm:w-auto"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Crear Servicio
-          </Button>
-        </CardHeader>
+          <Plus className="w-4 h-4 mr-2" />
+          Crear Servicio
+        </Button>
+      </div>
 
-        <CardContent className="pt-6">
-          {userRole === Role.OWNER && teamsEnabled ? (
-            <div className="space-y-8">
-              {initialGroupedServices.map(
-                ({ barberId, barberName, services }) => (
-                  <div key={barberId} className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
-                        <User className="w-4 h-4 text-primary" />
-                        <h3 className="text-base font-semibold">
-                          {barberName}
-                          {barberId === userId && (
-                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                              (vos)
-                            </span>
-                          )}
-                        </h3>
-                      </div>
-                      <Separator className="flex-1" />
-                    </div>
-
-                    <ServiceList services={services} />
+      {userRole === Role.OWNER && teamsEnabled ? (
+        <div className="space-y-8">
+          {initialGroupedServices.map(
+            ({ barberId, barberName, services }) => (
+              <div key={barberId} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                    <User className="w-4 h-4 text-primary" />
+                    <h3 className="text-base font-semibold">
+                      {barberName}
+                      {barberId === userId && (
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                          (vos)
+                        </span>
+                      )}
+                    </h3>
                   </div>
-                )
-              )}
-            </div>
-          ) : (
-            <ServiceList services={initialServices} />
+                  <Separator className="flex-1" />
+                </div>
+
+                <ServiceList services={services} />
+              </div>
+            )
           )}
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <ServiceList services={initialServices} />
+      )}
+    </div>
 
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-[500px]">

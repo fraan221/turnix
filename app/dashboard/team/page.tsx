@@ -33,20 +33,21 @@ async function TeamPageContent() {
   ];
 
   return (
-    <Card className="max-w-6xl mx-auto">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2">
-          Barberos
-          <span className="flex items-center justify-center w-6 h-6 text-sm font-medium rounded-full bg-primary/10 text-primary">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Equipo de trabajo</span>
+          <span className="flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary">
             {allMembers.length}
           </span>
-        </CardTitle>
+        </div>
         <AddBarberForm />
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <Card className="p-6">
         <TeamList teamMembers={allMembers} ownerId={barbershop.ownerId} />
-      </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
 

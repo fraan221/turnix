@@ -60,15 +60,15 @@ export default async function AnalyticsPage(props: AnalyticsPageProps) {
   const period = searchParams.period || "week";
 
   return (
-    <div className="mx-auto space-y-8 max-w-7xl">
-      <div className="flex flex-col gap-2 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Monitoreá el rendimiento de tu barbería
-        </p>
+    <div className="mx-auto space-y-6 max-w-7xl">
+      <div className="flex items-center justify-between border-b pb-4 gap-4">
+        <span className="text-sm font-medium text-muted-foreground">
+          Métricas de rendimiento
+        </span>
         <RoutePeriodSelector baseUrl="/dashboard/analytics" />
       </div>
 
-      <div className="space-y-10">
+      <div className="space-y-8">
         <Suspense fallback={<BillingSkeleton />}>
           <BillingSection period={period} />
         </Suspense>

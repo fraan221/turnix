@@ -51,25 +51,20 @@ async function ClientsPageContent() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>{isOwner ? "Clientes de la Barbería" : "Mis Clientes"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!hasClients ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
-              <Users className="w-12 h-12 text-muted-foreground" />
-              <p className="mt-4 font-semibold">No hay clientes para mostrar</p>
-              <p className="text-sm text-muted-foreground">
-                {isOwner
-                  ? "Los clientes aparecerán aquí después de su primer turno."
-                  : "Tus clientes aparecerán aquí después de que los atiendas por primera vez."}
-              </p>
-            </div>
-          ) : (
-            <ClientListClient clients={clients} />
-          )}
-        </CardContent>
+      <Card className="p-6">
+        {!hasClients ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+            <Users className="w-12 h-12 text-muted-foreground" />
+            <p className="mt-4 font-semibold">No hay clientes para mostrar</p>
+            <p className="text-sm text-muted-foreground">
+              {isOwner
+                ? "Los clientes aparecerán aquí después de su primer turno."
+                : "Tus clientes aparecerán aquí después de que los atiendas por primera vez."}
+            </p>
+          </div>
+        ) : (
+          <ClientListClient clients={clients} />
+        )}
       </Card>
     </div>
   );
