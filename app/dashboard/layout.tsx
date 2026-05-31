@@ -31,7 +31,7 @@ export default function DashboardLayout({
             items={[
               "Nuevo módulo de Caja: registrá tus ingresos, egresos y gastos fijos para saber cuánto te queda realmente cada mes.",
               "Exportá tus reportes financieros en Excel o PDF para compartirlos con tu contador.",
-              "Actualizamos la seguridad y estabilidad de la plataforma.",
+              "Analytics carga más rápido: optimizamos la base de datos para que tus reportes no se queden trabados.",
             ]}
           />
           <SiteHeaderServer />
