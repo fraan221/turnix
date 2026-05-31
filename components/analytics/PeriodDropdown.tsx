@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
 interface PeriodDropdownProps {
   currentPeriod: Period;
   onPeriodChange: (period: Period) => void;
@@ -44,5 +46,22 @@ export function PeriodDropdown({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+export function RoutePeriodSelector({ baseUrl }: { baseUrl: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPeriod = (searchParams.get("period") as Period) || "week";
+
+  const handlePeriodChange = (newPeriod: Period) => {
+    router.push(`${baseUrl}?period=${newPeriod}`);
+  };
+
+  return (
+    <PeriodDropdown
+      currentPeriod={currentPeriod}
+      onPeriodChange={handlePeriodChange}
+    />
   );
 }

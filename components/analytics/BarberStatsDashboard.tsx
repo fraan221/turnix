@@ -19,6 +19,7 @@ import { formatPrice } from "@/lib/utils";
 import { DollarSign, Scissors, Users, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import React from "react";
+import { AnalyticsErrorState } from "@/components/analytics/AnalyticsErrorState";
 
 interface BarberStatsDashboardProps {
   initialData: PersonalStatsData;
@@ -49,11 +50,7 @@ export default function BarberStatsDashboard({
   };
 
   if (initialData.error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-red-500">{initialData.error}</p>
-      </div>
-    );
+    return <AnalyticsErrorState variant="full" />;
   }
 
   const analyticsDataForInsights: AnalyticsData = {
@@ -112,13 +109,25 @@ export default function BarberStatsDashboard({
         />
       </div>
 
-      {financeData.breakdown?.length > 0 && (
-        <div className="pt-8 mx-auto max-w-7xl">
+      {financeData.error ? (
+        <div className="pt-8 mx-auto max-w-7xl space-y-4">
           <h3 className="mb-4 text-xl font-bold tracking-tight">
             Métodos de cobro
           </h3>
-          <PaymentBreakdownCards breakdown={financeData.breakdown} />
+          <AnalyticsErrorState
+            title="No pudimos cargar los métodos de cobro"
+            variant="inline"
+          />
         </div>
+      ) : (
+        financeData.breakdown?.length > 0 && (
+          <div className="pt-8 mx-auto max-w-7xl">
+            <h3 className="mb-4 text-xl font-bold tracking-tight">
+              Métodos de cobro
+            </h3>
+            <PaymentBreakdownCards breakdown={financeData.breakdown} />
+          </div>
+        )
       )}
 
       <div className="pt-8 mx-auto space-y-8 max-w-7xl">
@@ -126,21 +135,28 @@ export default function BarberStatsDashboard({
           <h3 className="mb-4 text-xl font-bold tracking-tight">
             Tus Clientes
           </h3>
-          <div className="space-y-6">
-            <ClientMetricsCards
-              metrics={clientMetrics}
-              period={currentPeriod}
+          {clientMetrics.error ? (
+            <AnalyticsErrorState
+              title="No pudimos cargar los datos de tus clientes"
+              variant="inline"
             />
-            <ClientInsightsPanel
-              metrics={clientMetrics}
-              analyticsData={analyticsDataForInsights}
-              period={currentPeriod}
-            />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <TopClientsTable clients={clientMetrics.topClients} />
-              <TopServicesCard services={initialData.topServices} />
+          ) : (
+            <div className="space-y-6">
+              <ClientMetricsCards
+                metrics={clientMetrics}
+                period={currentPeriod}
+              />
+              <ClientInsightsPanel
+                metrics={clientMetrics}
+                analyticsData={analyticsDataForInsights}
+                period={currentPeriod}
+              />
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <TopClientsTable clients={clientMetrics.topClients} />
+                <TopServicesCard services={initialData.topServices} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
