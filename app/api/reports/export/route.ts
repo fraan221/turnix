@@ -18,7 +18,7 @@ import { formatDate, formatTime, formatToDateInput } from "@/lib/date-helpers";
 // Validaciones con Zod
 const exportQuerySchema = z.object({
   format: z.enum(["xlsx", "pdf"]),
-  period: z.enum(["day", "week", "month", "quarter", "year", "all"]),
+  period: z.enum(["day", "week", "month", "lastMonth", "year", "all"]),
 });
 
 export async function GET(request: Request) {

@@ -39,10 +39,10 @@ function getDateRange(period: string) {
       return { startDate: getStartOfWeek(now), endDate: getEndOfWeek(now) };
     case "month":
       return { startDate: getStartOfMonth(now), endDate: getEndOfMonth(now) };
-    case "quarter": {
-      const start = getStartOfMonth(new Date(now));
-      start.setMonth(start.getMonth() - 2);
-      return { startDate: start, endDate: getEndOfDay(now) };
+    case "lastMonth": {
+      const ref = new Date(now);
+      ref.setMonth(ref.getMonth() - 1);
+      return { startDate: getStartOfMonth(ref), endDate: getEndOfMonth(ref) };
     }
     case "year":
       return { startDate: getStartOfYear(now), endDate: getEndOfYear(now) };
@@ -218,7 +218,7 @@ export async function getCashflowData(period: string = "month") {
 
     // Para saber si está pago, usamos el rango del período seleccionado,
     // a menos que sea un período amplio (trimestre, año, todo), en cuyo caso usamos el mes calendario actual.
-    const isWiderPeriod = period === "quarter" || period === "year" || period === "all";
+    const isWiderPeriod = period === "lastMonth" || period === "year" || period === "all";
     const paymentStart = isWiderPeriod ? getStartOfMonth(new Date()) : startDate;
     const paymentEnd = isWiderPeriod ? getEndOfMonth(new Date()) : endDate;
 

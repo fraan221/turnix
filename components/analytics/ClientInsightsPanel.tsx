@@ -12,7 +12,7 @@ const comparisonDescriptions: Record<Period, string> = {
   day: "hoy",
   week: "esta semana",
   month: "este mes",
-  quarter: "en los últimos 3 meses",
+  lastMonth: "el mes pasado",
   year: "este año",
   all: "histórico",
 };

@@ -21,7 +21,7 @@ export const periodsConfig: { value: Period; label: string }[] = [
   { value: "day", label: "Hoy" },
   { value: "week", label: "Esta Semana" },
   { value: "month", label: "Este Mes" },
-  { value: "quarter", label: "Últimos 3 Meses" },
+  { value: "lastMonth", label: "Mes Pasado" },
   { value: "year", label: "Este Año" },
   { value: "all", label: "Todo el tiempo" },
 ];

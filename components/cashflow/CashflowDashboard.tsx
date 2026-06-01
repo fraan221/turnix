@@ -90,7 +90,7 @@ const periodDescriptions: Record<string, string> = {
   day: "hoy",
   week: "esta semana",
   month: "este mes",
-  quarter: "últimos 3 meses",
+  lastMonth: "el mes pasado",
   year: "este año",
   all: "historial completo",
 };

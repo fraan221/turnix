@@ -18,7 +18,7 @@ const periodDescriptions: Record<Period, string> = {
   day: "en las últimas 24 horas",
   week: "en los últimos 7 días",
   month: "en los últimos 30 días",
-  quarter: "en los últimos 3 meses",
+  lastMonth: "el mes pasado",
   year: "este año",
   all: "en total",
 };

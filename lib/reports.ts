@@ -12,7 +12,7 @@ import {
   getAllTimeStart,
 } from "@/lib/date-helpers";
 
-export type Period = "day" | "week" | "month" | "quarter" | "year" | "all";
+export type Period = "day" | "week" | "month" | "lastMonth" | "year" | "all";
 
 export type ReportBooking = {
   date: Date;
@@ -57,12 +57,12 @@ export function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfMonth(now),
         endDate: getEndOfMonth(now),
       };
-    case "quarter": {
-      const startDate = getStartOfMonth(new Date(now));
-      startDate.setMonth(startDate.getMonth() - 2);
+    case "lastMonth": {
+      const ref = new Date(now);
+      ref.setMonth(ref.getMonth() - 1);
       return {
-        startDate,
-        endDate: getEndOfDay(now),
+        startDate: getStartOfMonth(ref),
+        endDate: getEndOfMonth(ref),
       };
     }
     case "year":
@@ -108,8 +108,8 @@ export function formatPeriodLabel(period: Period, startDate: Date, endDate: Date
       return `Esta Semana (${startStr} al ${endStr})`;
     case "month":
       return `Este Mes (${startStr} al ${endStr})`;
-    case "quarter":
-      return `Últimos 3 Meses (${startStr} al ${endStr})`;
+    case "lastMonth":
+      return `Mes Pasado (${startStr} al ${endStr})`;
     case "year":
       return `Este Año (${startStr} al ${endStr})`;
     case "all":

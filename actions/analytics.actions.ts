@@ -16,7 +16,7 @@ import {
 } from "@/lib/date-helpers";
 import { unstable_cache as cache } from "next/cache";
 
-export type Period = "day" | "week" | "month" | "quarter" | "year" | "all";
+export type Period = "day" | "week" | "month" | "lastMonth" | "year" | "all";
 
 export type ChartDataPoint = {
   name: string;
@@ -124,10 +124,9 @@ function formatChartDataByPeriod(
     if (period === "month") {
       groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
       sortKey = day;
-    } else if (period === "quarter") {
-      const weekOfMonth = Math.ceil(day / 7);
-      groupKey = `Sem ${weekOfMonth} ${months[month]}`;
-      sortKey = year * 1000 + (month + 1) * 10 + weekOfMonth;
+    } else if (period === "lastMonth") {
+      groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
+      sortKey = day;
     } else if (period === "year") {
       groupKey = months[month];
       sortKey = month + 1;
@@ -165,34 +164,22 @@ function formatChartDataByPeriod(
     return filledData;
   }
 
-  if (period === "quarter" && groupedData.size > 0) {
-    const rangeStart = startDate ? new Date(startDate) : new Date();
-    const rangeEnd = endDate ? new Date(endDate) : new Date();
+  if (period === "lastMonth" && groupedData.size > 0) {
+    const monthReference = startDate ? new Date(startDate) : new Date();
 
-    const currentMonth = new Date(
-      rangeStart.getFullYear(),
-      rangeStart.getMonth(),
-      1,
-    );
-    const lastMonth = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+    const year = monthReference.getFullYear();
+    const monthIndex = monthReference.getMonth();
+    const monthLabel = String(monthIndex + 1).padStart(2, "0");
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
     const filledData: ChartDataPoint[] = [];
 
-    while (currentMonth <= lastMonth) {
-      const monthIndex = currentMonth.getMonth();
-      const year = currentMonth.getFullYear();
-      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-      const weeksInMonth = Math.ceil(daysInMonth / 7);
-
-      for (let week = 1; week <= weeksInMonth; week++) {
-        const key = `Sem ${week} ${months[monthIndex]}`;
-        filledData.push({
-          name: key,
-          total: groupedData.get(key)?.total ?? 0,
-        });
-      }
-
-      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = `${String(day).padStart(2, "0")}/${monthLabel}`;
+      filledData.push({
+        name: key,
+        total: groupedData.get(key)?.total ?? 0,
+      });
     }
 
     return filledData;
@@ -267,12 +254,12 @@ function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfMonth(now),
         endDate: getEndOfMonth(now),
       };
-    case "quarter": {
-      const startDate = getStartOfMonth(new Date(now));
-      startDate.setMonth(startDate.getMonth() - 2);
+    case "lastMonth": {
+      const ref = new Date(now);
+      ref.setMonth(ref.getMonth() - 1);
       return {
-        startDate,
-        endDate: getEndOfDay(now),
+        startDate: getStartOfMonth(ref),
+        endDate: getEndOfMonth(ref),
       };
     }
     case "year":
@@ -312,12 +299,10 @@ function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
       start.setMonth(start.getMonth() - 1);
       return { start, end: getEndOfMonth(start) };
     }
-    case "quarter": {
-      const end = new Date(getStartOfMonth(now));
-      end.setDate(0);
-      const start = getStartOfMonth(new Date(end));
-      start.setMonth(start.getMonth() - 2);
-      return { start, end: getEndOfMonth(end) };
+    case "lastMonth": {
+      const ref = new Date(now);
+      ref.setMonth(ref.getMonth() - 2);
+      return { start: getStartOfMonth(ref), end: getEndOfMonth(ref) };
     }
     case "year": {
       const start = getStartOfYear(now);
