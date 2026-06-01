@@ -42,7 +42,10 @@ import {
   Siren,
   Repeat,
   Wallet,
+  MessageSquareHeart,
+  Link as LinkIcon,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { WhatsAppIcon } from "./icons/WhatsAppIcon";
 
 export function DashboardSidebar() {
@@ -50,6 +53,7 @@ export function DashboardSidebar() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const [isSupportModalOpen, setIsSupportModalOpen] = React.useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = React.useState(false);
 
   const supportPhoneNumber = "+5491160542164";
   const whatsappUrl = `https://wa.me/${formatPhoneNumberForWhatsApp(
@@ -105,6 +109,14 @@ export function DashboardSidebar() {
 
   const handleConfirmSupport = () => {
     window.open(whatsappUrl, "_blank");
+  };
+
+  const handleFeedbackClick = () => {
+    setIsFeedbackModalOpen(true);
+  };
+
+  const handleConfirmFeedback = () => {
+    window.open("https://form.typeform.com/to/lAB96im4", "_blank");
   };
 
   return (
@@ -168,6 +180,15 @@ export function DashboardSidebar() {
                 <span>Soporte</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleFeedbackClick}
+                className="px-2 rounded-md"
+              >
+                <MessageSquareHeart className="size-6" />
+                <span>Feedback</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
 
@@ -196,6 +217,32 @@ export function DashboardSidebar() {
               <WhatsAppIcon className="w-4 h-4 mr-2" />
               Sí, continuar
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isFeedbackModalOpen}
+        onOpenChange={setIsFeedbackModalOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <MessageSquareHeart className="w-6 h-6 mr-2 text-primary" />
+              ¡Tu opinión nos importa!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-4">
+              Vas a ser redirigido a un formulario para compartir tu
+              experiencia con Turnix. No te va a llevar más de{" "}
+              <strong>5 minutos</strong> completarlo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button onClick={handleConfirmFeedback} className="w-full">
+              <LinkIcon className="w-4 h-4 mr-2" />
+              Ir al formulario
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
