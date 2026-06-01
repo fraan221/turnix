@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, Clock, AlertCircle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { ArrowLeft, Clock, AlertCircle, AlertTriangle, CreditCard, Ban, CheckCircle } from "lucide-react";
 import { LogoutForm } from "@/components/LogoutButton";
 import { SubscriptionCta } from "@/components/billing/SubscriptionCta";
 import { Button } from "@/components/ui/button";
@@ -12,12 +13,131 @@ interface SubscribePageProps {
   }>;
 }
 
+type SubscribeReason =
+  | "trial_expiring"
+  | "trial_expired"
+  | "payment_failed"
+  | "cancelled"
+  | "no_subscription"
+  | "authorized";
+
+const REASON_CONFIGS = {
+  trial_expiring: {
+    Icon: Clock,
+    iconClass: "text-primary",
+    bgClass: "bg-primary/10",
+    title: "Tu prueba está por terminar",
+    description: "Suscribite ahora para seguir gestionando tu barbería sin interrupciones.",
+    isTrial: true,
+    showCta: true,
+  },
+  trial_expired: {
+    Icon: AlertTriangle,
+    iconClass: "text-amber-600 dark:text-amber-500",
+    bgClass: "bg-amber-100 dark:bg-amber-950/30",
+    title: "Tu prueba gratuita finalizó",
+    description: "Necesitás el Plan PRO para volver a acceder a tu agenda, clientes y todos tus datos.",
+    isTrial: true,
+    showCta: true,
+  },
+  payment_failed: {
+    Icon: CreditCard,
+    iconClass: "text-destructive",
+    bgClass: "bg-destructive/10",
+    title: "Problema con tu pago",
+    description: "No pudimos procesar tu pago. Verificá o actualizá tu método de pago en Mercado Pago para recuperar el acceso.",
+    isTrial: false,
+    showCta: true,
+  },
+  cancelled: {
+    Icon: Ban,
+    iconClass: "text-muted-foreground",
+    bgClass: "bg-muted/50 dark:bg-muted/20",
+    title: "Tu suscripción fue cancelada",
+    description: "Tu plan ya no está activo. Podés reactivar la suscripción para recuperar el acceso.",
+    isTrial: false,
+    showCta: true,
+  },
+  no_subscription: {
+    Icon: AlertCircle,
+    iconClass: "text-primary",
+    bgClass: "bg-primary/10",
+    title: "Necesitás el Plan PRO",
+    description: "Suscribite para poder acceder a tu agenda, clientes y comenzar a gestionar tu barbería.",
+    isTrial: true,
+    showCta: true,
+  },
+  authorized: {
+    Icon: CheckCircle,
+    iconClass: "text-green-600 dark:text-green-500",
+    bgClass: "bg-green-100 dark:bg-green-950/30",
+    title: "Tu suscripción está activa",
+    description: "¡Gracias por confiar en Turnix! Tenés acceso ilimitado a todas las funciones PRO.",
+    isTrial: false,
+    showCta: false,
+  },
+};
+
+interface UserForResolve {
+  trialEndsAt: Date | null;
+  subscription: {
+    status: string;
+    pendingSince: Date | null;
+    mercadopagoSubscriptionId: string;
+  } | null;
+}
+
+function resolveSubscribeReason(
+  user: UserForResolve,
+  queryReason?: string
+): SubscribeReason {
+  const now = Date.now();
+  const hasTrial = !!user?.trialEndsAt;
+  const isTrialActive = hasTrial && new Date(user.trialEndsAt!).getTime() > now;
+
+  // 1. Si el usuario ya tiene suscripción activa (authorized)
+  if (user?.subscription?.status === "authorized") {
+    return "authorized";
+  }
+
+  // 2. Acceso proactivo por query param
+  if (queryReason === "trial") {
+    return isTrialActive ? "trial_expiring" : "trial_expired";
+  }
+
+  // 3. Pago pendiente fuera del período de gracia (3 días)
+  if (user?.subscription?.status === "pending" && user.subscription.pendingSince) {
+    const pendingSince = new Date(user.subscription.pendingSince);
+    const pendingGraceEnd = new Date(pendingSince);
+    pendingGraceEnd.setDate(pendingGraceEnd.getDate() + 3);
+    if (pendingGraceEnd.getTime() <= now) {
+      return "payment_failed";
+    }
+  }
+
+  // 4. Suscripción pausada o cancelada
+  if (user?.subscription?.status === "paused" || user?.subscription?.status === "cancelled") {
+    return "cancelled";
+  }
+
+  // 5. Casos por defecto basados en si tuvo período de prueba
+  if (hasTrial) {
+    return "trial_expired";
+  }
+
+  return "no_subscription";
+}
+
 export default async function SubscribePage(props: SubscribePageProps) {
   const searchParams = await props.searchParams;
   const user = await getCurrentUser();
-  const reason = searchParams.reason;
-  const isProactiveSubscription = reason === "trial";
-  const isPaymentFailed = reason === "payment_failed";
+  
+  if (!user) {
+    redirect("/login");
+  }
+
+  const resolvedReason = resolveSubscribeReason(user, searchParams.reason);
+  const config = REASON_CONFIGS[resolvedReason];
 
   return (
     <main className="flex relative flex-col justify-center items-center p-4 min-h-screen bg-gray-50 dark:bg-black">
@@ -28,53 +148,37 @@ export default async function SubscribePage(props: SubscribePageProps) {
           className="absolute top-4 left-4 sm:top-6 sm:left-6"
           aria-label="Volver al dashboard"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="size-5" />
         </Button>
       </Link>
 
-      <div className="space-y-8 w-full max-w-lg">
-        <div className="space-y-4 text-center">
+      <div className="flex flex-col gap-8 w-full max-w-lg">
+        <div className="flex flex-col gap-4 text-center">
           <div className="flex justify-center">
-            {isProactiveSubscription ? (
-              <div className="p-3 rounded-full bg-primary/10">
-                <Clock className="w-8 h-8 text-primary" />
-              </div>
-            ) : isPaymentFailed ? (
-              <div className="p-3 bg-red-100 rounded-full">
-                <AlertCircle className="w-8 h-8 text-red-600" />
-              </div>
-            ) : (
-              <div className="p-3 bg-orange-100 rounded-full">
-                <AlertCircle className="w-8 h-8 text-orange-600" />
-              </div>
-            )}
+            <div className={`p-3 rounded-full ${config.bgClass}`}>
+              <config.Icon className={`size-8 ${config.iconClass}`} />
+            </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight font-heading">
-              {isProactiveSubscription
-                ? "Tu prueba está por terminar"
-                : isPaymentFailed
-                  ? "Problema con tu pago"
-                  : "Tu prueba gratuita finalizó"}
+              {config.title}
             </h1>
             <p className="mx-auto max-w-md text-base text-muted-foreground">
-              {isProactiveSubscription
-                ? "Suscribite ahora para seguir gestionando tu barbería sin interrupciones."
-                : isPaymentFailed
-                  ? "No pudimos procesar tu pago. Actualizá tu método de pago para recuperar el acceso."
-                  : "Necesitás el Plan PRO para volver a acceder a tu agenda, clientes y todos tus datos."}
+              {config.description}
             </p>
           </div>
         </div>
 
-        {user?.subscription && (
+        {user.subscription?.mercadopagoSubscriptionId && (
           <SubscriptionManagement subscription={user.subscription} />
         )}
 
-        <div>
-          <SubscriptionCta isTrial={isProactiveSubscription} />
-        </div>
+        {config.showCta && (
+          <div>
+            <SubscriptionCta isTrial={config.isTrial} />
+          </div>
+        )}
 
         <div className="relative">
           <div className="flex absolute inset-0 items-center">
