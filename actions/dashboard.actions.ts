@@ -13,7 +13,7 @@ import {
   getArgentinaMinutesOfDay,
   parseTimeToMinutes,
 } from "@/lib/date-helpers";
-import { UpdateBookingServiceSchema } from "@/lib/schemas";
+import { UpdateBookingServiceSchema, CreateTimeBlockSchema, UpdateTimeBlockSchema } from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
@@ -26,39 +26,6 @@ export type FormState = {
   } | null;
 };
 
-const TimeBlockBaseSchema = z
-  .object({
-    startDateTime: z
-      .string()
-      .datetime({ message: "Formato de fecha de inicio inválido." }),
-    endDateTime: z
-      .string()
-      .datetime({ message: "Formato de fecha de fin inválido." }),
-    reason: z.string().optional().nullable(),
-  })
-  .refine(
-    (data) => {
-      return new Date(data.endDateTime) > new Date(data.startDateTime);
-    },
-    {
-      message: "La fecha y hora de fin debe ser posterior a la de inicio.",
-      path: ["endDateTime"],
-    },
-  );
-
-const CreateTimeBlockSchema = TimeBlockBaseSchema.extend({
-  barberId: z.string().min(1).optional().nullable(),
-}).refine(
-  (data) => {
-    return new Date(data.startDateTime) > new Date();
-  },
-  {
-    message: "No puedes crear un bloqueo en una fecha u hora pasada.",
-    path: ["startDateTime"],
-  },
-);
-
-const UpdateTimeBlockSchema = TimeBlockBaseSchema;
 
 type TimeBlockFormState = {
   success?: string | null;

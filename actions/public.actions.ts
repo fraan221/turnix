@@ -15,6 +15,7 @@ import {
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
 import { sendPushNotification } from "@/lib/push";
+import { BookingFormSchema } from "@/lib/schemas";
 
 export type AvailabilityStatus =
   | "AVAILABLE"
@@ -240,38 +241,6 @@ export async function getBarberAvailability(
 }
 
 export async function createPublicBooking(prevState: any, formData: FormData) {
-  const BookingFormSchema = z.object({
-    barberId: z.string().cuid(),
-    serviceIds: z.string().min(1),
-    clientName: z
-      .string()
-      .min(1, "El nombre es requerido.")
-      .max(50, "El nombre no puede exceder los 50 caracteres."),
-    clientPhone: z
-      .string()
-      .transform((val) => val.replace(/[\s-()]/g, ""))
-      .pipe(
-        z
-          .string()
-          .min(8, "El número de WhatsApp debe tener al menos 8 dígitos."),
-      )
-      .pipe(
-        z
-          .string()
-          .max(15, "El número de WhatsApp no puede tener más de 15 dígitos."),
-      )
-      .pipe(
-        z
-          .string()
-          .regex(
-            /^[0-9]+$/,
-            "El número de WhatsApp solo puede contener dígitos.",
-          ),
-      ),
-    startTime: z.string().datetime(),
-    acceptPolicy: z.string().optional(),
-  });
-
   const validatedFields = BookingFormSchema.safeParse(
     Object.fromEntries(formData.entries()),
   );

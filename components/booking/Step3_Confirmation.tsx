@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { toast } from "sonner";
 import type { Service } from "@prisma/client";
 import { formatShortDateTime } from "@/lib/date-helpers";
@@ -22,6 +25,14 @@ import { formatPrice } from "@/lib/utils";
 import { createPublicBooking } from "@/actions/public.actions";
 import { createDepositPreference } from "@/actions/payment.actions";
 import { ArrowLeft, Loader2, CalendarPlus, Info } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface Step3ConfirmationProps {
   barberId: string;
@@ -50,28 +61,93 @@ export function Step3_Confirmation({
   const [isPending, setIsPending] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const serviceIds = useMemo(() => {
     return selectedServices.map((s) => s.id);
   }, [selectedServices]);
 
-  const isFormReady = useMemo(() => {
-    const hasName = clientName.trim().length > 0;
-    const hasPhone = clientPhone.trim().length > 0;
-    const policyIsValid = !cancellationPolicy || policyAccepted;
+  const clientConfirmSchema = useMemo(() => {
+    return z
+      .object({
+        clientName: z
+          .string()
+          .min(1, "El nombre es requerido.")
+          .max(50, "El nombre no puede exceder los 50 caracteres."),
+        clientPhone: z
+          .string()
+          .transform((val) => val.replace(/[\s-()]/g, ""))
+          .pipe(
+            z
+              .string()
+              .min(8, "El número de WhatsApp debe tener al menos 8 dígitos.")
+          )
+          .pipe(
+            z
+              .string()
+              .max(
+                15,
+                "El número de WhatsApp no puede tener más de 15 dígitos."
+              )
+          )
+          .pipe(
+            z
+              .string()
+              .regex(
+                /^[0-9]+$/,
+                "El número de WhatsApp solo puede contener dígitos."
+              )
+          ),
+        acceptPolicy: z.boolean().optional(),
+      })
+      .refine(
+        (data) => {
+          if (cancellationPolicy && !data.acceptPolicy) {
+            return false;
+          }
+          return true;
+        },
+        {
+          message: "Debes aceptar las políticas de cancelación.",
+          path: ["acceptPolicy"],
+        }
+      );
+  }, [cancellationPolicy]);
 
-    return hasName && hasPhone && policyIsValid;
-  }, [clientName, clientPhone, cancellationPolicy, policyAccepted]);
+  type ClientConfirmFormValues = z.infer<typeof clientConfirmSchema>;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const form = useForm<ClientConfirmFormValues>({
+    resolver: zodResolver(clientConfirmSchema),
+    mode: "onBlur",
+    defaultValues: {
+      clientName: "",
+      clientPhone: "",
+      acceptPolicy: false,
+    },
+  });
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      form.reset({
+        clientName: "",
+        clientPhone: "",
+        acceptPolicy: false,
+      });
+    }
+  }, [isDialogOpen, form]);
+
+  async function onSubmit(data: ClientConfirmFormValues) {
     if (isPending) return;
     setIsPending(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.append("barberId", barberId);
+    formData.append("serviceIds", serviceIds.join(","));
+    formData.append("startTime", selectedDateTime.toISOString());
+    formData.append("clientName", data.clientName);
+    formData.append("clientPhone", data.clientPhone);
+    if (data.acceptPolicy) {
+      formData.append("acceptPolicy", "on");
+    }
 
     try {
       const result = await createPublicBooking(null, formData);
@@ -147,14 +223,16 @@ export function Step3_Confirmation({
         </p>
       </div>
 
-      <div className="p-4 space-y-4 border rounded-lg">
+      <div className="p-4 space-y-4 rounded-lg border">
         <div>
           <h3 className="mb-2 font-semibold">Servicio</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {selectedServices.map((service) => (
               <li key={service.id} className="flex justify-between">
                 <span>{service.name}</span>
-                <span className="font-medium">{formatPrice(service.price)}</span>
+                <span className="font-medium">
+                  {formatPrice(service.price)}
+                </span>
               </li>
             ))}
           </ul>
@@ -180,7 +258,7 @@ export function Step3_Confirmation({
         </div>
       </div>
 
-      <div className="flex justify-between gap-2">
+      <div className="flex gap-2 justify-between">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
@@ -201,85 +279,94 @@ export function Step3_Confirmation({
               </DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="hidden" name="barberId" value={barberId} />
-              <input type="hidden" name="serviceIds" value={serviceIds.join(",")} />
-              <input
-                type="hidden"
-                name="startTime"
-                value={selectedDateTime.toISOString()}
-              />
-
-              <div>
-                <Label htmlFor="clientName">Nombre y Apellido</Label>
-                <Input
-                  id="clientName"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
                   name="clientName"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Nombre y Apellido</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Juan Pérez" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div>
-                <Label htmlFor="clientPhone">Número de Celular</Label>
-                <Input
-                  id="clientPhone"
+                <FormField
+                  control={form.control}
                   name="clientPhone"
-                  type="tel"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  required
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Número de Celular</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="Ej: 1123456789"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {cancellationPolicy && (
-                <div className="flex gap-2 items-start">
-                  <Checkbox
-                    id="acceptPolicy"
+                {cancellationPolicy && (
+                  <FormField
+                    control={form.control}
                     name="acceptPolicy"
-                    checked={policyAccepted}
-                    onCheckedChange={(checked) =>
-                      setPolicyAccepted(checked === true)
-                    }
-                    className="mt-1"
+                    render={({ field }) => (
+                      <FormItem className="flex gap-2 items-start space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            id="acceptPolicy"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            className="mt-1"
+                          />
+                        </FormControl>
+                        <div className="grid gap-1.5">
+                          <Label
+                            htmlFor="acceptPolicy"
+                            className="text-sm font-normal leading-relaxed flex items-center gap-1.5 cursor-pointer"
+                          >
+                            Acepto las políticas de cancelación de turnos.
+                            <button
+                              type="button"
+                              onClick={() => setShowPolicyDialog(true)}
+                              className="transition-colors text-muted-foreground hover:text-primary"
+                              aria-label="Ver política de cancelación"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </Label>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
                   />
-                  <div className="grid gap-1.5">
-                    <Label
-                      htmlFor="acceptPolicy"
-                      className="text-sm font-normal leading-relaxed flex items-center gap-1.5"
-                    >
-                      Acepto las políticas de cancelación de turnos.
-                      <button
-                        type="button"
-                        onClick={() => setShowPolicyDialog(true)}
-                        className="text-muted-foreground hover:text-primary transition-colors"
-                        aria-label="Ver política de cancelación"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </Label>
-                  </div>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={!isFormReady || isPending}
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isRedirecting
-                      ? "Redirigiendo a Mercado Pago..."
-                      : "Reservando..."}
-                  </>
-                ) : (
-                  "Confirmar reserva"
                 )}
-              </Button>
-            </form>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!form.formState.isValid || isPending}
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      {isRedirecting
+                        ? "Redirigiendo a Mercado Pago..."
+                        : "Reservando..."}
+                    </>
+                  ) : (
+                    "Confirmar reserva"
+                  )}
+                </Button>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
 
@@ -306,3 +393,4 @@ export function Step3_Confirmation({
     </div>
   );
 }
+

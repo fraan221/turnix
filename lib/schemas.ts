@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createArgentinaDate } from "@/lib/date-helpers";
 
 export const ServiceInputSchema = z
   .object({
@@ -186,7 +187,7 @@ export const RecurringBookingSchema = z.object({
     .or(z.literal("")),
   clientId: z.string().min(1, { message: "Seleccioná un cliente." }),
   serviceId: z.string().min(1, { message: "Seleccioná un servicio." }),
-  dayOfWeek: z.coerce
+  dayOfWeek: z
     .number()
     .int()
     .min(0, { message: "Día inválido." })
@@ -254,4 +255,187 @@ export const FixedExpenseSchema = z.object({
   startDate: z.coerce.date({ message: "La fecha de inicio es obligatoria." }),
   active: z.boolean().default(true),
 });
+
+export const LinkBarberSchema = z.object({
+  connectionCode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, { message: "El código debe ser de 6 dígitos numéricos." }),
+});
+
+export const BookingFormSchema = z.object({
+  barberId: z.string().cuid({ message: "ID de barbero inválido." }),
+  serviceIds: z.string().min(1, { message: "Seleccioná al menos un servicio." }),
+  clientName: z
+    .string()
+    .min(1, "El nombre es requerido.")
+    .max(50, "El nombre no puede exceder los 50 caracteres."),
+  clientPhone: z
+    .string()
+    .transform((val) => val.replace(/[\s-()]/g, ""))
+    .pipe(
+      z
+        .string()
+        .min(8, "El número de WhatsApp debe tener al menos 8 dígitos.")
+    )
+    .pipe(
+      z
+        .string()
+        .max(15, "El número de WhatsApp no puede tener más de 15 dígitos.")
+    )
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^[0-9]+$/,
+          "El número de WhatsApp solo puede contener dígitos."
+        )
+    ),
+  startTime: z.string().datetime({ message: "Formato de hora de inicio inválido." }),
+  acceptPolicy: z.string().optional(),
+});
+
+export const TimeBlockBaseSchema = z
+  .object({
+    startDateTime: z
+      .string()
+      .datetime({ message: "Formato de fecha de inicio inválido." }),
+    endDateTime: z
+      .string()
+      .datetime({ message: "Formato de fecha de fin inválido." }),
+    reason: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      return new Date(data.endDateTime) > new Date(data.startDateTime);
+    },
+    {
+      message: "La fecha y hora de fin debe ser posterior a la de inicio.",
+      path: ["endDateTime"],
+    },
+  );
+
+export const CreateTimeBlockSchema = TimeBlockBaseSchema.extend({
+  barberId: z.string().min(1).optional().nullable(),
+}).refine(
+  (data) => {
+    return new Date(data.startDateTime) > new Date();
+  },
+  {
+    message: "No puedes crear un bloqueo en una fecha u hora pasada.",
+    path: ["startDateTime"],
+  },
+);
+
+export const UpdateTimeBlockSchema = TimeBlockBaseSchema;
+
+export const TimeBlockFormSchema = z
+  .object({
+    startDate: z.string().min(1, { message: "La fecha de inicio es requerida." }),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+      message: "Formato de hora de inicio inválido (HH:mm).",
+    }),
+    endDate: z.string().min(1, { message: "La fecha de fin es requerida." }),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+      message: "Formato de hora de fin inválido (HH:mm).",
+    }),
+    reason: z.string().max(200, { message: "La razón no puede tener más de 200 caracteres." }).optional().nullable().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (
+      !data.startDate ||
+      !data.endDate ||
+      !timeRegex.test(data.startTime) ||
+      !timeRegex.test(data.endTime)
+    ) {
+      return;
+    }
+
+    const startDateTime = createArgentinaDate(data.startDate, data.startTime);
+    const endDateTime = createArgentinaDate(data.endDate, data.endTime);
+
+    if (endDateTime <= startDateTime) {
+      if (data.endDate < data.startDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La fecha de fin no puede ser anterior a la de inicio.",
+          path: ["endDate"],
+        });
+      } else {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La hora de fin debe ser posterior a la de inicio en el mismo día.",
+          path: ["endTime"],
+        });
+      }
+    }
+  });
+
+export const EditBookingTimeSchema = z
+  .object({
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+      message: "Formato de hora de inicio inválido (HH:mm).",
+    }),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+      message: "Formato de hora de fin inválido (HH:mm).",
+    }),
+  })
+  .refine(
+    (data) => {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(data.startTime) || !timeRegex.test(data.endTime)) {
+        return true;
+      }
+      const [startH, startM] = data.startTime.split(":").map(Number);
+      const [endH, endM] = data.endTime.split(":").map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      return endMinutes > startMinutes;
+    },
+    {
+      message: "La hora de fin debe ser posterior a la de inicio.",
+      path: ["endTime"],
+    }
+  )
+  .refine(
+    (data) => {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(data.startTime) || !timeRegex.test(data.endTime)) {
+        return true;
+      }
+      const [startH, startM] = data.startTime.split(":").map(Number);
+      const [endH, endM] = data.endTime.split(":").map(Number);
+      const duration = (endH * 60 + endM) - (startH * 60 + startM);
+      return duration >= 5;
+    },
+    {
+      message: "La duración debe ser de al menos 5 minutos.",
+      path: ["endTime"],
+    }
+  )
+  .refine(
+    (data) => {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(data.startTime) || !timeRegex.test(data.endTime)) {
+        return true;
+      }
+      const [startH, startM] = data.startTime.split(":").map(Number);
+      const [endH, endM] = data.endTime.split(":").map(Number);
+      const duration = (endH * 60 + endM) - (startH * 60 + startM);
+      return duration <= 480;
+    },
+    {
+      message: "La duración no puede exceder las 8 horas (480 minutos).",
+      path: ["endTime"],
+    }
+  );
+
+export const ClientNoteSchema = z.object({
+  note: z
+    .string()
+    .min(1, { message: "La nota no puede estar vacía." })
+    .max(500, { message: "La nota no puede superar los 500 caracteres." }),
+});
+
 

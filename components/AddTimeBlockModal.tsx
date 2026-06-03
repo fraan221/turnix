@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, CalendarX, Lightbulb } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
 import { createArgentinaDate } from "@/lib/date-helpers";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import {
   DialogHeader,
   DialogTitle,
@@ -16,85 +17,87 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { TimeBlockFormSchema } from "@/lib/schemas";
 
 interface AddTimeBlockModalContentProps {
   onClose: () => void;
   selectedBarberId: string;
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="w-full sm:w-auto min-w-[160px]"
-    >
-      {pending ? (
-        <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Bloqueando…
-        </>
-      ) : (
-        "Bloquear Horario"
-      )}
-    </Button>
-  );
-}
+type TimeBlockFormValues = z.infer<typeof TimeBlockFormSchema>;
 
 export function AddTimeBlockModalContent({
   onClose,
   selectedBarberId,
 }: AddTimeBlockModalContentProps) {
-  const [state, formAction] = useActionState(createTimeBlock, null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state?.success) {
-      toast.success("¡Horario bloqueado!", {
-        description: "Los clientes no podrán reservar en este período.",
-      });
-      formRef.current?.reset();
-      onClose();
-    }
-    if (state?.error) {
-      let errorMessage = "Ocurrió un error inesperado.";
-      if (typeof state.error === "string") {
-        errorMessage = state.error;
-      } else {
-        const errorValues = Object.values(state.error).flat();
-        if (errorValues.length > 0) {
-          errorMessage = errorValues[0] as string;
+  const form = useForm<TimeBlockFormValues>({
+    resolver: zodResolver(TimeBlockFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      startDate: "",
+      startTime: "",
+      endDate: "",
+      endTime: "",
+      reason: "",
+    },
+  });
+
+  const onSubmit = (data: TimeBlockFormValues) => {
+    startTransition(async () => {
+      const startDateTimeISO = createArgentinaDate(
+        data.startDate,
+        data.startTime,
+      ).toISOString();
+      const endDateTimeISO = createArgentinaDate(
+        data.endDate,
+        data.endTime,
+      ).toISOString();
+
+      const newFormData = new FormData();
+      newFormData.append("startDateTime", startDateTimeISO);
+      newFormData.append("endDateTime", endDateTimeISO);
+      newFormData.append("reason", data.reason || "");
+      newFormData.append("barberId", selectedBarberId);
+
+      const result = await createTimeBlock(null, newFormData);
+
+      if (result?.success) {
+        toast.success("¡Horario bloqueado!", {
+          description: "Los clientes no podrán reservar en este período.",
+        });
+        form.reset();
+        onClose();
+      } else if (result?.error) {
+        let errorMessage = "Ocurrió un error inesperado.";
+        if (typeof result.error === "string") {
+          errorMessage = result.error;
+        } else {
+          const errorValues = Object.values(result.error).flat();
+          if (errorValues.length > 0) {
+            errorMessage = errorValues[0] as string;
+          }
         }
+        toast.error("No se pudo bloquear el horario", {
+          description: errorMessage,
+        });
       }
-      toast.error("No se pudo bloquear el horario", {
-        description: errorMessage,
-      });
-    }
-  }, [state, onClose]);
-
-  const clientAction = async (formData: FormData) => {
-    const startDate = formData.get("startDate") as string;
-    const startTime = formData.get("startTime") as string;
-    const endDate = formData.get("endDate") as string;
-    const endTime = formData.get("endTime") as string;
-
-    const startDateTimeISO = createArgentinaDate(startDate, startTime).toISOString();
-    const endDateTimeISO = createArgentinaDate(endDate, endTime).toISOString();
-
-    const newFormData = new FormData();
-    newFormData.append("startDateTime", startDateTimeISO);
-    newFormData.append("endDateTime", endDateTimeISO);
-    newFormData.append("reason", formData.get("reason") || "");
-    newFormData.append("barberId", selectedBarberId);
-
-    formAction(newFormData);
+    });
   };
 
   return (
     <>
       <DialogHeader className="space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex gap-3 items-center">
           <div className="p-2 rounded-lg bg-destructive/10">
             <CalendarX className="w-5 h-5 text-destructive" />
           </div>
@@ -108,73 +111,127 @@ export function AddTimeBlockModalContent({
         </DialogDescription>
       </DialogHeader>
 
-      <form ref={formRef} action={clientAction} className="py-4 space-y-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-sm font-medium">
-              Fecha de inicio
-            </Label>
-            <Input id="startDate" name="startDate" type="date" required />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="py-4 space-y-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="startDate"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Fecha de inicio</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="endDate"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Fecha de fin</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="endDate" className="text-sm font-medium">
-              Fecha de fin
-            </Label>
-            <Input id="endDate" name="endDate" type="date" required />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="startTime" className="text-sm font-medium">
-              Hora de inicio
-            </Label>
-            <Input id="startTime" name="startTime" type="time" required />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Hora de inicio</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Hora de fin</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="endTime" className="text-sm font-medium">
-              Hora de fin
-            </Label>
-            <Input id="endTime" name="endTime" type="time" required />
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="reason" className="text-sm font-medium">
-            Razón{" "}
-            <span className="text-xs font-normal text-muted-foreground">
-              (opcional)
-            </span>
-          </Label>
-          <Input
-            id="reason"
+          <FormField
+            control={form.control}
             name="reason"
-            placeholder="Ej: Vacaciones, día libre, evento personal"
-            autoComplete="off"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>
+                  Razón{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (opcional)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ej: Vacaciones, día libre, evento personal"
+                    autoComplete="off"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div className="flex items-start gap-2 p-3 border rounded-lg bg-muted/50 border-muted-foreground/10 text-muted-foreground">
-          <Lightbulb className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
-          <p className="text-xs leading-relaxed sm:text-sm">
-            Tip: Durante este período, los clientes no podrán reservar turnos
-            en tu agenda
-          </p>
-        </div>
+          <div className="flex gap-2 items-start p-3 rounded-lg border bg-muted/50 border-muted-foreground/10 text-muted-foreground">
+            <Lightbulb className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+            <p className="text-xs leading-relaxed sm:text-sm">
+              Tip: Durante este período, los clientes no podrán reservar turnos en
+              tu agenda
+            </p>
+          </div>
 
-        <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row">
-          <DialogClose asChild>
+          <DialogFooter className="flex-col-reverse gap-2 pt-2 sm:flex-row">
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+            </DialogClose>
             <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
+              type="submit"
+              disabled={isPending}
+              className="w-full sm:w-auto min-w-[160px]"
             >
-              Cancelar
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Bloqueando…
+                </>
+              ) : (
+                "Bloquear Horario"
+              )}
             </Button>
-          </DialogClose>
-          <SubmitButton />
-        </DialogFooter>
-      </form>
+          </DialogFooter>
+        </form>
+      </Form>
     </>
   );
 }
+

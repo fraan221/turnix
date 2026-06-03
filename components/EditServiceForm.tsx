@@ -26,6 +26,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 type ServiceFormInput = z.infer<typeof ServiceInputSchema>;
 
@@ -49,22 +57,16 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
   const [isDeletePending, startDeleteTransition] = useTransition();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [priceDisplay, setPriceDisplay] = useState(() =>
-    service.price ? formatPrice(service.price.toString()) : ""
+    service.price ? formatPrice(service.price.toString()) : "",
   );
   const [allowsOverlapping, setAllowsOverlapping] = useState(
-    service.activeDurationInMinutes !== null && service.activeDurationInMinutes !== undefined
+    service.activeDurationInMinutes !== null &&
+      service.activeDurationInMinutes !== undefined,
   );
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting, isValid, isDirty },
-    setValue,
-    trigger,
-    watch,
-  } = useForm<ServiceFormInput>({
+  const form = useForm<ServiceFormInput>({
     resolver: zodResolver(ServiceInputSchema),
-    mode: "onChange",
+    mode: "onBlur",
     defaultValues: {
       name: service.name,
       price: service.price,
@@ -73,6 +75,14 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
       description: service.description || "",
     },
   });
+
+  const {
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid, isDirty },
+    setValue,
+    trigger,
+    watch,
+  } = form;
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -94,11 +104,12 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             ? parseInt(data.durationInMinutes, 10)
             : data.durationInMinutes
           : null,
-        activeDurationInMinutes: allowsOverlapping && data.activeDurationInMinutes
-          ? typeof data.activeDurationInMinutes === "string"
-            ? parseInt(data.activeDurationInMinutes, 10)
-            : data.activeDurationInMinutes
-          : null,
+        activeDurationInMinutes:
+          allowsOverlapping && data.activeDurationInMinutes
+            ? typeof data.activeDurationInMinutes === "string"
+              ? parseInt(data.activeDurationInMinutes, 10)
+              : data.activeDurationInMinutes
+            : null,
         description: data.description,
       };
 
@@ -137,9 +148,9 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex gap-3 items-center">
         <Link href="/dashboard/services">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="w-9 h-9">
             <ArrowLeft className="w-4 h-4" />
             <span className="sr-only">Volver a servicios</span>
           </Button>
@@ -152,228 +163,233 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div className="space-y-2">
-          <Label htmlFor="name" className="text-sm font-medium">
-            Nombre del servicio
-          </Label>
-          <Input
-            id="name"
-            placeholder="Ej: Corte Fade, Barba Completa"
-            {...register("name")}
-            autoComplete="off"
-            className={errors.name ? "border-destructive" : ""}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Nombre del servicio</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ej: Corte Fade, Barba Completa"
+                    autoComplete="off"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.name && (
-            <p className="flex items-center gap-1.5 text-xs text-destructive">
-              <span className="w-1 h-1 rounded-full bg-destructive" />
-              {errors.name.message}
-            </p>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="price" className="text-sm font-medium">
-              Precio
-            </Label>
-            <div className="relative">
-              <span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                id="price"
-                type="text"
-                placeholder="10.000"
-                value={priceDisplay}
-                onChange={handlePriceChange}
-                autoComplete="off"
-                onBlur={() => {
-                  const cleanValue = cleanPriceValue(priceDisplay);
-                  setValue("price", cleanValue, { shouldDirty: true });
-                  trigger("price");
-                }}
-                className={`pl-7 ${errors.price ? "border-destructive" : ""}`}
-              />
-            </div>
-            {errors.price && (
-              <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <span className="w-1 h-1 rounded-full bg-destructive" />
-                {errors.price.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="durationInMinutes" className="text-sm font-medium">
-              Duración{" "}
-              <span className="text-xs font-normal text-muted-foreground">
-                (opcional)
-              </span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="durationInMinutes"
-                type="number"
-                placeholder="30"
-                autoComplete="off"
-                {...register("durationInMinutes")}
-                className={errors.durationInMinutes ? "border-destructive" : ""}
-              />
-              <span className="absolute text-xs -translate-y-1/2 right-3 top-1/2 text-muted-foreground">
-                min
-              </span>
-            </div>
-            {errors.durationInMinutes && (
-              <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <span className="w-1 h-1 rounded-full bg-destructive" />
-                {errors.durationInMinutes.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-3 rounded-md border p-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="allowOverlapping"
-                checked={allowsOverlapping}
-                onCheckedChange={(checked) => {
-                  setAllowsOverlapping(!!checked);
-                  if (checked) {
-                    const baseDuration = watch("durationInMinutes");
-                    const parsedDuration =
-                      typeof baseDuration === "string"
-                        ? parseInt(baseDuration, 10)
-                        : baseDuration;
-                    setValue(
-                      "activeDurationInMinutes",
-                      parsedDuration && parsedDuration > 0
-                        ? Math.min(parsedDuration, 60)
-                        : 60,
-                      { shouldDirty: true, shouldValidate: true },
-                    );
-                    return;
-                  }
-
-                  setValue("activeDurationInMinutes", null, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                }}
-              />
-              <Label
-                htmlFor="allowOverlapping"
-                className="text-sm font-medium leading-none"
-              >
-                Permitir sobreturnos
-              </Label>
-            </div>
-            <p className="pl-7 text-xs text-muted-foreground">
-              Definí cuánto tiempo requiere atención activa. El resto queda
-              libre para otros turnos.
-            </p>
-          </div>
-
-          {allowsOverlapping && (
-            <div className="space-y-2">
-              <Label
-                htmlFor="activeDurationInMinutes"
-                className="text-sm font-medium"
-              >
-                Tiempo activo
-              </Label>
-              <div className="relative">
-                <Input
-                  id="activeDurationInMinutes"
-                  type="number"
-                  min={1}
-                  placeholder="60"
-                  autoComplete="off"
-                  {...register("activeDurationInMinutes")}
-                  className={
-                    errors.activeDurationInMinutes ? "border-destructive" : ""
-                  }
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  min
-                </span>
-              </div>
-              {errors.activeDurationInMinutes && (
-                <p className="flex items-center gap-1.5 text-xs text-destructive">
-                  <span className="h-1 w-1 rounded-full bg-destructive" />
-                  {errors.activeDurationInMinutes.message}
-                </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Precio</FormLabel>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="10.000"
+                        value={priceDisplay}
+                        onChange={handlePriceChange}
+                        autoComplete="off"
+                        onBlur={() => {
+                          const cleanValue = cleanPriceValue(priceDisplay);
+                          field.onChange(cleanValue);
+                          field.onBlur();
+                        }}
+                        className="pl-7"
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
               )}
+            />
+
+            <FormField
+              control={form.control}
+              name="durationInMinutes"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>
+                    Duración{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      (opcional)
+                    </span>
+                  </FormLabel>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="30"
+                        autoComplete="off"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <span className="absolute right-3 top-1/2 text-xs -translate-y-1/2 text-muted-foreground">
+                      min
+                    </span>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="p-3 space-y-3 rounded-md border">
+            <div className="space-y-1.5">
+              <div className="flex gap-3 items-center">
+                <Checkbox
+                  id="allowOverlapping"
+                  checked={allowsOverlapping}
+                  onCheckedChange={(checked) => {
+                    setAllowsOverlapping(!!checked);
+                    if (checked) {
+                      const baseDuration = watch("durationInMinutes");
+                      const parsedDuration =
+                        typeof baseDuration === "string"
+                          ? parseInt(baseDuration, 10)
+                          : baseDuration;
+                      setValue(
+                        "activeDurationInMinutes",
+                        parsedDuration && parsedDuration > 0
+                          ? Math.min(parsedDuration, 60)
+                          : 60,
+                        { shouldDirty: true, shouldValidate: true },
+                      );
+                      return;
+                    }
+
+                    setValue("activeDurationInMinutes", null, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                />
+                <Label
+                  htmlFor="allowOverlapping"
+                  className="text-sm font-medium leading-none"
+                >
+                  Permitir sobreturnos
+                </Label>
+              </div>
+              <p className="pl-7 text-xs text-muted-foreground">
+                Definí cuánto tiempo requiere atención activa. El resto queda
+                libre para otros turnos.
+              </p>
             </div>
-          )}
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="description" className="text-sm font-medium">
-            Descripción{" "}
-            <span className="text-xs font-normal text-muted-foreground">
-              (opcional)
-            </span>
-          </Label>
-          <Textarea
-            id="description"
-            placeholder="Ej: Incluye lavado, corte con máquina y tijera, y peinado final"
-            rows={3}
-            autoComplete="off"
-            {...register("description")}
-            className={errors.description ? "border-destructive" : ""}
+            {allowsOverlapping && (
+              <FormField
+                control={form.control}
+                name="activeDurationInMinutes"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Tiempo activo</FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="60"
+                          autoComplete="off"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <span className="absolute right-3 top-1/2 text-xs -translate-y-1/2 text-muted-foreground">
+                        min
+                      </span>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>
+                  Descripción{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (opcional)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Ej: Incluye lavado, corte con máquina y tijera, y peinado final"
+                    rows={3}
+                    autoComplete="off"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.description && (
-            <p className="flex items-center gap-1.5 text-xs text-destructive">
-              <span className="w-1 h-1 rounded-full bg-destructive" />
-              {errors.description.message}
-            </p>
-          )}
-        </div>
 
-        <div className="flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row sm:items-center">
-          <Link href="/dashboard/services" className="w-full sm:w-auto">
+          <div className="flex flex-col-reverse gap-3 justify-end pt-4 sm:flex-row sm:items-center">
+            <Link href="/dashboard/services" className="w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
+                Cancelar
+              </Button>
+            </Link>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isPending || !isValid || !isDirty}
+              className="w-full sm:w-auto min-w-[160px]"
+            >
+              {isSubmitting || isPending ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Guardar cambios"
+              )}
+            </Button>
             <Button
               type="button"
               variant="outline"
-              className="w-full sm:w-auto"
+              size="icon"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="size-9 text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
             >
-              Cancelar
+              <Trash2 className="size-4" />
+              <span className="sr-only">Eliminar servicio</span>
             </Button>
-          </Link>
-          <Button
-            type="submit"
-            disabled={isSubmitting || isPending || !isValid || !isDirty}
-            className="w-full sm:w-auto min-w-[160px]"
-          >
-            {isSubmitting || isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando…
-              </>
-            ) : (
-              "Guardar cambios"
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            className="size-9 text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-          >
-            <Trash2 className="size-4" />
-            <span className="sr-only">Eliminar servicio</span>
-          </Button>
-        </div>
-      </form>
+          </div>
+        </form>
+      </Form>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar &quot;{service.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              ¿Eliminar &quot;{service.name}&quot;?
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>Esta acción es irreversible.</p>
@@ -397,7 +413,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             >
               {isDeletePending ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Eliminando…
                 </>
               ) : (

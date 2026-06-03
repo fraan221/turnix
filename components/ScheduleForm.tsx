@@ -107,7 +107,7 @@ export default function ScheduleForm({
         isWorking: dayData?.isWorking ?? false,
         shifts,
       };
-    })
+    }),
   );
 
   const [isPending, startTransition] = useTransition();
@@ -115,8 +115,8 @@ export default function ScheduleForm({
   const handleDayToggle = (dayIndex: number, checked: boolean) => {
     setSchedule((prev) =>
       prev.map((day) =>
-        day.dayOfWeek === dayIndex ? { ...day, isWorking: checked } : day
-      )
+        day.dayOfWeek === dayIndex ? { ...day, isWorking: checked } : day,
+      ),
     );
   };
 
@@ -124,7 +124,7 @@ export default function ScheduleForm({
     dayIndex: number,
     shiftType: WorkShiftType,
     field: "startTime" | "endTime",
-    value: string
+    value: string,
   ) => {
     setSchedule((prev) =>
       prev.map((day) =>
@@ -136,8 +136,8 @@ export default function ScheduleForm({
                 [shiftType]: { ...day.shifts[shiftType], [field]: value },
               },
             }
-          : day
-      )
+          : day,
+      ),
     );
   };
 
@@ -146,7 +146,7 @@ export default function ScheduleForm({
       prev.map((day) => {
         if (day.dayOfWeek === dayIndex) {
           const firstDisabledShift = shiftTypes.find(
-            (type) => !day.shifts[type].enabled
+            (type) => !day.shifts[type].enabled,
           );
           if (firstDisabledShift) {
             return {
@@ -162,7 +162,7 @@ export default function ScheduleForm({
           }
         }
         return day;
-      })
+      }),
     );
   };
 
@@ -177,8 +177,8 @@ export default function ScheduleForm({
                 [shiftType]: { ...day.shifts[shiftType], enabled: false },
               },
             }
-          : day
-      )
+          : day,
+      ),
     );
   };
 
@@ -205,14 +205,14 @@ export default function ScheduleForm({
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {schedule.map((day) => {
               const enabledShifts = shiftTypes.filter(
-                (type) => day.shifts[type].enabled
+                (type) => day.shifts[type].enabled,
               );
               const canAddMore = enabledShifts.length < 3;
               return (
-                  <div
-                    key={day.dayOfWeek}
-                    className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
-                  >
+                <div
+                  key={day.dayOfWeek}
+                  className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
+                >
                   <div className="flex justify-between items-center">
                     <div className="flex gap-3 items-center">
                       <Switch
@@ -277,7 +277,7 @@ export default function ScheduleForm({
                                   day.dayOfWeek,
                                   shiftType,
                                   "startTime",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               disabled={isReadOnly}
@@ -295,7 +295,7 @@ export default function ScheduleForm({
                                   day.dayOfWeek,
                                   shiftType,
                                   "endTime",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               disabled={isReadOnly}

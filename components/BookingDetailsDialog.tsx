@@ -38,6 +38,7 @@ import {
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
+import { EditBookingTimeSchema, ClientNoteSchema } from "@/lib/schemas";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import {
@@ -218,11 +219,13 @@ export function BookingDetailsDialogContent({
 
   const [view, setView] = useState<DialogView>("details");
   const [note, setNote] = useState("");
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(
     null,
   );
   const [optimisticPaymentSet, setOptimisticPaymentSet] = useState(false);
-  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [pendingPaymentMethod, setPendingPaymentMethod] =
+    useState<PaymentMethod | null>(null);
   const [isSavingPayment, startSavingPayment] = useTransition();
   const [isInlineEditingService, setIsInlineEditingService] = useState(false);
   const [isInlineEditingPayment, setIsInlineEditingPayment] = useState(false);
@@ -245,16 +248,27 @@ export function BookingDetailsDialogContent({
   const originalDuration =
     booking.durationAtBooking ?? booking.service?.durationInMinutes ?? 60;
 
+  // Reset view & editing state only when a DIFFERENT booking is opened.
+  // This prevents the view from flashing back to "details" when the same
+  // booking's data is refreshed from the server (e.g. after realtime update).
   useEffect(() => {
     setView("details");
-    setNote(booking.client.notes || "");
+    setNoteError(null);
     setIsInlineEditingPayment(false);
     setIsInlineEditingService(false);
     setShowOverlapAlert(false);
     setPendingPaymentMethod(null);
-    setSelectedServiceId(booking.serviceId || "");
     setServiceAvailability({ status: "idle" });
     setOverlapMessage("");
+    setOptimisticPaymentSet(false);
+    setSelectedPayment(null);
+  }, [booking.id]);
+
+  // Sync data-driven fields when booking data changes (same or different booking).
+  // Intentionally does NOT touch `view` state.
+  useEffect(() => {
+    setNote(booking.client.notes || "");
+    setSelectedServiceId(booking.serviceId || "");
 
     const start = new Date(booking.startTime);
     const duration =
@@ -297,24 +311,15 @@ export function BookingDetailsDialogContent({
   useEffect(() => {
     if (!debouncedStart || !debouncedEnd) return;
 
-    if (calculatedDuration <= 0) {
+    const validation = EditBookingTimeSchema.safeParse({
+      startTime: debouncedStart,
+      endTime: debouncedEnd,
+    });
+
+    if (!validation.success) {
       setAvailability({
         status: "unavailable",
-        reason: "La hora de fin debe ser posterior a la de inicio.",
-      });
-      return;
-    }
-    if (calculatedDuration < 5) {
-      setAvailability({
-        status: "unavailable",
-        reason: "La duración mínima es de 5 minutos.",
-      });
-      return;
-    }
-    if (calculatedDuration > 480) {
-      setAvailability({
-        status: "unavailable",
-        reason: "La duración máxima es de 8 horas.",
+        reason: validation.error.issues[0].message,
       });
       return;
     }
@@ -426,6 +431,13 @@ export function BookingDetailsDialogContent({
   };
 
   const handleAddNote = () => {
+    const validation = ClientNoteSchema.safeParse({ note });
+    if (!validation.success) {
+      setNoteError(validation.error.issues[0].message);
+      return;
+    }
+    setNoteError(null);
+
     startNoteSaving(async () => {
       const formData = new FormData();
       const existingNotes = booking.client.notes || "";
@@ -488,7 +500,10 @@ export function BookingDetailsDialogContent({
   };
 
   const handleSavePayment = () => {
-    if (!pendingPaymentMethod || pendingPaymentMethod === booking.paymentMethod) {
+    if (
+      !pendingPaymentMethod ||
+      pendingPaymentMethod === booking.paymentMethod
+    ) {
       return;
     }
     startSavingPayment(async () => {
@@ -545,7 +560,14 @@ export function BookingDetailsDialogContent({
     };
 
     checkAvailability();
-  }, [selectedServiceId, booking.barberId, booking.startTime, booking.id, services, booking.serviceId]);
+  }, [
+    selectedServiceId,
+    booking.barberId,
+    booking.startTime,
+    booking.id,
+    services,
+    booking.serviceId,
+  ]);
 
   const handleServiceChange = () => {
     if (!selectedServiceId) {
@@ -575,8 +597,13 @@ export function BookingDetailsDialogContent({
       if (result.type === "success") {
         const service = services.find((s) => s.id === selectedServiceId);
         const newDuration = service?.durationInMinutes ?? 60;
-        const newActiveDuration = service?.activeDurationInMinutes ?? newDuration;
-        const newPrice = service ? Number(service.price) : (booking.priceAtBooking ? Number(booking.priceAtBooking) : newDuration * 100);
+        const newActiveDuration =
+          service?.activeDurationInMinutes ?? newDuration;
+        const newPrice = service
+          ? Number(service.price)
+          : booking.priceAtBooking
+            ? Number(booking.priceAtBooking)
+            : newDuration * 100;
 
         onOptimisticServiceUpdate?.(
           booking.id,
@@ -593,7 +620,11 @@ export function BookingDetailsDialogContent({
 
   const handleForceServiceChange = () => {
     startServiceUpdating(async () => {
-      const result = await updateBookingService(booking.id, selectedServiceId, true);
+      const result = await updateBookingService(
+        booking.id,
+        selectedServiceId,
+        true,
+      );
 
       if (result.type === "error") {
         toast.error(result.message);
@@ -603,8 +634,13 @@ export function BookingDetailsDialogContent({
       if (result.type === "success") {
         const service = services.find((s) => s.id === selectedServiceId);
         const newDuration = service?.durationInMinutes ?? 60;
-        const newActiveDuration = service?.activeDurationInMinutes ?? newDuration;
-        const newPrice = service ? Number(service.price) : (booking.priceAtBooking ? Number(booking.priceAtBooking) : newDuration * 100);
+        const newActiveDuration =
+          service?.activeDurationInMinutes ?? newDuration;
+        const newPrice = service
+          ? Number(service.price)
+          : booking.priceAtBooking
+            ? Number(booking.priceAtBooking)
+            : newDuration * 100;
 
         onOptimisticServiceUpdate?.(
           booking.id,
@@ -631,16 +667,16 @@ export function BookingDetailsDialogContent({
             <strong>Teléfono:</strong> {booking.client.phone}
           </p>
         ) : null}
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2 items-center">
           <strong>Servicio:</strong>
           {isInlineEditingService ? (
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex flex-1 gap-2 items-center">
               <Select
                 value={selectedServiceId}
                 onValueChange={setSelectedServiceId}
                 data-testid="service-select"
               >
-                <SelectTrigger className="h-7 text-xs py-0 pr-1 flex-1">
+                <SelectTrigger className="flex-1 py-0 pr-1 h-7 text-xs">
                   <SelectValue placeholder="Seleccioná un servicio" />
                 </SelectTrigger>
                 <SelectContent>
@@ -655,22 +691,21 @@ export function BookingDetailsDialogContent({
                   ))}
                 </SelectContent>
               </Select>
-              {selectedServiceId &&
-                selectedServiceId !== booking.serviceId && (
-                  <span className="flex items-center min-h-[24px]">
-                    {serviceAvailability.status === "checking" ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                    ) : serviceAvailability.status === "available" ? (
-                      <CheckCircle2 className="w-3 h-3 text-green-600" />
-                    ) : serviceAvailability.status === "unavailable" ? (
-                      <XCircle className="w-3 h-3 text-red-600" />
-                    ) : null}
-                  </span>
-                )}
+              {selectedServiceId && selectedServiceId !== booking.serviceId && (
+                <span className="flex items-center min-h-[24px]">
+                  {serviceAvailability.status === "checking" ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                  ) : serviceAvailability.status === "available" ? (
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
+                  ) : serviceAvailability.status === "unavailable" ? (
+                    <XCircle className="w-3 h-3 text-red-600" />
+                  ) : null}
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="p-0 w-7 h-7"
                 onClick={handleServiceChange}
                 data-testid="save-service-button"
                 disabled={
@@ -689,7 +724,7 @@ export function BookingDetailsDialogContent({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="p-0 w-7 h-7"
                 onClick={() => {
                   setSelectedServiceId(booking.serviceId || "");
                   setServiceAvailability({ status: "idle" });
@@ -727,7 +762,7 @@ export function BookingDetailsDialogContent({
             {formatLongDate(booking.startTime)}
           </span>
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2 items-center">
           <strong>Hora:</strong>
           <span data-testid="time-value">{`${formatTime(booking.startTime)} hs`}</span>
           {(booking.status === BookingStatus.SCHEDULED ||
@@ -749,16 +784,20 @@ export function BookingDetailsDialogContent({
             {currentStatus.text}
           </span>
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2 items-center">
           <strong>Cobro:</strong>
           {isInlineEditingPayment ? (
             <div className="flex items-center gap-1.5 flex-1">
               <Select
-                value={pendingPaymentMethod ?? booking.paymentMethod ?? undefined}
-                onValueChange={(v) => setPendingPaymentMethod(v as PaymentMethod)}
+                value={
+                  pendingPaymentMethod ?? booking.paymentMethod ?? undefined
+                }
+                onValueChange={(v) =>
+                  setPendingPaymentMethod(v as PaymentMethod)
+                }
                 data-testid="payment-select"
               >
-                <SelectTrigger className="h-7 text-xs py-0 pr-1 flex-1">
+                <SelectTrigger className="flex-1 py-0 pr-1 h-7 text-xs">
                   <SelectValue placeholder="Seleccioná método" />
                 </SelectTrigger>
                 <SelectContent>
@@ -770,7 +809,7 @@ export function BookingDetailsDialogContent({
                         value={method.value}
                         className="text-xs"
                       >
-                        <span className="flex items-center gap-1">
+                        <span className="flex gap-1 items-center">
                           <Icon className="w-3 h-3" />
                           {method.label}
                         </span>
@@ -782,7 +821,7 @@ export function BookingDetailsDialogContent({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="p-0 w-7 h-7"
                 onClick={handleSavePayment}
                 data-testid="save-payment-button"
                 disabled={
@@ -800,7 +839,7 @@ export function BookingDetailsDialogContent({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="p-0 w-7 h-7"
                 onClick={handleCancelPayment}
                 data-testid="cancel-payment-button"
                 disabled={isSavingPayment}
@@ -834,7 +873,7 @@ export function BookingDetailsDialogContent({
                   })()}
                 </span>
               ) : (
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   Sin registrar
                 </span>
               )}
@@ -856,7 +895,8 @@ export function BookingDetailsDialogContent({
 
       {booking.status === BookingStatus.COMPLETED &&
         !booking.paymentMethod &&
-        !optimisticPaymentSet && !isInlineEditingPayment && (
+        !optimisticPaymentSet &&
+        !isInlineEditingPayment && (
           <div className="p-3 mt-4 space-y-3 bg-blue-50 rounded-md border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
             <p className="flex items-center text-sm font-medium text-blue-800 dark:text-blue-200">
               <Lightbulb className="flex-shrink-0 mr-2 w-4 h-4" />
@@ -1048,9 +1088,22 @@ export function BookingDetailsDialogContent({
       <Textarea
         id="quickNote"
         value={note}
-        onChange={(e) => setNote(e.target.value)}
+        onChange={(e) => {
+          setNote(e.target.value);
+          setNoteError(null);
+        }}
+        onBlur={() => {
+          if (!note) return;
+          const validation = ClientNoteSchema.safeParse({ note });
+          if (!validation.success) {
+            setNoteError(validation.error.issues[0].message);
+          }
+        }}
         placeholder="Ej: Le gustó el corte con la 1 a los costados..."
       />
+      {noteError && (
+        <p className="text-xs font-medium text-destructive">{noteError}</p>
+      )}
       <DialogFooter className="gap-2">
         <Button variant="ghost" onClick={onClose}>
           Omitir
@@ -1152,7 +1205,7 @@ export function BookingDetailsDialogContent({
       <AlertDialog open={showOverlapAlert} onOpenChange={setShowOverlapAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
+            <AlertDialogTitle className="flex gap-2 items-center">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
               Solapamiento detectado
             </AlertDialogTitle>

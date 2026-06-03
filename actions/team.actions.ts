@@ -6,6 +6,7 @@ import { Role } from "@prisma/client";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { broadcastToUser } from "@/lib/supabase-server";
+import { LinkBarberSchema } from "@/lib/schemas";
 
 type TeamActionState = {
   success?: string | null;
@@ -33,13 +34,6 @@ async function generateUniqueConnectionCode(): Promise<string> {
   return code;
 }
 
-const LinkBarberSchema = z.object({
-  connectionCode: z
-    .string()
-    .trim()
-    .min(6, { message: "El código debe tener 6 caracteres." })
-    .max(6, { message: "El código debe tener 6 caracteres." }),
-});
 
 export async function linkBarberToShop(
   prevState: LinkBarberState,

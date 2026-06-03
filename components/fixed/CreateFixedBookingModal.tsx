@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -14,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,16 +24,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { createRecurringBooking } from "@/actions/fixed.actions";
 import { RecurringBookingSchema } from "@/lib/schemas";
+
+interface ClientProps {
+  id: string;
+  name: string;
+  phone?: string | null;
+}
+
+interface ServiceProps {
+  id: string;
+  name: string;
+  barber?: {
+    name: string;
+  } | null;
+}
+
+interface BarberProps {
+  id: string;
+  name: string;
+}
 
 interface CreateFixedBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   role: string | null;
-  clients: any[];
-  services: any[];
-  barbers: any[];
+  clients: ClientProps[];
+  services: ServiceProps[];
+  barbers: BarberProps[];
 }
 
 const DAYS_ES = [
@@ -43,6 +72,8 @@ const DAYS_ES = [
   "Viernes",
   "Sábado",
 ];
+
+type RecurringBookingFormValues = z.infer<typeof RecurringBookingSchema>;
 
 export function CreateFixedBookingModal({
   isOpen,
@@ -56,47 +87,42 @@ export function CreateFixedBookingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form state
-  const [clientId, setClientId] = useState("");
-  const [serviceId, setServiceId] = useState("");
-  const [barberId, setBarberId] = useState("");
-  const [dayOfWeek, setDayOfWeek] = useState("1");
-  const [startTime, setStartTime] = useState("10:00");
-  const [frequency, setFrequency] = useState("WEEKLY");
+  const form = useForm<RecurringBookingFormValues>({
+    resolver: zodResolver(RecurringBookingSchema),
+    mode: "onBlur",
+    defaultValues: {
+      clientId: "",
+      serviceId: "",
+      barberId: "",
+      dayOfWeek: 1,
+      startTime: "10:00",
+      frequency: "WEEKLY",
+    },
+  });
 
   const resetForm = () => {
-    setClientId("");
-    setServiceId("");
-    setBarberId("");
-    setDayOfWeek("1");
-    setStartTime("10:00");
-    setFrequency("WEEKLY");
+    form.reset({
+      clientId: "",
+      serviceId: "",
+      barberId: "",
+      dayOfWeek: 1,
+      startTime: "10:00",
+      frequency: "WEEKLY",
+    });
     setError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
+  const onSubmit = async (values: RecurringBookingFormValues) => {
     setIsSubmitting(true);
     setError(null);
 
-    const payload = {
-      clientId,
-      serviceId,
-      dayOfWeek: parseInt(dayOfWeek),
-      startTime,
-      frequency: frequency as any,
-      ...(barberId && barberId !== "unassigned" ? { barberId } : {}),
-    };
-
-    const parsed = RecurringBookingSchema.safeParse(payload);
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      setIsSubmitting(false);
-      return;
-    }
-
-    const result = await createRecurringBooking(parsed.data);
+    const result = await createRecurringBooking(values);
     setIsSubmitting(false);
 
     if (result.error) {
@@ -128,142 +154,203 @@ export function CreateFixedBookingModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {error && (
-            <div className="p-3 text-sm rounded-md bg-destructive/15 text-destructive">
-              {error}
-            </div>
-          )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 space-y-4">
+            {error && (
+              <div className="p-3 text-sm rounded-md bg-destructive/15 text-destructive">
+                {error}
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="clientId">Cliente</Label>
-            <Select value={clientId} onValueChange={setClientId} required>
-              <SelectTrigger id="clientId">
-                <SelectValue placeholder="Seleccioná un cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    <span className="block truncate max-w-[240px] sm:max-w-[320px]">
-                      {client.name} {client.phone ? `- ${client.phone}` : ""}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Cliente</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger id="clientId">
+                        <SelectValue placeholder="Seleccioná un cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          <span className="block truncate max-w-[240px] sm:max-w-[320px]">
+                            {client.name} {client.phone ? `- ${client.phone}` : ""}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="space-y-2">
-            <Label htmlFor="serviceId">Servicio</Label>
-            <Select value={serviceId} onValueChange={setServiceId} required>
-              <SelectTrigger id="serviceId">
-                <SelectValue placeholder="Seleccioná un servicio" />
-              </SelectTrigger>
-              <SelectContent>
-                {services.map((service) => (
-                  <SelectItem key={service.id} value={service.id}>
-                    <span className="block truncate max-w-[240px] sm:max-w-[320px]">
-                      {barbers.length > 1 && service.barber
-                        ? `${service.name} (${service.barber.name})`
-                        : service.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <FormField
+              control={form.control}
+              name="serviceId"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Servicio</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger id="serviceId">
+                        <SelectValue placeholder="Seleccioná un servicio" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {services.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          <span className="block truncate max-w-[240px] sm:max-w-[320px]">
+                            {barbers.length > 1 && service.barber
+                              ? `${service.name} (${service.barber.name})`
+                              : service.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {role === "OWNER" && (
-            <div className="space-y-2">
-              <Label htmlFor="barberId">Barbero (Opcional)</Label>
-              <Select value={barberId} onValueChange={setBarberId}>
-                <SelectTrigger id="barberId">
-                  <SelectValue placeholder="Asignar a un barbero" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Yo (Dueño)</SelectItem>
-                  {barbers.map((barber) => (
-                    <SelectItem key={barber.id} value={barber.id}>
-                      {barber.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+            {role === "OWNER" && (
+              <FormField
+                control={form.control}
+                name="barberId"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Barbero (Opcional)</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(val === "unassigned" ? "" : val)}
+                      value={field.value || "unassigned"}
+                    >
+                      <FormControl>
+                        <SelectTrigger id="barberId">
+                          <SelectValue placeholder="Asignar a un barbero" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Yo (Dueño)</SelectItem>
+                        {barbers.map((barber) => (
+                          <SelectItem key={barber.id} value={barber.id}>
+                            {barber.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dayOfWeek">Día de la semana</Label>
-              <Select value={dayOfWeek} onValueChange={setDayOfWeek} required>
-                <SelectTrigger id="dayOfWeek">
-                  <SelectValue placeholder="Día" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS_ES.map((day, idx) => (
-                    <SelectItem key={idx} value={idx.toString()}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="dayOfWeek"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Día de la semana</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(parseInt(val, 10))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger id="dayOfWeek">
+                          <SelectValue placeholder="Día" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {DAYS_ES.map((day, idx) => (
+                          <SelectItem key={idx} value={idx.toString()}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="space-y-2">
-              <Label htmlFor="startTime">Horario</Label>
-              <Input
-                id="startTime"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
+              <FormField
+                control={form.control}
+                name="startTime"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Horario</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="startTime"
+                        type="time"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="frequency">Frecuencia</Label>
-            <Select value={frequency} onValueChange={setFrequency} required>
-              <SelectTrigger id="frequency">
-                <SelectValue placeholder="Seleccioná frecuencia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="WEEKLY">
-                  Semanal (Todas las semanas)
-                </SelectItem>
-                <SelectItem value="BIWEEKLY">
-                  Quincenal (Semana por medio)
-                </SelectItem>
-                <SelectItem value="MONTHLY">Mensual (1 vez al mes)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-[0.8rem] text-muted-foreground mt-1">
-              {frequency === "MONTHLY"
-                ? "Se agendará el primer día de semana del mes."
-                : frequency === "BIWEEKLY"
-                  ? "Se agendará empezando desde esta semana."
-                  : ""}
-            </p>
-          </div>
-
-          <div className="flex gap-2 justify-end pt-4">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && (
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            <FormField
+              control={form.control}
+              name="frequency"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Frecuencia</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger id="frequency">
+                        <SelectValue placeholder="Seleccioná frecuencia" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="WEEKLY">
+                        Semanal (Todas las semanas)
+                      </SelectItem>
+                      <SelectItem value="BIWEEKLY">
+                        Quincenal (Semana por medio)
+                      </SelectItem>
+                      <SelectItem value="MONTHLY">Mensual (1 vez al mes)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[0.8rem] text-muted-foreground mt-1">
+                    {field.value === "MONTHLY"
+                      ? "Se agendará el primer día de semana del mes."
+                      : field.value === "BIWEEKLY"
+                        ? "Se agendará empezando desde esta semana."
+                        : ""}
+                  </p>
+                  <FormMessage />
+                </FormItem>
               )}
-              Crear Turno Fijo
-            </Button>
-          </div>
-        </form>
+            />
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                )}
+                Crear Turno Fijo
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
 }
+

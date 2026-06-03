@@ -9,6 +9,7 @@ import {
   Suspense,
   lazy,
   useActionState,
+  useTransition,
 } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -175,6 +176,13 @@ export default function BarberCalendar({
     [optimisticBookings, selectedBookingId],
   );
 
+  const [isPendingRefresh, startRefreshTransition] = useTransition();
+  const safeRefresh = useCallback(() => {
+    startRefreshTransition(() => {
+      router.refresh();
+    });
+  }, [router]);
+
   // Bulk selection store
   const isSelectionMode = useBulkSelectionStore(selectIsSelectionMode);
   const selectedDate = useBulkSelectionStore(selectSelectedDate);
@@ -212,9 +220,9 @@ export default function BarberCalendar({
     userId: targetBarberId,
     table: "Booking",
     enabled: !!targetBarberId,
-    onInsert: () => router.refresh(),
-    onUpdate: () => router.refresh(),
-    onDelete: () => router.refresh(),
+    onInsert: () => safeRefresh(),
+    onUpdate: () => safeRefresh(),
+    onDelete: () => safeRefresh(),
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -277,7 +285,7 @@ export default function BarberCalendar({
 
   useEffect(() => {
     const handleNewBooking = () => {
-      router.refresh();
+      safeRefresh();
     };
 
     const handleRealtimeUpdate = (e: Event) => {
@@ -287,7 +295,7 @@ export default function BarberCalendar({
           customEvent.detail.bookingId,
           customEvent.detail.status,
         );
-        router.refresh();
+        safeRefresh();
       }
     };
 
@@ -318,7 +326,7 @@ export default function BarberCalendar({
 
       toast.error("Error al agendar", { description: errorMessage });
 
-      router.refresh();
+      safeRefresh();
     }
 
     if (state?.success) {
@@ -327,7 +335,7 @@ export default function BarberCalendar({
       setCreateModalOpen(false);
       formRef.current?.reset();
     }
-  }, [state, router]);
+  }, [state, router, safeRefresh]);
 
   useEffect(() => {
     setOptimisticBookings(bookings);

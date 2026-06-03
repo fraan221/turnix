@@ -1,13 +1,14 @@
 "use client";
 
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { TimeBlock } from "@prisma/client";
-import { useFormStatus } from "react-dom";
-import { useEffect, useActionState } from "react";
 import { toast } from "sonner";
 import { updateTimeBlock } from "@/actions/dashboard.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,16 +17,18 @@ import {
   createArgentinaDate,
   formatTime,
 } from "@/lib/date-helpers";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Loader2 } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { TimeBlockFormSchema } from "@/lib/schemas";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? "Guardando…" : "Guardar cambios"}
-    </Button>
-  );
-}
+type TimeBlockFormValues = z.infer<typeof TimeBlockFormSchema>;
 
 export default function EditTimeBlockForm({
   timeBlock,
@@ -40,160 +43,200 @@ export default function EditTimeBlockForm({
     });
 
   const router = useRouter();
-  const updateTimeBlockWithId = updateTimeBlock.bind(null, timeBlock.id);
-  const [state, formAction] = useActionState(updateTimeBlockWithId, null);
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state?.success) {
-      toast.success("Bloqueo actualizado", {
-        description: "Los cambios se guardaron correctamente",
-      });
-      router.push(returnHref);
-    }
-    if (state?.error) {
-      let errorMessage = "No pudimos guardar los cambios. Intentá de nuevo.";
-      if (typeof state.error === "string") {
-        errorMessage = state.error;
-      } else {
-        const errorValues = Object.values(state.error).flat();
-        if (errorValues.length > 0) {
-          errorMessage = errorValues[0] as string;
+  const form = useForm<TimeBlockFormValues>({
+    resolver: zodResolver(TimeBlockFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      startDate: formatDateInputInArgentina(timeBlock.startTime),
+      startTime: formatTime(timeBlock.startTime),
+      endDate: formatDateInputInArgentina(timeBlock.endTime),
+      endTime: formatTime(timeBlock.endTime),
+      reason: timeBlock.reason || "",
+    },
+  });
+
+  const onSubmit = (data: TimeBlockFormValues) => {
+    startTransition(async () => {
+      const startDateTimeISO = createArgentinaDate(
+        data.startDate,
+        data.startTime,
+      ).toISOString();
+      const endDateTimeISO = createArgentinaDate(
+        data.endDate,
+        data.endTime,
+      ).toISOString();
+
+      const newFormData = new FormData();
+      newFormData.append("startDateTime", startDateTimeISO);
+      newFormData.append("endDateTime", endDateTimeISO);
+      newFormData.append("reason", data.reason || "");
+
+      const result = await updateTimeBlock(timeBlock.id, null, newFormData);
+
+      if (result?.success) {
+        toast.success("Bloqueo actualizado", {
+          description: "Los cambios se guardaron correctamente",
+        });
+        router.push(returnHref);
+      } else if (result?.error) {
+        let errorMessage = "No pudimos guardar los cambios. Intentá de nuevo.";
+        if (typeof result.error === "string") {
+          errorMessage = result.error;
+        } else {
+          const errorValues = Object.values(result.error).flat();
+          if (errorValues.length > 0) {
+            errorMessage = errorValues[0] as string;
+          }
         }
+        toast.error("Error al guardar", { description: errorMessage });
       }
-      toast.error("Error al guardar", { description: errorMessage });
-    }
-  }, [state, router, returnHref]);
-
-  const clientAction = async (formData: FormData) => {
-    const startDate = formData.get("startDate") as string;
-    const startTime = formData.get("startTime") as string;
-    const endDate = formData.get("endDate") as string;
-    const endTime = formData.get("endTime") as string;
-
-    const startDateTimeISO = createArgentinaDate(startDate, startTime).toISOString();
-    const endDateTimeISO = createArgentinaDate(endDate, endTime).toISOString();
-
-    const newFormData = new FormData();
-    newFormData.append("startDateTime", startDateTimeISO);
-    newFormData.append("endDateTime", endDateTimeISO);
-    newFormData.append("reason", formData.get("reason") || "");
-
-    formAction(newFormData);
+    });
   };
 
   return (
-    <form action={clientAction} className="space-y-6">
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Link href={returnHref}>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="sr-only">Volver a horarios</span>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex gap-3 items-center">
+            <Link href={returnHref}>
+              <Button variant="ghost" size="icon" className="w-9 h-9">
+                <ArrowLeft className="w-4 h-4" />
+                <span className="sr-only">Volver a horarios</span>
+              </Button>
+            </Link>
+            <div>
+              <h2 className="text-xl font-bold sm:text-2xl">Editar Bloqueo</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Modificá el período y horario del bloqueo
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="startDate"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Fecha de inicio</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} className="w-full" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="endDate"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Fecha de fin</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} className="w-full" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex gap-2 items-center">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-foreground">
+              Horario del bloqueo
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Hora de inicio</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} className="w-full" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel>Hora de fin</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} className="w-full" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="reason"
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel>
+                Razón del bloqueo{" "}
+                <span className="text-muted-foreground">(opcional)</span>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Ej: Vacaciones, evento familiar, feriado"
+                  rows={3}
+                  className="resize-none"
+                  autoComplete="off"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Ayuda a recordar por qué bloqueaste este horario
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+          <Link href={returnHref} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={isPending}
+            >
+              Cancelar
             </Button>
           </Link>
-          <div>
-            <h2 className="text-xl font-bold sm:text-2xl">Editar Bloqueo</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Modificá el período y horario del bloqueo
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-sm font-medium">
-              Fecha de inicio
-            </Label>
-            <Input
-              id="startDate"
-              name="startDate"
-              type="date"
-              defaultValue={formatDateInputInArgentina(timeBlock.startTime)}
-              required
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endDate" className="text-sm font-medium">
-              Fecha de fin
-            </Label>
-            <Input
-              id="endDate"
-              name="endDate"
-              type="date"
-              defaultValue={formatDateInputInArgentina(timeBlock.endTime)}
-              required
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-foreground">
-            Horario del bloqueo
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="startTime" className="text-sm font-medium">
-              Hora de inicio
-            </Label>
-            <Input
-              id="startTime"
-              name="startTime"
-              type="time"
-              defaultValue={formatTime(timeBlock.startTime)}
-              required
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endTime" className="text-sm font-medium">
-              Hora de fin
-            </Label>
-            <Input
-              id="endTime"
-              name="endTime"
-              type="time"
-              defaultValue={formatTime(timeBlock.endTime)}
-              required
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="reason" className="text-sm font-medium">
-          Razón del bloqueo{" "}
-          <span className="text-muted-foreground">(opcional)</span>
-        </Label>
-        <Textarea
-          id="reason"
-          name="reason"
-          placeholder="Ej: Vacaciones, evento familiar, feriado"
-          defaultValue={timeBlock.reason || ""}
-          rows={3}
-          className="resize-none"
-          autoComplete="off"
-        />
-        <p className="text-xs text-muted-foreground">
-          Ayuda a recordar por qué bloqueaste este horario
-        </p>
-      </div>
-
-      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-        <Link href={returnHref} className="w-full sm:w-auto">
-          <Button type="button" variant="outline" className="w-full sm:w-auto">
-            Cancelar
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="w-full sm:w-auto min-w-[160px]"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                Guardando…
+              </>
+            ) : (
+              "Guardar cambios"
+            )}
           </Button>
-        </Link>
-        <SubmitButton />
-      </div>
-    </form>
+        </div>
+      </form>
+    </Form>
   );
 }
+
