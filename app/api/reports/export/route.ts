@@ -18,7 +18,8 @@ import { formatDate, formatTime, formatToDateInput } from "@/lib/date-helpers";
 // Validaciones con Zod
 const exportQuerySchema = z.object({
   format: z.enum(["xlsx", "pdf"]),
-  period: z.enum(["day", "week", "month", "lastMonth", "year", "all"]),
+  period: z.enum(["day", "yesterday", "week", "month", "lastMonth", "custom", "all"]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export async function GET(request: Request) {
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
     const validatedParams = exportQuerySchema.safeParse({
       format: searchParams.get("format"),
       period: searchParams.get("period"),
+      date: searchParams.get("date") || undefined,
     });
 
     if (!validatedParams.success) {
@@ -48,10 +50,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const { format, period } = validatedParams.data;
+    const { format, period, date } = validatedParams.data;
 
     // 3. Obtener fechas, bookings y transacciones manuales
-    const { startDate, endDate } = getDateRangeForPeriod(period);
+    const { startDate, endDate } = getDateRangeForPeriod(period, date);
     const bookings = await getDetailedBookingsForReport(
       barbershop.id,
       startDate,

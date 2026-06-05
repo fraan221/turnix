@@ -13,9 +13,10 @@ import {
 
 interface ExportReportDropdownProps {
   currentPeriod: string;
+  customDate?: string;
 }
 
-export function ExportReportDropdown({ currentPeriod }: ExportReportDropdownProps) {
+export function ExportReportDropdown({ currentPeriod, customDate }: ExportReportDropdownProps) {
   const [isExporting, setIsExporting] = React.useState(false);
 
   const handleExport = async (format: "xlsx" | "pdf") => {
@@ -28,7 +29,11 @@ export function ExportReportDropdown({ currentPeriod }: ExportReportDropdownProp
       new Promise<void>((resolve, reject) => {
         try {
           const link = document.createElement("a");
-          link.href = `/api/reports/export?format=${format}&period=${currentPeriod}`;
+          let href = `/api/reports/export?format=${format}&period=${currentPeriod}`;
+          if (customDate) {
+            href += `&date=${customDate}`;
+          }
+          link.href = href;
           link.setAttribute("download", "");
           document.body.appendChild(link);
           link.click();

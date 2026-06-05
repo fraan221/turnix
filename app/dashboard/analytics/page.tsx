@@ -16,13 +16,20 @@ import {
 interface AnalyticsPageProps {
   searchParams: Promise<{
     period?: Period;
+    date?: string;
   }>;
 }
 
-async function BillingSection({ period }: { period: Period }) {
+async function BillingSection({
+  period,
+  customDate,
+}: {
+  period: Period;
+  customDate?: string;
+}) {
   const [analyticsData, financeData] = await Promise.all([
-    getAnalyticsData(period),
-    getFinanceData(period),
+    getAnalyticsData(period, customDate),
+    getFinanceData(period, customDate),
   ]);
 
   return (
@@ -30,14 +37,21 @@ async function BillingSection({ period }: { period: Period }) {
       analyticsData={analyticsData}
       financeData={financeData}
       period={period}
+      customDate={customDate}
     />
   );
 }
 
-async function ClientsSection({ period }: { period: Period }) {
+async function ClientsSection({
+  period,
+  customDate,
+}: {
+  period: Period;
+  customDate?: string;
+}) {
   const [clientMetricsData, analyticsData] = await Promise.all([
-    getClientMetrics(period),
-    getAnalyticsData(period),
+    getClientMetrics(period, customDate),
+    getAnalyticsData(period, customDate),
   ]);
 
   return (
@@ -45,6 +59,7 @@ async function ClientsSection({ period }: { period: Period }) {
       clientMetrics={clientMetricsData}
       analyticsData={analyticsData}
       period={period}
+      customDate={customDate}
     />
   );
 }
@@ -58,6 +73,7 @@ export default async function AnalyticsPage(props: AnalyticsPageProps) {
   }
 
   const period = searchParams.period || "week";
+  const customDate = searchParams.date;
 
   return (
     <div className="mx-auto space-y-6 max-w-7xl">
@@ -70,11 +86,11 @@ export default async function AnalyticsPage(props: AnalyticsPageProps) {
 
       <div className="space-y-8">
         <Suspense fallback={<BillingSkeleton />}>
-          <BillingSection period={period} />
+          <BillingSection period={period} customDate={customDate} />
         </Suspense>
 
         <Suspense fallback={<ClientsSkeleton />}>
-          <ClientsSection period={period} />
+          <ClientsSection period={period} customDate={customDate} />
         </Suspense>
       </div>
     </div>

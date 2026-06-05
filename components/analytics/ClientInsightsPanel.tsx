@@ -6,14 +6,16 @@ interface ClientInsightsPanelProps {
   metrics: ClientMetricsData;
   analyticsData: AnalyticsData;
   period: Period;
+  customDate?: string;
 }
 
 const comparisonDescriptions: Record<Period, string> = {
   day: "hoy",
+  yesterday: "ayer",
   week: "esta semana",
   month: "este mes",
   lastMonth: "el mes pasado",
-  year: "este año",
+  custom: "el día seleccionado",
   all: "histórico",
 };
 
@@ -21,6 +23,7 @@ export function ClientInsightsPanel({
   metrics,
   analyticsData,
   period,
+  customDate,
 }: ClientInsightsPanelProps) {
   const desc = comparisonDescriptions[period];
 

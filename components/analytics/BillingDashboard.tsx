@@ -12,14 +12,16 @@ interface BillingDashboardProps {
   analyticsData: AnalyticsData;
   financeData: FinanceData;
   period: Period;
+  customDate?: string;
 }
 
 const periodDescriptions: Record<Period, string> = {
   day: "en las últimas 24 horas",
+  yesterday: "ayer",
   week: "en los últimos 7 días",
   month: "en los últimos 30 días",
   lastMonth: "el mes pasado",
-  year: "este año",
+  custom: "el día seleccionado",
   all: "en total",
 };
 
@@ -27,6 +29,7 @@ export function BillingDashboard({
   analyticsData,
   financeData,
   period,
+  customDate,
 }: BillingDashboardProps) {
   // If there's an error in analytics data, show section error state
   if (analyticsData.error) {

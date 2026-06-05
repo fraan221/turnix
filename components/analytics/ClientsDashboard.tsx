@@ -10,12 +10,14 @@ interface ClientsDashboardProps {
   clientMetrics: ClientMetricsData;
   analyticsData: AnalyticsData;
   period: Period;
+  customDate?: string;
 }
 
 export function ClientsDashboard({
   clientMetrics,
   analyticsData,
   period,
+  customDate,
 }: ClientsDashboardProps) {
   if (clientMetrics.error) {
     return (
@@ -35,13 +37,14 @@ export function ClientsDashboard({
         <h2 className="text-xl font-semibold tracking-tight text-foreground">Tus clientes</h2>
       </div>
 
-      <ClientMetricsCards metrics={clientMetrics} period={period} />
+      <ClientMetricsCards metrics={clientMetrics} period={period} customDate={customDate} />
 
       {!analyticsData.error && (
         <ClientInsightsPanel
           metrics={clientMetrics}
           analyticsData={analyticsData}
           period={period}
+          customDate={customDate}
         />
       )}
 

@@ -17,8 +17,6 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
-  getStartOfYear,
-  getEndOfYear,
   getAllTimeStart,
 } from "@/lib/date-helpers";
 
@@ -30,11 +28,16 @@ function getFirstValidationMessage(error: z.ZodError) {
   return error.issues[0]?.message || "Los datos ingresados no son válidos.";
 }
 
-function getDateRange(period: string) {
+function getDateRange(period: string, customDate?: string) {
   const now = new Date();
   switch (period) {
     case "day":
       return { startDate: getStartOfDay(now), endDate: getEndOfDay(now) };
+    case "yesterday": {
+      const ref = new Date(now);
+      ref.setDate(ref.getDate() - 1);
+      return { startDate: getStartOfDay(ref), endDate: getEndOfDay(ref) };
+    }
     case "week":
       return { startDate: getStartOfWeek(now), endDate: getEndOfWeek(now) };
     case "month":
@@ -44,8 +47,10 @@ function getDateRange(period: string) {
       ref.setMonth(ref.getMonth() - 1);
       return { startDate: getStartOfMonth(ref), endDate: getEndOfMonth(ref) };
     }
-    case "year":
-      return { startDate: getStartOfYear(now), endDate: getEndOfYear(now) };
+    case "custom": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      return { startDate: getStartOfDay(ref), endDate: getEndOfDay(ref) };
+    }
     case "all":
       return { startDate: getAllTimeStart(), endDate: getEndOfDay(now) };
     default:
@@ -82,7 +87,7 @@ async function ensureDefaultCategories(barbershopId: string) {
 // ----------------------------------------------------
 // GET DATA CONSOLIDATED
 // ----------------------------------------------------
-export async function getCashflowData(period: string = "month") {
+export async function getCashflowData(period: string = "month", customDate?: string) {
   const user = await getUserForSettings();
   if (!user || user.role !== Role.OWNER) {
     return { error: "No autorizado." };
@@ -97,7 +102,7 @@ export async function getCashflowData(period: string = "month") {
     // 1. Asegurar que existan las categorías por defecto
     await ensureDefaultCategories(barbershopId);
 
-    const { startDate, endDate } = getDateRange(period);
+    const { startDate, endDate } = getDateRange(period, customDate);
 
     // 2. Fetch categories
     const categories = await prisma.cashflowCategory.findMany({
@@ -218,7 +223,7 @@ export async function getCashflowData(period: string = "month") {
 
     // Para saber si está pago, usamos el rango del período seleccionado,
     // a menos que sea un período amplio (trimestre, año, todo), en cuyo caso usamos el mes calendario actual.
-    const isWiderPeriod = period === "lastMonth" || period === "year" || period === "all";
+    const isWiderPeriod = period === "lastMonth" || period === "all";
     const paymentStart = isWiderPeriod ? getStartOfMonth(new Date()) : startDate;
     const paymentEnd = isWiderPeriod ? getEndOfMonth(new Date()) : endDate;
 

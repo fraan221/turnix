@@ -5,18 +5,20 @@ import { UserPlus, RefreshCw, Users, Star } from "lucide-react";
 interface ClientMetricsCardsProps {
   metrics: ClientMetricsData;
   period: Period;
+  customDate?: string;
 }
 
 const comparisonDescriptions: Record<Period, string> = {
   day: "vs ayer",
+  yesterday: "vs anteayer",
   week: "vs semana pasada",
   month: "vs mes pasado",
   lastMonth: "vs mes previo",
-  year: "vs año pasado",
+  custom: "vs día anterior",
   all: "histórico",
 };
 
-export function ClientMetricsCards({ metrics, period }: ClientMetricsCardsProps) {
+export function ClientMetricsCards({ metrics, period, customDate }: ClientMetricsCardsProps) {
   const desc = comparisonDescriptions[period];
 
   return (

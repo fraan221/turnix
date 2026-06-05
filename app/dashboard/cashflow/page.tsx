@@ -6,8 +6,14 @@ import CashflowDashboardSkeleton from "@/components/cashflow/CashflowDashboardSk
 import CashflowDashboard from "@/components/cashflow/CashflowDashboard";
 import { getCashflowData } from "@/actions/cashflow.actions";
 
-async function CashflowDataWrapper({ period }: { period: string }) {
-  const data = await getCashflowData(period);
+async function CashflowDataWrapper({
+  period,
+  customDate,
+}: {
+  period: string;
+  customDate?: string;
+}) {
+  const data = await getCashflowData(period, customDate);
 
   if ("error" in data) {
     return (
@@ -18,12 +24,13 @@ async function CashflowDataWrapper({ period }: { period: string }) {
     );
   }
 
-  return <CashflowDashboard initialData={data} period={period} />;
+  return <CashflowDashboard initialData={data} period={period} customDate={customDate} />;
 }
 
 interface PageProps {
   searchParams: Promise<{
     period?: string;
+    date?: string;
   }>;
 }
 
@@ -44,10 +51,11 @@ export default async function CashflowPage(props: PageProps) {
   }
 
   const period = searchParams.period || "month";
+  const customDate = searchParams.date;
 
   return (
     <Suspense fallback={<CashflowDashboardSkeleton />}>
-      <CashflowDataWrapper period={period} />
+      <CashflowDataWrapper period={period} customDate={customDate} />
     </Suspense>
   );
 }

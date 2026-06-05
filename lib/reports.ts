@@ -7,12 +7,10 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
-  getStartOfYear,
-  getEndOfYear,
   getAllTimeStart,
 } from "@/lib/date-helpers";
 
-export type Period = "day" | "week" | "month" | "lastMonth" | "year" | "all";
+export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "custom" | "all";
 
 export type ReportBooking = {
   date: Date;
@@ -38,7 +36,7 @@ export function formatPaymentMethod(method: PaymentMethod | null): string {
 /**
  * Obtiene el rango de fechas asociado a un período.
  */
-export function getDateRangeForPeriod(period: Period) {
+export function getDateRangeForPeriod(period: Period, customDate?: string) {
   const now = new Date();
 
   switch (period) {
@@ -47,6 +45,14 @@ export function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfDay(now),
         endDate: getEndOfDay(now),
       };
+    case "yesterday": {
+      const ref = new Date(now);
+      ref.setDate(ref.getDate() - 1);
+      return {
+        startDate: getStartOfDay(ref),
+        endDate: getEndOfDay(ref),
+      };
+    }
     case "week":
       return {
         startDate: getStartOfWeek(now),
@@ -65,11 +71,13 @@ export function getDateRangeForPeriod(period: Period) {
         endDate: getEndOfMonth(ref),
       };
     }
-    case "year":
+    case "custom": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
       return {
-        startDate: getStartOfYear(now),
-        endDate: getEndOfYear(now),
+        startDate: getStartOfDay(ref),
+        endDate: getEndOfDay(ref),
       };
+    }
     case "all":
       return {
         startDate: getAllTimeStart(),
@@ -104,14 +112,16 @@ export function formatPeriodLabel(period: Period, startDate: Date, endDate: Date
   switch (period) {
     case "day":
       return `Hoy (${startStr})`;
+    case "yesterday":
+      return `Ayer (${startStr})`;
     case "week":
       return `Esta Semana (${startStr} al ${endStr})`;
     case "month":
       return `Este Mes (${startStr} al ${endStr})`;
     case "lastMonth":
       return `Mes Pasado (${startStr} al ${endStr})`;
-    case "year":
-      return `Este Año (${startStr} al ${endStr})`;
+    case "custom":
+      return `${startStr}`;
     case "all":
       return `Todo el tiempo (hasta ${endStr})`;
     default:

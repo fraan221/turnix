@@ -10,13 +10,11 @@ import {
   getEndOfWeek,
   getStartOfMonth,
   getEndOfMonth,
-  getStartOfYear,
-  getEndOfYear,
   getAllTimeStart,
 } from "@/lib/date-helpers";
 import { unstable_cache as cache } from "next/cache";
 
-export type Period = "day" | "week" | "month" | "lastMonth" | "year" | "all";
+export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "custom" | "all";
 
 export type ChartDataPoint = {
   name: string;
@@ -62,7 +60,7 @@ function formatChartDataByPeriod(
   startDate?: Date,
   endDate?: Date,
 ): ChartDataPoint[] {
-  if (period === "day") {
+  if (period === "day" || period === "yesterday" || period === "custom") {
     const chartDataMap = new Map<string, number>(
       rawChartData.map((item) => [String(item.name), item.total]),
     );
@@ -127,9 +125,6 @@ function formatChartDataByPeriod(
     } else if (period === "lastMonth") {
       groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
       sortKey = day;
-    } else if (period === "year") {
-      groupKey = months[month];
-      sortKey = month + 1;
     } else if (period === "all") {
       groupKey = `${months[month]} ${yearStr.slice(-2)}`;
       sortKey = year * 100 + (month + 1);
@@ -185,12 +180,7 @@ function formatChartDataByPeriod(
     return filledData;
   }
 
-  if (period === "year") {
-    return months.map((monthName) => ({
-      name: monthName,
-      total: groupedData.get(monthName)?.total ?? 0,
-    }));
-  }
+
 
   if (period === "all" && groupedData.size > 0) {
     const totalsByMonth = new Map<number, number>();
@@ -235,7 +225,7 @@ function formatChartDataByPeriod(
     .map(([name, value]) => ({ name, total: value.total }));
 }
 
-function getDateRangeForPeriod(period: Period) {
+function getDateRangeForPeriod(period: Period, customDate?: string) {
   const now = new Date();
 
   switch (period) {
@@ -244,6 +234,14 @@ function getDateRangeForPeriod(period: Period) {
         startDate: getStartOfDay(now),
         endDate: getEndOfDay(now),
       };
+    case "yesterday": {
+      const ref = new Date(now);
+      ref.setDate(ref.getDate() - 1);
+      return {
+        startDate: getStartOfDay(ref),
+        endDate: getEndOfDay(ref),
+      };
+    }
     case "week":
       return {
         startDate: getStartOfWeek(now),
@@ -262,11 +260,13 @@ function getDateRangeForPeriod(period: Period) {
         endDate: getEndOfMonth(ref),
       };
     }
-    case "year":
+    case "custom": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
       return {
-        startDate: getStartOfYear(now),
-        endDate: getEndOfYear(now),
+        startDate: getStartOfDay(ref),
+        endDate: getEndOfDay(ref),
       };
+    }
     case "all":
       return {
         startDate: getAllTimeStart(),
@@ -280,7 +280,7 @@ function getDateRangeForPeriod(period: Period) {
   }
 }
 
-function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
+function getPreviousPeriodRange(period: Period, customDate?: string): { start: Date; end: Date } {
   const now = new Date();
 
   switch (period) {
@@ -288,6 +288,11 @@ function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
       const start = getStartOfDay(now);
       start.setDate(start.getDate() - 1);
       return { start, end: getEndOfDay(start) };
+    }
+    case "yesterday": {
+      const ref = new Date(now);
+      ref.setDate(ref.getDate() - 2);
+      return { start: getStartOfDay(ref), end: getEndOfDay(ref) };
     }
     case "week": {
       const start = getStartOfWeek(now);
@@ -304,10 +309,10 @@ function getPreviousPeriodRange(period: Period): { start: Date; end: Date } {
       ref.setMonth(ref.getMonth() - 2);
       return { start: getStartOfMonth(ref), end: getEndOfMonth(ref) };
     }
-    case "year": {
-      const start = getStartOfYear(now);
-      start.setFullYear(start.getFullYear() - 1);
-      return { start, end: getEndOfYear(start) };
+    case "custom": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      ref.setDate(ref.getDate() - 1);
+      return { start: getStartOfDay(ref), end: getEndOfDay(ref) };
     }
     case "all":
     default:
@@ -358,7 +363,7 @@ const getBarbershopAnalytics = cache(
         )
       `;
 
-      if (period === "day") {
+      if (period === "day" || period === "yesterday" || period === "custom") {
         chartQuery = Prisma.sql`
           ${baseCTE}
           SELECT
@@ -487,7 +492,10 @@ const getBarbershopAnalytics = cache(
   },
 );
 
-export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
+export async function getAnalyticsData(
+  period: Period,
+  customDate?: string,
+): Promise<AnalyticsData> {
   const user = await getUserForSettings();
 
   if (!user || user.role !== Role.OWNER) {
@@ -513,7 +521,7 @@ export async function getAnalyticsData(period: Period): Promise<AnalyticsData> {
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
 
   return getBarbershopAnalytics(barbershopId, period, startDate, endDate);
 }
@@ -556,7 +564,7 @@ const getBarberAnalytics = cache(
         )
       `;
 
-      if (period === "day") {
+      if (period === "day" || period === "yesterday" || period === "custom") {
         chartQuery = Prisma.sql`
           ${baseCTE}
           SELECT
@@ -705,6 +713,7 @@ const getBarberAnalytics = cache(
 
 export async function getPersonalBarberStats(
   period: Period = "week",
+  customDate?: string,
 ): Promise<PersonalStatsData> {
   const user = await getUserForSettings();
 
@@ -720,7 +729,7 @@ export async function getPersonalBarberStats(
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
 
   return getBarberAnalytics(user.id, period, startDate, endDate);
 }
@@ -898,6 +907,7 @@ const getBarbershopClientMetrics = cache(
 
 export async function getClientMetrics(
   period: Period = "month",
+  customDate?: string,
 ): Promise<ClientMetricsData> {
   const user = await getUserForSettings();
 
@@ -934,9 +944,9 @@ export async function getClientMetrics(
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
   const { start: prevStartDate, end: prevEndDate } =
-    getPreviousPeriodRange(period);
+    getPreviousPeriodRange(period, customDate);
 
   return getBarbershopClientMetrics(
     barbershopId,
@@ -1133,6 +1143,7 @@ const getBarberClientMetrics = cache(
 
 export async function getBarberClientMetricsData(
   period: Period = "month",
+  customDate?: string,
 ): Promise<ClientMetricsData> {
   const user = await getUserForSettings();
 
@@ -1152,9 +1163,9 @@ export async function getBarberClientMetricsData(
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
   const { start: prevStartDate, end: prevEndDate } =
-    getPreviousPeriodRange(period);
+    getPreviousPeriodRange(period, customDate);
 
   return getBarberClientMetrics(
     user.id,
@@ -1269,6 +1280,7 @@ const getCachedFinanceData = cache(
 
 export async function getFinanceData(
   period: Period = "month",
+  customDate?: string,
 ): Promise<FinanceData> {
   const user = await getUserForSettings();
 
@@ -1287,7 +1299,7 @@ export async function getFinanceData(
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
   return getCachedFinanceData(barbershopId, startDate, endDate);
 }
 
@@ -1342,6 +1354,7 @@ const getCachedBarberFinanceData = cache(
 
 export async function getBarberFinanceData(
   period: Period = "month",
+  customDate?: string,
 ): Promise<FinanceData> {
   const user = await getUserForSettings();
 
@@ -1352,6 +1365,6 @@ export async function getBarberFinanceData(
     };
   }
 
-  const { startDate, endDate } = getDateRangeForPeriod(period);
+  const { startDate, endDate } = getDateRangeForPeriod(period, customDate);
   return getCachedBarberFinanceData(user.id, startDate, endDate);
 }

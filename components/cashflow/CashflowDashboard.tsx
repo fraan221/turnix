@@ -84,20 +84,23 @@ interface CashflowDashboardData {
 interface CashflowDashboardProps {
   initialData: CashflowDashboardData;
   period: string;
+  customDate?: string;
 }
 
 const periodDescriptions: Record<string, string> = {
   day: "hoy",
+  yesterday: "ayer",
   week: "esta semana",
   month: "este mes",
   lastMonth: "el mes pasado",
-  year: "este año",
+  custom: "el día seleccionado",
   all: "historial completo",
 };
 
 export default function CashflowDashboard({
   initialData,
   period,
+  customDate,
 }: CashflowDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -114,6 +117,14 @@ export default function CashflowDashboard({
   const handlePeriodChange = (newPeriod: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("period", newPeriod);
+    params.delete("date");
+    router.push(`/dashboard/cashflow?${params.toString()}`);
+  };
+
+  const handleCustomDateChange = (date: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("period", "custom");
+    params.set("date", date);
     router.push(`/dashboard/cashflow?${params.toString()}`);
   };
 
@@ -160,8 +171,10 @@ export default function CashflowDashboard({
           <PeriodDropdown
             currentPeriod={period as any}
             onPeriodChange={handlePeriodChange}
+            customDate={customDate}
+            onCustomDateChange={handleCustomDateChange}
           />
-          <ExportReportDropdown currentPeriod={period} />
+          <ExportReportDropdown currentPeriod={period} customDate={customDate} />
           <Button variant="outline" size="icon" onClick={handleRefresh} className="shrink-0" title="Actualizar datos">
             <RefreshCw className="w-4 h-4" />
           </Button>
