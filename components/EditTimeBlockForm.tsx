@@ -158,7 +158,7 @@ export default function EditTimeBlockForm({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal h-10",
+                            "w-full justify-start text-left font-normal h-11 px-4",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -202,7 +202,7 @@ export default function EditTimeBlockForm({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal h-10",
+                            "w-full justify-start text-left font-normal h-11 px-4",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -258,7 +258,7 @@ export default function EditTimeBlockForm({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal h-10",
+                            "w-full justify-start text-left font-normal h-11 px-4",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -267,15 +267,14 @@ export default function EditTimeBlockForm({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-32 p-1" align="start">
-                      <div className="h-64 overflow-y-auto flex flex-col gap-1 pr-1 scrollbar-thin">
+                    <PopoverContent className="w-36 p-1.5" align="start">
+                      <div className="h-64 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin">
                         {computedStartTimeOptions.map((time) => (
                           <Button
                             key={time}
                             variant="ghost"
-                            size="sm"
                             className={cn(
-                              "justify-start font-normal w-full",
+                              "justify-start font-normal w-full h-10 px-3",
                               field.value === time && "bg-accent text-accent-foreground font-semibold"
                             )}
                             onClick={() => {
@@ -306,7 +305,7 @@ export default function EditTimeBlockForm({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal h-10",
+                            "w-full justify-start text-left font-normal h-11 px-4",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -315,15 +314,14 @@ export default function EditTimeBlockForm({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-32 p-1" align="start">
-                      <div className="h-64 overflow-y-auto flex flex-col gap-1 pr-1 scrollbar-thin">
+                    <PopoverContent className="w-36 p-1.5" align="start">
+                      <div className="h-64 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin">
                         {computedEndTimeOptions.map((time) => (
                           <Button
                             key={time}
                             variant="ghost"
-                            size="sm"
                             className={cn(
-                              "justify-start font-normal w-full",
+                              "justify-start font-normal w-full h-10 px-3",
                               field.value === time && "bg-accent text-accent-foreground font-semibold"
                             )}
                             onClick={() => {
