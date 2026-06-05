@@ -20,6 +20,21 @@ All user-facing text is in **Argentine Spanish**. The timezone is hardcoded to `
 
 ---
 
+## Visión de Producto
+
+> **"Turnix es un producto tan simple de utilizar que no se requieren tutoriales."**
+
+Esta frase es el norte de todo lo que construimos. Cada pantalla, cada flujo y cada feature se evalúa contra esta premisa. Si un barbero necesita que le expliquen cómo usar algo, el diseño falló — no el usuario.
+
+Implicaciones directas:
+
+- **UX autoexplicativa**: los flujos deben ser intuitivos desde el primer uso, sin onboardings complejos ni tooltips excesivos
+- **Menos es más**: antes de agregar una opción, preguntarse si se puede resolver con un default inteligente
+- **Lenguaje del usuario**: la interfaz habla como habla un barbero, no como habla un desarrollador
+- **Cero fricción**: cada paso extra en un flujo es un paso que hay que justificar
+
+---
+
 ## Modelo de Negocio
 
 - Freemium con trial de 14 días sin restricciones
