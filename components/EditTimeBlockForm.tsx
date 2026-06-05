@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,7 +17,13 @@ import {
   createArgentinaDate,
   formatTime,
 } from "@/lib/date-helpers";
-import { ArrowLeft, Clock, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, Clock, Loader2, CalendarIcon } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -27,6 +33,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { TimeBlockFormSchema } from "@/lib/schemas";
+
+const timeOptions = Array.from({ length: 96 }, (_, i) => {
+  const hour = Math.floor(i / 4).toString().padStart(2, "0");
+  const minute = ((i % 4) * 15).toString().padStart(2, "0");
+  return `${hour}:${minute}`;
+});
 
 type TimeBlockFormValues = z.infer<typeof TimeBlockFormSchema>;
 
@@ -44,6 +56,8 @@ export default function EditTimeBlockForm({
 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isStartTimeOpen, setIsStartTimeOpen] = useState(false);
+  const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
 
   const form = useForm<TimeBlockFormValues>({
     resolver: zodResolver(TimeBlockFormSchema),
@@ -56,6 +70,23 @@ export default function EditTimeBlockForm({
       reason: timeBlock.reason || "",
     },
   });
+
+  const startVal = form.watch("startTime");
+  const endVal = form.watch("endTime");
+
+  const computedStartTimeOptions = useMemo(() => {
+    if (startVal && !timeOptions.includes(startVal)) {
+      return [...timeOptions, startVal].sort();
+    }
+    return timeOptions;
+  }, [startVal]);
+
+  const computedEndTimeOptions = useMemo(() => {
+    if (endVal && !timeOptions.includes(endVal)) {
+      return [...timeOptions, endVal].sort();
+    }
+    return timeOptions;
+  }, [endVal]);
 
   const onSubmit = (data: TimeBlockFormValues) => {
     startTransition(async () => {
@@ -119,11 +150,42 @@ export default function EditTimeBlockForm({
               control={form.control}
               name="startDate"
               render={({ field }) => (
-                <FormItem className="space-y-2">
+                <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Fecha de inicio</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} className="w-full" />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                          {field.value ? (
+                            format(new Date(field.value + "T12:00:00"), "d 'de' MMMM, yyyy", { locale: es })
+                          ) : (
+                            <span>Seleccionar fecha</span>
+                          )}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value + "T12:00:00") : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(format(date, "yyyy-MM-dd"));
+                          } else {
+                            field.onChange("");
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -132,11 +194,42 @@ export default function EditTimeBlockForm({
               control={form.control}
               name="endDate"
               render={({ field }) => (
-                <FormItem className="space-y-2">
+                <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Fecha de fin</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} className="w-full" />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                          {field.value ? (
+                            format(new Date(field.value + "T12:00:00"), "d 'de' MMMM, yyyy", { locale: es })
+                          ) : (
+                            <span>Seleccionar fecha</span>
+                          )}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value + "T12:00:00") : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(format(date, "yyyy-MM-dd"));
+                          } else {
+                            field.onChange("");
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -157,11 +250,46 @@ export default function EditTimeBlockForm({
               control={form.control}
               name="startTime"
               render={({ field }) => (
-                <FormItem className="space-y-2">
+                <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Hora de inicio</FormLabel>
-                  <FormControl>
-                    <Input type="time" {...field} className="w-full" />
-                  </FormControl>
+                  <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <Clock className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                          {field.value ? `${field.value} hs` : <span>Seleccionar hora</span>}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-32 p-1" align="start">
+                      <div className="h-64 overflow-y-auto flex flex-col gap-1 pr-1 scrollbar-thin">
+                        {computedStartTimeOptions.map((time) => (
+                          <Button
+                            key={time}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "justify-start font-normal w-full",
+                              field.value === time && "bg-accent text-accent-foreground font-semibold"
+                            )}
+                            onClick={() => {
+                              field.onChange(time);
+                              field.onBlur();
+                              setIsStartTimeOpen(false);
+                            }}
+                          >
+                            {time} hs
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -170,11 +298,46 @@ export default function EditTimeBlockForm({
               control={form.control}
               name="endTime"
               render={({ field }) => (
-                <FormItem className="space-y-2">
+                <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Hora de fin</FormLabel>
-                  <FormControl>
-                    <Input type="time" {...field} className="w-full" />
-                  </FormControl>
+                  <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <Clock className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                          {field.value ? `${field.value} hs` : <span>Seleccionar hora</span>}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-32 p-1" align="start">
+                      <div className="h-64 overflow-y-auto flex flex-col gap-1 pr-1 scrollbar-thin">
+                        {computedEndTimeOptions.map((time) => (
+                          <Button
+                            key={time}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "justify-start font-normal w-full",
+                              field.value === time && "bg-accent text-accent-foreground font-semibold"
+                            )}
+                            onClick={() => {
+                              field.onChange(time);
+                              field.onBlur();
+                              setIsEndTimeOpen(false);
+                            }}
+                          >
+                            {time} hs
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
