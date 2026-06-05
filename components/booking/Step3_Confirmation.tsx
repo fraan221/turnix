@@ -117,7 +117,7 @@ export function Step3_Confirmation({
 
   const form = useForm<ClientConfirmFormValues>({
     resolver: zodResolver(clientConfirmSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       clientName: "",
       clientPhone: "",
@@ -352,7 +352,7 @@ export function Step3_Confirmation({
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={!form.formState.isValid || isPending}
+                  disabled={isPending}
                 >
                   {isPending ? (
                     <>
