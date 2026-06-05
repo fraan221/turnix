@@ -89,7 +89,7 @@ export function CreateFixedBookingModal({
 
   const form = useForm<RecurringBookingFormValues>({
     resolver: zodResolver(RecurringBookingSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       clientId: "",
       serviceId: "",

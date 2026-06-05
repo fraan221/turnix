@@ -56,7 +56,7 @@ export function AddTimeBlockModalContent({
 
   const form = useForm<TimeBlockFormValues>({
     resolver: zodResolver(TimeBlockFormSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       startDate: "",
       startTime: "",

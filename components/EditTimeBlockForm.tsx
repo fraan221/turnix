@@ -61,7 +61,7 @@ export default function EditTimeBlockForm({
 
   const form = useForm<TimeBlockFormValues>({
     resolver: zodResolver(TimeBlockFormSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       startDate: formatDateInputInArgentina(timeBlock.startTime),
       startTime: formatTime(timeBlock.startTime),

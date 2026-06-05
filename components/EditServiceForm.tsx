@@ -66,7 +66,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
 
   const form = useForm<ServiceFormInput>({
     resolver: zodResolver(ServiceInputSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       name: service.name,
       price: service.price,
@@ -78,7 +78,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
 
   const {
     handleSubmit,
-    formState: { errors, isSubmitting, isValid, isDirty },
+    formState: { errors, isSubmitting, isDirty },
     setValue,
     trigger,
     watch,
@@ -355,7 +355,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             </Link>
             <Button
               type="submit"
-              disabled={isSubmitting || isPending || !isValid || !isDirty}
+              disabled={isSubmitting || isPending || !isDirty}
               className="w-full sm:w-auto min-w-[160px]"
             >
               {isSubmitting || isPending ? (
