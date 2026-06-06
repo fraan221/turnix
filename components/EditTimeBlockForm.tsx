@@ -152,7 +152,7 @@ export default function EditTimeBlockForm({
               render={({ field }) => (
                 <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Fecha de inicio</FormLabel>
-                  <Popover>
+                  <Popover modal={true}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -196,7 +196,7 @@ export default function EditTimeBlockForm({
               render={({ field }) => (
                 <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Fecha de fin</FormLabel>
-                  <Popover>
+                  <Popover modal={true}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -252,7 +252,7 @@ export default function EditTimeBlockForm({
               render={({ field }) => (
                 <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Hora de inicio</FormLabel>
-                  <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen}>
+                  <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen} modal={true}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -299,7 +299,7 @@ export default function EditTimeBlockForm({
               render={({ field }) => (
                 <FormItem className="space-y-2 flex flex-col">
                   <FormLabel>Hora de fin</FormLabel>
-                  <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen}>
+                  <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen} modal={true}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
