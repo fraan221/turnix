@@ -26,12 +26,11 @@ export default function DashboardLayout({
           <TrialStatusBanner />
           <SubscriptionWarningBanner />
           <WhatsNewDialog
-            version="v2026.05.e6"
+            version="v2026.05.e7"
             title="Novedades de Turnix"
             items={[
-              "Nueva sección de feedback en el menú lateral: contanos qué te parece Turnix.",
-              "Mejoramos la página de suscripción para que veas claramente el estado de tu plan y pagos.",
-              "Nuevo filtro 'Mes Pasado' en Analytics y Caja para ver rápido el mes anterior.",
+              "Nuevo filtro 'Ayer' y selector de fechas personalizado en Analytics y Caja.",
+              "Nuevos selectores de fecha y hora con popover en los bloques de horario.",
             ]}
           />
           <SiteHeaderServer />
