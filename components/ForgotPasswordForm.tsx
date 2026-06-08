@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Check, Loader2, ArrowLeft } from "lucide-react";
+import { Check, Loader, ArrowLeft } from "lucide-react";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -24,7 +24,7 @@ function SubmitButton() {
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
           Enviando...
         </>
       ) : (

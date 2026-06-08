@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, CalendarX, Lightbulb, CalendarIcon, Clock } from "lucide-react";
+import { Loader, CalendarX, Lightbulb, CalendarIcon, Clock } from "lucide-react";
 import { createTimeBlock } from "@/actions/dashboard.actions";
 import { createArgentinaDate } from "@/lib/date-helpers";
 import { Button } from "./ui/button";
@@ -365,7 +365,7 @@ export function AddTimeBlockModalContent({
             >
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                   Bloqueando…
                 </>
               ) : (

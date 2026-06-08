@@ -59,7 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { BookingWithDetails } from "./BookingDetailsDialog";
 import { BarberSelector } from "./BarberSelector";
@@ -134,7 +134,7 @@ function SubmitButton({ isDisabled }: { isDisabled?: boolean }) {
     <Button type="submit" className="w-full" disabled={pending || isDisabled}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+          <Loader className="mr-2 w-4 h-4 animate-spin" />
           Agendando...
         </>
       ) : (

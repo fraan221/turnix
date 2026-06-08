@@ -7,7 +7,7 @@ import { completeGoogleRegistration } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Store, Briefcase } from "lucide-react";
+import { Loader, Store, Briefcase } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -114,7 +114,7 @@ export default function CompleteProfileForm({ user }: { user: User }) {
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finalizando...
+                <Loader className="w-4 h-4 mr-2 animate-spin" /> Finalizando...
               </>
             ) : (
               "Completar registro"

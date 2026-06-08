@@ -6,7 +6,7 @@ import { Step0_BarberSelection } from "./Step0_BarberSelection";
 import { Step1_ServiceSelection } from "./Step1_ServiceSelection";
 import { Step2_DateTimeSelection } from "./Step2_DateTimeSelection";
 import { Step3_Confirmation } from "./Step3_Confirmation";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 
 interface BookingWizardProps {
   barbers: User[];
@@ -51,7 +51,7 @@ export function BookingWizard({
     return (
       <div className="p-6">
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader className="w-8 h-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Redirigiendo...</p>
         </div>
       </div>

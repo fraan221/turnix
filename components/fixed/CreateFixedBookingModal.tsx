@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -342,7 +342,7 @@ export function CreateFixedBookingModal({
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && (
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Crear Turno Fijo
               </Button>

@@ -9,7 +9,7 @@ import {
   Calendar,
   Sparkles,
   CreditCard,
-  Loader2,
+  Loader,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -337,7 +337,7 @@ export function BillingSettingsSection({
             >
               {isPendingSync ? (
                 <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                   Reactivando...
                 </>
               ) : (
@@ -356,7 +356,7 @@ export function BillingSettingsSection({
                   >
                     {isPendingUpgrade ? (
                       <>
-                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        <Loader className="mr-2 w-4 h-4 animate-spin" />
                         Procesando...
                       </>
                     ) : (
@@ -382,7 +382,7 @@ export function BillingSettingsSection({
                     disabled={isPendingUpgrade}
                   >
                     {isPendingUpgrade ? (
-                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      <Loader className="mr-2 w-4 h-4 animate-spin" />
                     ) : null}
                     Cancelar cambio
                   </Button>
@@ -434,7 +434,7 @@ export function BillingSettingsSection({
                       className="bg-destructive hover:bg-destructive/90"
                     >
                       {isPendingCancel && (
-                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        <Loader className="mr-2 w-4 h-4 animate-spin" />
                       )}
                       Cancelar Plan PRO
                     </AlertDialogAction>

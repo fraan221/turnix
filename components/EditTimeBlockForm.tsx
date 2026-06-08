@@ -23,7 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Clock, Loader2, CalendarIcon } from "lucide-react";
+import { ArrowLeft, Clock, Loader, CalendarIcon } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -388,7 +388,7 @@ export default function EditTimeBlockForm({
           >
             {isPending ? (
               <>
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                <Loader className="mr-2 w-4 h-4 animate-spin" />
                 Guardando…
               </>
             ) : (

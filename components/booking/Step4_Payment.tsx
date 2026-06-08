@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { createDepositPreference } from "@/actions/payment.actions";
-import { ArrowLeft, Loader2, CreditCard, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader, CreditCard, ExternalLink } from "lucide-react";
 
 interface Step4PaymentProps {
   bookingId: string;
@@ -111,7 +111,7 @@ export function Step4_Payment({
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader className="w-4 h-4 mr-2 animate-spin" />
               Preparando pago...
             </>
           ) : (

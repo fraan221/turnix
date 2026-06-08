@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, Users } from "lucide-react";
+import { CheckCircle, Loader, Users } from "lucide-react";
 
 export function EnableTeamView() {
   const [isPending, startTransition] = useTransition();
@@ -79,7 +79,7 @@ export function EnableTeamView() {
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <Loader className="w-5 h-5 mr-2 animate-spin" />
                   Activando…
                 </>
               ) : (

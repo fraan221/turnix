@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
 import { createService } from "@/actions/service.actions";
 import { Role } from "@prisma/client";
@@ -351,7 +351,7 @@ export function AddServiceModalContent({
           >
             {isSubmitting || isPending ? (
               <>
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                <Loader className="mr-2 w-4 h-4 animate-spin" />
                 Creando…
               </>
             ) : (

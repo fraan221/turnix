@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { refreshSubscriptionStatus } from "@/actions/subscription.actions";
 import { useSubscriptionStore } from "@/lib/stores/subscription-store";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 
 export default function SubscriptionStatusHandler() {
   const searchParams = useSearchParams();
@@ -96,7 +96,7 @@ export default function SubscriptionStatusHandler() {
     return (
       <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-background/80">
         <div className="flex flex-col gap-4 items-center p-6 rounded-lg border shadow-lg bg-card">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader className="w-8 h-8 animate-spin text-primary" />
           <div className="text-center">
             <p className="font-medium">Verificando tu pago...</p>
             <p className="text-sm text-muted-foreground">

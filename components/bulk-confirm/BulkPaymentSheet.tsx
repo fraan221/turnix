@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Loader2, Banknote, Smartphone, CreditCard } from "lucide-react";
+import { Loader, Banknote, Smartphone, CreditCard } from "lucide-react";
 import { PaymentMethod } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +60,7 @@ export function BulkPaymentSheet({
             disabled={isPending}
           >
             {isPending ? (
-              <Loader2 className="mr-4 animate-spin" />
+              <Loader className="mr-4 animate-spin" />
             ) : (
               <Banknote className="mr-4 w-6 h-6" />
             )}
@@ -73,7 +73,7 @@ export function BulkPaymentSheet({
             disabled={isPending}
           >
             {isPending ? (
-              <Loader2 className="mr-4 animate-spin" />
+              <Loader className="mr-4 animate-spin" />
             ) : (
               <Smartphone className="mr-4 w-6 h-6" />
             )}
@@ -86,7 +86,7 @@ export function BulkPaymentSheet({
             disabled={isPending}
           >
             {isPending ? (
-              <Loader2 className="mr-4 animate-spin" />
+              <Loader className="mr-4 animate-spin" />
             ) : (
               <CreditCard className="mr-4 w-6 h-6" />
             )}

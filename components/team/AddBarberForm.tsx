@@ -20,7 +20,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus } from "lucide-react";
+import { Loader, Plus } from "lucide-react";
 import { LinkBarberSchema } from "@/lib/schemas";
 
 const initialState = {
@@ -35,7 +35,7 @@ function SubmitButton({ disabled }: { disabled?: boolean }) {
     <Button type="submit" className="w-full" disabled={pending || disabled}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+          <Loader className="mr-2 w-4 h-4 animate-spin" />
           Verificando…
         </>
       ) : (

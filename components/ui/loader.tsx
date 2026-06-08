@@ -1,5 +1,5 @@
-import { Loader2 } from "lucide-react";
+import { Loader as LoaderIcon } from "lucide-react";
 
 export function Loader() {
-  return <Loader2 className="w-8 h-8 animate-spin text-primary" />;
+  return <LoaderIcon className="w-6 h-6 animate-spin text-primary" />;
 }

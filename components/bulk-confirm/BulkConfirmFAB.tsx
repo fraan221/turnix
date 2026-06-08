@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCheck, X, Loader2 } from "lucide-react";
+import { CheckCheck, X, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useBulkSelectionStore,
@@ -111,7 +111,7 @@ export function BulkConfirmFAB({ dayUnconfirmedIds }: BulkConfirmFABProps) {
               className="min-w-[140px]"
             >
               {isPending ? (
-                <Loader2 className="mr-1 animate-spin size-4" />
+                <Loader className="mr-1 animate-spin size-4" />
               ) : (
                 <CheckCheck className="mr-1 size-4" />
               )}

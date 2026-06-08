@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Loader2, Store, Briefcase, Check } from "lucide-react";
+import { Loader, Store, Briefcase, Check } from "lucide-react";
 import { useLoader } from "@/context/LoaderContext";
 
 const RegisterSchema = z
@@ -302,7 +302,7 @@ export default function RegisterForm() {
                   disabled={isSubmitting || !role}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader className="w-4 h-4 animate-spin" />
                   ) : (
                     "Crear cuenta"
                   )}

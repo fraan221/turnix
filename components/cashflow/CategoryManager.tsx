@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Tag, HelpCircle, Loader2 } from "lucide-react";
+import { Plus, Trash2, Tag, HelpCircle, Loader } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -94,7 +94,7 @@ export default function CategoryManager({
               className="w-full"
               disabled={isPending || !newCategoryName.trim()}
             >
-              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {isPending && <Loader className="w-4 h-4 animate-spin mr-2" />}
               Crear Categoría
             </Button>
           </form>
@@ -137,7 +137,7 @@ export default function CategoryManager({
                     disabled={deletePendingId === cat.id}
                   >
                     {deletePendingId === cat.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Trash2 className="w-3.5 h-3.5" />
                     )}

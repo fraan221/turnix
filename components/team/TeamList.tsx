@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Users, Loader2, Mail, Crown } from "lucide-react";
+import { Trash2, Users, Loader, Mail, Crown } from "lucide-react";
 import { useState, useTransition } from "react";
 import { removeTeamMember } from "@/actions/team.actions";
 import { toast } from "sonner";
@@ -146,7 +146,7 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader className="w-4 h-4 mr-2 animate-spin" />
                   Eliminando…
                 </>
               ) : (

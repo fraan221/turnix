@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { CalendarIcon, Plus, Tag, Loader2 } from "lucide-react";
+import { CalendarIcon, Plus, Tag, Loader } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -384,7 +384,7 @@ export default function TransactionForm({
                   disabled={isCategoryPending || !newCategoryName.trim()}
                 >
                   {isCategoryPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader className="w-4 h-4 animate-spin" />
                   ) : (
                     "Agregar"
                   )}
@@ -441,7 +441,7 @@ export default function TransactionForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {isPending && <Loader className="w-4 h-4 animate-spin mr-2" />}
               {editingTransaction ? "Guardar Cambios" : "Registrar Movimiento"}
             </Button>
           </DialogFooter>

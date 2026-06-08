@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { createPublicBooking } from "@/actions/public.actions";
 import { createDepositPreference } from "@/actions/payment.actions";
-import { ArrowLeft, Loader2, CalendarPlus, Info } from "lucide-react";
+import { ArrowLeft, Loader, CalendarPlus, Info } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -356,7 +356,7 @@ export function Step3_Confirmation({
                 >
                   {isPending ? (
                     <>
-                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      <Loader className="mr-2 w-4 h-4 animate-spin" />
                       {isRedirecting
                         ? "Redirigiendo a Mercado Pago..."
                         : "Reservando..."}

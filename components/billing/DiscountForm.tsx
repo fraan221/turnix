@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Tag, CheckCircle2 } from "lucide-react";
+import { Loader, Tag, CheckCircle2 } from "lucide-react";
 import { validateDiscountCode } from "@/actions/subscription.actions";
 
 export type DiscountDetails = {
@@ -89,7 +89,7 @@ export function DiscountForm({ onCodeApplied }: DiscountFormProps) {
           disabled={isLoading || !code.trim()}
           size="default"
         >
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
+          {isLoading ? <Loader className="w-4 h-4 animate-spin" /> : "Aplicar"}
         </Button>
       </div>
 

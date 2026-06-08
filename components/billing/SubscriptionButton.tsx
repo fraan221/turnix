@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { createSubscription } from "@/actions/subscription.actions";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard } from "lucide-react";
+import { Loader, CreditCard } from "lucide-react";
 
 function SubmitButton({ isTrial }: { isTrial: boolean }) {
   const { pending } = useFormStatus();
@@ -14,7 +14,7 @@ function SubmitButton({ isTrial }: { isTrial: boolean }) {
     <Button type="submit" className="w-full" size="lg" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+          <Loader className="mr-2 w-4 h-4 animate-spin" />
           Redirigiendo a Mercado Pago...
         </>
       ) : isTrial ? (

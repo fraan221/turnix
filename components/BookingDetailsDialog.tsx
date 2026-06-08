@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Loader2,
+  Loader,
   CheckCircle2,
   XCircle,
   Banknote,
@@ -179,7 +179,7 @@ function PaymentMethodPicker({
             disabled={isLoading}
           >
             {isSelected ? (
-              <Loader2
+              <Loader
                 className={cn(
                   compact ? "w-5 h-5" : "mr-4 w-6 h-6",
                   "animate-spin",
@@ -694,7 +694,7 @@ export function BookingDetailsDialogContent({
               {selectedServiceId && selectedServiceId !== booking.serviceId && (
                 <span className="flex items-center min-h-[24px]">
                   {serviceAvailability.status === "checking" ? (
-                    <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                    <Loader className="w-3 h-3 animate-spin text-muted-foreground" />
                   ) : serviceAvailability.status === "available" ? (
                     <CheckCircle2 className="w-3 h-3 text-green-600" />
                   ) : serviceAvailability.status === "unavailable" ? (
@@ -716,7 +716,7 @@ export function BookingDetailsDialogContent({
                 }
               >
                 {isServiceUpdating ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader className="w-3 h-3 animate-spin" />
                 ) : (
                   <Check className="w-3 h-3" />
                 )}
@@ -831,7 +831,7 @@ export function BookingDetailsDialogContent({
                 }
               >
                 {isSavingPayment ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader className="w-3 h-3 animate-spin" />
                 ) : (
                   <Check className="w-3 h-3" />
                 )}
@@ -921,7 +921,7 @@ export function BookingDetailsDialogContent({
                 className="w-full"
               >
                 {isCancelling && (
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Cancelar Turno
               </Button>
@@ -942,7 +942,7 @@ export function BookingDetailsDialogContent({
                   disabled={isCancelling}
                 >
                   {isCancelling && (
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    <Loader className="mr-2 w-4 h-4 animate-spin" />
                   )}
                   Sí, cancelar
                 </AlertDialogAction>
@@ -955,7 +955,7 @@ export function BookingDetailsDialogContent({
             className="w-full"
             onClick={() => setView("selectPayment")}
           >
-            {isCompleting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+            {isCompleting && <Loader className="mr-2 w-4 h-4 animate-spin" />}
             Marcar como Completado
           </Button>
         </DialogFooter>
@@ -1015,7 +1015,7 @@ export function BookingDetailsDialogContent({
         <div className="text-sm flex items-center min-h-[24px]">
           {availability.status === "checking" && (
             <div className="flex items-center text-muted-foreground">
-              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              <Loader className="mr-2 w-4 h-4 animate-spin" />
               Verificando disponibilidad...
             </div>
           )}
@@ -1050,7 +1050,7 @@ export function BookingDetailsDialogContent({
             availability.status === "unavailable"
           }
         >
-          {isTimeUpdating && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+          {isTimeUpdating && <Loader className="mr-2 w-4 h-4 animate-spin" />}
           Guardar cambios
         </Button>
       </DialogFooter>
@@ -1109,7 +1109,7 @@ export function BookingDetailsDialogContent({
           Omitir
         </Button>
         <Button onClick={handleAddNote} disabled={isNoteSaving}>
-          {isNoteSaving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+          {isNoteSaving && <Loader className="mr-2 w-4 h-4 animate-spin" />}
           Guardar nota
         </Button>
       </DialogFooter>
@@ -1144,7 +1144,7 @@ export function BookingDetailsDialogContent({
                 disabled={isClientDeleting}
               >
                 {isClientDeleting && (
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                 )}
                 Eliminar
               </AlertDialogAction>
@@ -1221,7 +1221,7 @@ export function BookingDetailsDialogContent({
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleForceServiceChange}>
               {isServiceUpdating && (
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                <Loader className="mr-2 w-4 h-4 animate-spin" />
               )}
               Guardar igual
             </AlertDialogAction>

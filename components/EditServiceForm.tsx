@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Service } from "@prisma/client";
-import { Loader2, ArrowLeft, Trash2 } from "lucide-react";
+import { Loader, ArrowLeft, Trash2 } from "lucide-react";
 import { ServiceInputSchema } from "@/lib/schemas";
 import { updateService, deleteService } from "@/actions/service.actions";
 import { Button } from "@/components/ui/button";
@@ -360,7 +360,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             >
               {isSubmitting || isPending ? (
                 <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                   Guardando…
                 </>
               ) : (
@@ -413,7 +413,7 @@ export default function EditServiceForm({ service }: EditServiceFormProps) {
             >
               {isDeletePending ? (
                 <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                   Eliminando…
                 </>
               ) : (

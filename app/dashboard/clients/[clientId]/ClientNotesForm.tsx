@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save } from "lucide-react";
+import { Loader, Save } from "lucide-react";
 
 function SubmitButton({ hasChanges }: { hasChanges: boolean }) {
   const { pending } = useFormStatus();
@@ -26,7 +26,7 @@ function SubmitButton({ hasChanges }: { hasChanges: boolean }) {
     >
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
           Guardando…
         </>
       ) : (

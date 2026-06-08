@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Play, Pause, Trash2, CalendarClock, Loader2 } from "lucide-react";
+import { Play, Pause, Trash2, CalendarClock, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
@@ -142,7 +142,7 @@ export function FixedBookingRow({ booking, role }: FixedBookingRowProps) {
           className={isSuspended ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
           title={isSuspended ? "Reactivar turno fijo" : "Pausar turno fijo"}
         >
-          {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : isSuspended ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+          {isProcessing ? <Loader className="h-4 w-4 animate-spin" /> : isSuspended ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
         </Button>
         
         <Button 

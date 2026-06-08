@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth.actions";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ export function LogoutButton({
     >
       {pending ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
           Cerrando sesión...
         </>
       ) : (

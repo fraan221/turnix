@@ -32,7 +32,7 @@ import {
   XCircle,
   Sparkles,
   CreditCard,
-  Loader2,
+  Loader,
   Calendar,
 } from "lucide-react";
 import {
@@ -374,7 +374,7 @@ export default function SubscriptionStatus({
             >
               {isPendingSync && subscription.status === "paused" ? (
                 <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
                   Reactivando...
                 </>
               ) : (
@@ -392,7 +392,7 @@ export default function SubscriptionStatus({
                   >
                     {isPendingUpgrade ? (
                       <>
-                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        <Loader className="mr-2 w-4 h-4 animate-spin" />
                         Procesando...
                       </>
                     ) : (
@@ -417,7 +417,7 @@ export default function SubscriptionStatus({
                     disabled={isPendingUpgrade}
                   >
                     {isPendingUpgrade ? (
-                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      <Loader className="mr-2 w-4 h-4 animate-spin" />
                     ) : null}
                     Cancelar cambio
                   </Button>
@@ -468,7 +468,7 @@ export default function SubscriptionStatus({
                       className="bg-destructive hover:bg-destructive/90"
                     >
                       {isPendingCancel && (
-                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        <Loader className="mr-2 w-4 h-4 animate-spin" />
                       )}
                       Cancelar Plan PRO
                     </AlertDialogAction>

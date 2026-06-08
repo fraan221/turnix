@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader } from "lucide-react";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { PasswordInput } from "./PasswordInput";
 
@@ -121,7 +121,7 @@ export default function LoginForm() {
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader className="w-4 h-4 animate-spin" />
                   ) : (
                     "Iniciar Sesión"
                   )}

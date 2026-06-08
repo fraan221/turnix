@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader } from "lucide-react";
 import {
   refreshSubscriptionStatus,
   reactivateSubscription,
@@ -101,7 +101,7 @@ export function SubscriptionManagement({
         >
           {isPendingSync ? (
             <>
-              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              <Loader className="mr-2 w-4 h-4 animate-spin" />
               Reactivando...
             </>
           ) : (

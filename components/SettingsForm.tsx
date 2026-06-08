@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Save,
-  Loader2Icon,
+  Loader,
   User as UserIcon,
   Store,
   Link as LinkIcon,
@@ -73,7 +73,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
     >
       {isPending ? (
         <>
-          <Loader2Icon className="mr-2 w-4 h-4 animate-spin" />
+          <Loader className="mr-2 w-4 h-4 animate-spin" />
           <span>Guardando...</span>
         </>
       ) : (

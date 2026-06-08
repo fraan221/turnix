@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -258,7 +258,7 @@ export default function FixedExpenseForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {isPending && <Loader className="w-4 h-4 animate-spin mr-2" />}
               {editingFixedExpense ? "Guardar Cambios" : "Guardar Gasto Fijo"}
             </Button>
           </DialogFooter>

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   CreditCard,
   CheckCircle2,
-  Loader2,
+  Loader,
   ExternalLink,
   Unlink,
 } from "lucide-react";
@@ -163,7 +163,7 @@ export function PaymentsSection({
               className="object-contain w-auto h-8 opacity-50"
             />
             <div className="flex gap-2 items-center text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader className="w-4 h-4 animate-spin" />
               <span className="text-sm">Verificando...</span>
             </div>
           </div>
@@ -198,7 +198,7 @@ export function PaymentsSection({
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader className="w-4 h-4 animate-spin" />
                   Desvinculando...
                 </>
               ) : (
@@ -235,7 +235,7 @@ export function PaymentsSection({
             >
               {isConnecting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader className="w-4 h-4 animate-spin" />
                   Conectando Mercado Pago...
                 </>
               ) : (

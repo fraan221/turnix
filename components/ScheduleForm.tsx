@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { WorkingHours, WorkScheduleBlock, WorkShiftType } from "@prisma/client";
 import { toast } from "sonner";
-import { Save, Loader2, Plus, Trash2, Clock } from "lucide-react";
+import { Save, Loader, Plus, Trash2, Clock } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
@@ -336,7 +336,7 @@ export default function ScheduleForm({
           >
             {isPending ? (
               <>
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                <Loader className="mr-2 w-4 h-4 animate-spin" />
                 Guardando…
               </>
             ) : (
