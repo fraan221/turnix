@@ -211,7 +211,7 @@ export default function ScheduleForm({
               return (
                 <div
                   key={day.dayOfWeek}
-                  className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md"
+                  className="flex flex-col p-4 space-y-4 rounded-xl border-2 transition-colors duration-200 hover:border-primary/30"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex gap-3 items-center">

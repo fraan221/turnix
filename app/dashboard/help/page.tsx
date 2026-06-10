@@ -48,7 +48,7 @@ export default function HelpPage() {
               rel="noopener noreferrer"
               className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Card className="h-full border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 shadow-sm hover:shadow-md">
+              <Card className="h-full border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <CardTitle className="text-lg font-heading leading-tight group-hover:text-primary transition-colors">

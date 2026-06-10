@@ -36,7 +36,7 @@ export function HowItWorksSection() {
           {steps.map((step) => (
             <div
               key={step.title}
-              className="flex flex-col items-center p-6 space-y-4 text-center"
+              className="flex flex-col items-start p-6 space-y-4 text-left"
             >
               <div className="flex items-center justify-center p-3 border rounded-full bg-primary/5">
                 {step.icon}

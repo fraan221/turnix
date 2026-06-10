@@ -184,8 +184,8 @@ export default function CashflowDashboard({
       {/* TARJETAS RESUMEN PERSONALIZADAS (DISEÑO PREMIUM) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* INGRESOS */}
-        <div className="relative overflow-hidden rounded-xl border bg-card/65 backdrop-blur-sm p-6 hover:border-emerald-500/40 hover:shadow-[0_0_25px_rgba(16,185,129,0.04)] transition-all duration-300 group">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/10 transition-all duration-300" />
+        <div className="relative overflow-hidden rounded-xl border bg-card/65 p-6 hover:border-emerald-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full bg-emerald-500/5 blur-xl group-hover:bg-emerald-500/10 transition-all duration-300" />
           <div className="flex items-center justify-between pb-2">
             <span className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Total Ingresos</span>
             <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/10 group-hover:scale-105 transition-all">
@@ -201,8 +201,8 @@ export default function CashflowDashboard({
         </div>
 
         {/* EGRESOS */}
-        <div className="relative overflow-hidden rounded-xl border bg-card/65 backdrop-blur-sm p-6 hover:border-rose-500/40 hover:shadow-[0_0_25px_rgba(244,63,94,0.04)] transition-all duration-300 group">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full bg-rose-500/5 blur-2xl group-hover:bg-rose-500/10 transition-all duration-300" />
+        <div className="relative overflow-hidden rounded-xl border bg-card/65 p-6 hover:border-rose-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full bg-rose-500/5 blur-xl group-hover:bg-rose-500/10 transition-all duration-300" />
           <div className="flex items-center justify-between pb-2">
             <span className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Total Egresos (Gastos)</span>
             <div className="rounded-lg p-2 bg-rose-50 dark:bg-rose-950/20 text-rose-500 border border-rose-100 dark:border-rose-900/10 group-hover:scale-105 transition-all">
@@ -219,13 +219,13 @@ export default function CashflowDashboard({
 
         {/* BALANCE NETO */}
         <div className={cn(
-          "relative overflow-hidden rounded-xl border bg-card/65 backdrop-blur-sm p-6 transition-all duration-300 group",
+          "relative overflow-hidden rounded-xl border bg-card/65 p-6 transition-all duration-300 group",
           initialData.netBalance >= 0 
-            ? "hover:border-emerald-500/40 hover:shadow-[0_0_25px_rgba(16,185,129,0.04)]" 
-            : "hover:border-rose-500/40 hover:shadow-[0_0_25px_rgba(244,63,94,0.04)]"
+            ? "hover:border-emerald-500/40" 
+            : "hover:border-rose-500/40"
         )}>
           <div className={cn(
-            "absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full blur-2xl group-hover:opacity-100 opacity-60 transition-all duration-300",
+            "absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full blur-xl group-hover:opacity-100 opacity-60 transition-all duration-300",
             initialData.netBalance >= 0 ? "bg-emerald-500/5 group-hover:bg-emerald-500/10" : "bg-rose-500/5 group-hover:bg-rose-500/10"
           )} />
           <div className="flex items-center justify-between pb-2">
@@ -536,7 +536,7 @@ export default function CashflowDashboard({
                           </div>
                           <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border">
                             <div 
-                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-1000 ease-out" 
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" 
                               style={{ width: `${paidAmountPct}%` }}
                             />
                           </div>

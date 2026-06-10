@@ -73,7 +73,7 @@ export function TeamList({ teamMembers, ownerId }: TeamListProps) {
           return (
             <div
               key={member.id}
-              className="relative p-4 transition-all duration-200 border rounded-lg bg-card hover:border-primary/50 hover:shadow-md"
+              className="relative p-4 transition-colors duration-200 border rounded-lg bg-card hover:border-primary/50"
             >
               {isOwner && (
                 <div className="absolute top-3 right-3">

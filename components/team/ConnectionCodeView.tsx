@@ -120,7 +120,7 @@ export function ConnectionCodeView({
           <Button
             size="lg"
             onClick={handleCopy}
-            className="w-full h-12 text-base font-semibold transition-all shadow-md hover:shadow-lg"
+            className="w-full h-12 text-base font-semibold"
           >
             {isCopied ? (
               <>

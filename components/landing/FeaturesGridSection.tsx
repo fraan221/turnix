@@ -60,11 +60,11 @@ export function FeaturesGridSection() {
               key={feature.title}
               className={cn("flex flex-col", feature.className)}
             >
-              <CardHeader className="flex flex-row items-center justify-center gap-4 text-center">
+              <CardHeader className="flex flex-row items-start justify-start gap-4 text-left">
                 {feature.icon}
                 <CardTitle className="mt-4">{feature.title}</CardTitle>
               </CardHeader>
-              <CardContent className="flex-grow text-center">
+              <CardContent className="flex-grow text-left">
                 <p className="text-md text-muted-foreground">
                   {feature.description}
                 </p>

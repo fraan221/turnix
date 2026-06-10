@@ -213,7 +213,7 @@ export default function RegisterForm() {
                 </div>
 
                 <div
-                  className={`grid gap-4 transition-all duration-300 ease-in-out ${role ? "opacity-100 grid-rows-[1fr]" : "opacity-0 grid-rows-[0fr]"}`}
+                  className={`grid gap-4 transition-opacity duration-300 ease-in-out ${role ? "opacity-100 grid-rows-[1fr]" : "opacity-0 grid-rows-[0fr]"}`}
                 >
                   <div className="overflow-hidden px-1 py-1">
                     <div className="grid gap-4">

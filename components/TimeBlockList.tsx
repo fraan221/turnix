@@ -146,7 +146,7 @@ export default function TimeBlockList({
   if (timeBlocks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-        <div className="p-4 mb-4 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 drop-shadow-sm">
+        <div className="p-4 mb-4 rounded-full bg-primary/10">
           <CalendarX className="w-8 h-8 text-primary" />
         </div>
         <h3 className="mb-1 font-medium text-foreground">

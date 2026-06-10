@@ -93,7 +93,7 @@ export default async function ClientDetailPage(props: ClientDetailPageProps) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button className="gap-2 transition-shadow hover:shadow-md">
+              <Button className="gap-2">
                 <WhatsAppIcon />
                 Contactar
               </Button>

@@ -48,7 +48,7 @@ function ServiceItem({ service, hasRecurringBookings, futureBookingsCount }: Ser
 
   return (
     <>
-      <li className="relative flex flex-col p-4 transition-all duration-200 border-2 group rounded-xl hover:border-primary/50 hover:shadow-md bg-card">
+      <li className="relative flex flex-col p-4 transition-colors duration-200 border-2 group rounded-xl hover:border-primary/50 bg-card">
         <div className="flex-1 space-y-2">
           <h3 className="pr-24 text-base font-semibold sm:text-lg text-foreground">
             {service.name}
@@ -162,7 +162,7 @@ export default function ServiceList({ services, servicesWithRecurringInfo }: Ser
   if (services.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-12 border-2 border-dashed rounded-xl bg-muted/30">
-        <div className="p-4 mb-4 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 drop-shadow-sm">
+        <div className="p-4 mb-4 rounded-full bg-primary/10">
           <Scissors className="w-8 h-8 text-primary" />
         </div>
         <h3 className="mb-2 text-lg font-semibold text-center">

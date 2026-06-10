@@ -88,10 +88,10 @@ export function NotificationList({
             <article
               key={n.id}
               className={cn(
-                "group relative px-4 py-3 border-l-4 transition-colors duration-200 rounded-r-lg",
+                "group relative px-4 py-3 transition-colors duration-200 rounded-lg",
                 n.read
-                  ? "border-transparent bg-muted/30"
-                  : "bg-primary/5 border-primary"
+                  ? "bg-muted/30"
+                  : "bg-primary/5"
               )}
             >
               <div className="flex items-start gap-3">
