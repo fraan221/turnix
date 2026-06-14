@@ -13,7 +13,7 @@ import {
   getArgentinaMinutesOfDay,
   parseTimeToMinutes,
 } from "@/lib/date-helpers";
-import { UpdateBookingServiceSchema, CreateTimeBlockSchema, UpdateTimeBlockSchema } from "@/lib/schemas";
+import { UpdateBookingServiceSchema, CreateTimeBlockSchema, UpdateTimeBlockSchema, UpdateBookingClientSchema, SearchClientsSchema } from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
@@ -246,6 +246,10 @@ export async function deleteClient(clientId: string) {
         },
       });
 
+      await tx.recurringBooking.deleteMany({
+        where: { clientId: clientId },
+      });
+
       await tx.booking.deleteMany({
         where: { clientId: clientId },
       });
@@ -302,12 +306,28 @@ export async function updateBookingStatus(
       return { error: "No tienes permiso para modificar este turno." };
     }
 
+    // COMPLETED → CANCELLED solo lo puede hacer el OWNER
+    if (
+      booking.status === BookingStatus.COMPLETED &&
+      newStatus === BookingStatus.CANCELLED &&
+      !isOwner
+    ) {
+      return {
+        error: "Solo el dueño puede cancelar turnos completados.",
+      };
+    }
+
     await prisma.booking.update({
       where: { id: bookingId },
       data: {
         status: newStatus,
         ...(newStatus === BookingStatus.COMPLETED && paymentMethod
           ? { paymentMethod }
+          : {}),
+        // Limpiar paymentMethod al cancelar un turno completado
+        ...(booking.status === BookingStatus.COMPLETED &&
+        newStatus === BookingStatus.CANCELLED
+          ? { paymentMethod: null }
           : {}),
       },
     });
@@ -1533,5 +1553,103 @@ export async function updateBookingService(
       type: "error",
       message: "No se pudo actualizar el servicio del turno.",
     };
+  }
+}
+
+export async function searchBarbershopClients(query: string) {
+  const user = await getUserForSettings();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  const parsed = SearchClientsSchema.safeParse({ query });
+  if (!parsed.success) {
+    return { error: "Búsqueda inválida." };
+  }
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershopId;
+
+  if (!barbershopId) {
+    return { error: "Usuario no asociado a una barbería." };
+  }
+
+  try {
+    const clients = await prisma.client.findMany({
+      where: {
+        barbershopId,
+        OR: [
+          { name: { contains: parsed.data.query, mode: "insensitive" } },
+          { phone: { contains: parsed.data.query, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, phone: true },
+      orderBy: { name: "asc" },
+      take: 10,
+    });
+
+    return { clients };
+  } catch (error) {
+    console.error("Error al buscar clientes:", error);
+    return { error: "No se pudieron buscar los clientes." };
+  }
+}
+
+export async function updateBookingClient(
+  bookingId: string,
+  newClientId: string,
+) {
+  const user = await getUserForSettings();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  const parsed = UpdateBookingClientSchema.safeParse({
+    bookingId,
+    newClientId,
+  });
+  if (!parsed.success) {
+    return { error: "Datos inválidos." };
+  }
+
+  if (!user.ownedBarbershop) {
+    return { error: "Solo el dueño puede reasignar clientes." };
+  }
+
+  const barbershopId = user.ownedBarbershop.id;
+
+  try {
+    const booking = await prisma.booking.findFirst({
+      where: { id: bookingId, barbershopId },
+    });
+
+    if (!booking) {
+      return { error: "Turno no encontrado." };
+    }
+
+    if (booking.status !== BookingStatus.COMPLETED) {
+      return { error: "Solo se pueden reasignar turnos completados." };
+    }
+
+    const newClient = await prisma.client.findFirst({
+      where: { id: newClientId, barbershopId },
+    });
+
+    if (!newClient) {
+      return { error: "El cliente seleccionado no existe." };
+    }
+
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { clientId: newClientId },
+    });
+
+    revalidatePath("/dashboard", "layout");
+    invalidateAnalyticsCache();
+
+    return { success: "Cliente del turno actualizado." };
+  } catch (error) {
+    console.error("Error al reasignar cliente del turno:", error);
+    return { error: "No se pudo reasignar el cliente del turno." };
   }
 }

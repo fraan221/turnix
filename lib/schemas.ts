@@ -438,4 +438,14 @@ export const ClientNoteSchema = z.object({
     .max(500, { message: "La nota no puede superar los 500 caracteres." }),
 });
 
+export const UpdateBookingClientSchema = z.object({
+  bookingId: z.string().cuid({ message: "ID de turno inválido." }),
+  newClientId: z.string().cuid({ message: "ID de cliente inválido." }),
+});
 
+export const SearchClientsSchema = z.object({
+  query: z
+    .string()
+    .min(1, { message: "La búsqueda no puede estar vacía." })
+    .max(100, { message: "La búsqueda no puede superar los 100 caracteres." }),
+});

@@ -35,6 +35,8 @@ import {
   checkBookingAvailability,
   setPaymentMethod,
   updateBookingService,
+  searchBarbershopClients,
+  updateBookingClient,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
@@ -61,8 +63,23 @@ import {
   X,
   Pencil,
   AlertTriangle,
+  User,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
   depositAmount: number | string | null;
@@ -73,6 +90,7 @@ export type BookingWithDetails = Omit<Booking, "depositAmount"> & {
 interface BookingDetailsDialogContentProps {
   booking: BookingWithDetails;
   services: Service[];
+  isOwner: boolean;
   onClose: () => void;
   onOptimisticUpdate: (bookingId: string, newStatus: BookingStatus) => void;
   onOptimisticServiceUpdate?: (
@@ -85,6 +103,12 @@ interface BookingDetailsDialogContentProps {
   onOptimisticPaymentUpdate?: (
     bookingId: string,
     method: PaymentMethod,
+  ) => void;
+  onOptimisticClientUpdate?: (
+    bookingId: string,
+    clientId: string,
+    clientName: string,
+    clientPhone: string | null,
   ) => void;
 }
 
@@ -205,10 +229,12 @@ function PaymentMethodPicker({
 export function BookingDetailsDialogContent({
   booking,
   services,
+  isOwner,
   onClose,
   onOptimisticUpdate,
   onOptimisticServiceUpdate,
   onOptimisticPaymentUpdate,
+  onOptimisticClientUpdate,
 }: BookingDetailsDialogContentProps) {
   const [isCompleting, startCompleting] = useTransition();
   const [isCancelling, startCancelling] = useTransition();
@@ -229,6 +255,14 @@ export function BookingDetailsDialogContent({
   const [isSavingPayment, startSavingPayment] = useTransition();
   const [isInlineEditingService, setIsInlineEditingService] = useState(false);
   const [isInlineEditingPayment, setIsInlineEditingPayment] = useState(false);
+  const [isInlineEditingClient, setIsInlineEditingClient] = useState(false);
+  const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [clientSearchResults, setClientSearchResults] = useState<
+    { id: string; name: string; phone: string | null }[]
+  >([]);
+  const [isSearchingClients, startSearchingClients] = useTransition();
+  const [isClientUpdating, startClientUpdating] = useTransition();
   const [showOverlapAlert, setShowOverlapAlert] = useState(false);
 
   const [editingStartTime, setEditingStartTime] = useState("");
@@ -256,6 +290,10 @@ export function BookingDetailsDialogContent({
     setNoteError(null);
     setIsInlineEditingPayment(false);
     setIsInlineEditingService(false);
+    setIsInlineEditingClient(false);
+    setIsClientComboboxOpen(false);
+    setClientSearchQuery("");
+    setClientSearchResults([]);
     setShowOverlapAlert(false);
     setPendingPaymentMethod(null);
     setServiceAvailability({ status: "idle" });
@@ -473,6 +511,47 @@ export function BookingDetailsDialogContent({
     });
   };
 
+  const debouncedClientQuery = useDebounce(clientSearchQuery, 300);
+
+  useEffect(() => {
+    if (!debouncedClientQuery || debouncedClientQuery.length < 2) {
+      setClientSearchResults([]);
+      return;
+    }
+    startSearchingClients(async () => {
+      const result = await searchBarbershopClients(debouncedClientQuery);
+      if ("clients" in result && result.clients) {
+        setClientSearchResults(result.clients);
+      }
+    });
+  }, [debouncedClientQuery]);
+
+  const handleClientChange = (client: {
+    id: string;
+    name: string;
+    phone: string | null;
+  }) => {
+    startClientUpdating(async () => {
+      const result = await updateBookingClient(booking.id, client.id);
+      if (result?.success) {
+        toast.success(result.success);
+        onOptimisticClientUpdate?.(
+          booking.id,
+          client.id,
+          client.name,
+          client.phone,
+        );
+        setIsInlineEditingClient(false);
+        setIsClientComboboxOpen(false);
+        setClientSearchQuery("");
+        setClientSearchResults([]);
+      }
+      if (result?.error) {
+        toast.error(result.error);
+      }
+    });
+  };
+
   const isFutureBooking = new Date(booking.startTime) > new Date();
   const currentStatus = statusMap[booking.status];
 
@@ -659,10 +738,113 @@ export function BookingDetailsDialogContent({
   const renderDetailsView = () => (
     <div className="space-y-4">
       <div className="space-y-1 text-sm">
-        <p>
-          <strong>Cliente:</strong> {booking.client.name}
-        </p>
-        {booking.client.phone ? (
+        <div className="flex gap-2 items-center">
+          <strong>Cliente:</strong>
+          {isInlineEditingClient ? (
+            <div className="flex flex-1 gap-2 items-center">
+              <Popover
+                open={isClientComboboxOpen}
+                onOpenChange={setIsClientComboboxOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 justify-start h-7 text-xs"
+                    data-testid="client-search-trigger"
+                  >
+                    <User className="mr-1 w-3 h-3" />
+                    Buscar cliente...
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-64" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Nombre o teléfono..."
+                      value={clientSearchQuery}
+                      onValueChange={setClientSearchQuery}
+                      data-testid="client-search-input"
+                    />
+                    <CommandList>
+                      <CommandGroup>
+                        {isSearchingClients ? (
+                          <div className="p-2 space-y-2">
+                            <Skeleton className="w-full h-6" />
+                            <Skeleton className="w-3/4 h-6" />
+                          </div>
+                        ) : clientSearchResults.length === 0 &&
+                          debouncedClientQuery.length >= 2 ? (
+                          <CommandEmpty>
+                            No se encontraron clientes.
+                          </CommandEmpty>
+                        ) : (
+                          clientSearchResults
+                            .filter((c) => c.id !== booking.clientId)
+                            .map((client) => (
+                              <CommandItem
+                                key={client.id}
+                                value={client.id}
+                                onSelect={() => handleClientChange(client)}
+                                disabled={isClientUpdating}
+                                data-testid={`client-option-${client.id}`}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">
+                                    {client.name}
+                                  </span>
+                                  {client.phone && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {client.phone}
+                                    </span>
+                                  )}
+                                </div>
+                                {isClientUpdating && (
+                                  <Loader className="ml-auto w-3 h-3 animate-spin" />
+                                )}
+                              </CommandItem>
+                            ))
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-0 w-7 h-7"
+                onClick={() => {
+                  setIsInlineEditingClient(false);
+                  setIsClientComboboxOpen(false);
+                  setClientSearchQuery("");
+                  setClientSearchResults([]);
+                }}
+                data-testid="cancel-client-edit-button"
+                disabled={isClientUpdating}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span data-testid="client-name-value">
+                {booking.client.name}
+              </span>
+              {isOwner && booking.status === BookingStatus.COMPLETED && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0.5 text-muted-foreground"
+                  onClick={() => setIsInlineEditingClient(true)}
+                  data-testid="edit-client-button"
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+        {!isInlineEditingClient && booking.client.phone ? (
           <p>
             <strong>Teléfono:</strong> {booking.client.phone}
           </p>
@@ -958,6 +1140,52 @@ export function BookingDetailsDialogContent({
             {isCompleting && <Loader className="mr-2 w-4 h-4 animate-spin" />}
             Marcar como Completado
           </Button>
+        </DialogFooter>
+      )}
+
+      {booking.status === BookingStatus.COMPLETED && isOwner && (
+        <DialogFooter>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                disabled={isCancelling}
+                className="w-full"
+                data-testid="cancel-completed-booking-button"
+              >
+                {isCancelling && (
+                  <Loader className="mr-2 w-4 h-4 animate-spin" />
+                )}
+                Cancelar turno
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  ¿Cancelar este turno completado?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Este turno ya fue completado. Cancelarlo va a modificar tus
+                  estadísticas de ingresos. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Atrás</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={() =>
+                    handleStatusChange(BookingStatus.CANCELLED)
+                  }
+                  disabled={isCancelling}
+                >
+                  {isCancelling && (
+                    <Loader className="mr-2 w-4 h-4 animate-spin" />
+                  )}
+                  Sí, cancelar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </DialogFooter>
       )}
     </div>

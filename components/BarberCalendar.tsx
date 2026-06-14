@@ -389,6 +389,35 @@ export default function BarberCalendar({
     );
   };
 
+  const isOwner = session?.user?.role === "OWNER";
+
+  const handleOptimisticClientUpdate = useCallback(
+    (
+      bookingId: string,
+      clientId: string,
+      clientName: string,
+      clientPhone: string | null,
+    ) => {
+      setOptimisticBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === bookingId
+            ? {
+                ...booking,
+                clientId,
+                client: {
+                  ...booking.client,
+                  id: clientId,
+                  name: clientName,
+                  phone: clientPhone,
+                },
+              }
+            : booking,
+        ),
+      );
+    },
+    [],
+  );
+
   const handlePrev = () => calendarRef.current?.getApi().prev();
   const handleNext = () => calendarRef.current?.getApi().next();
   const handleToday = () => calendarRef.current?.getApi().today();
@@ -701,10 +730,12 @@ export default function BarberCalendar({
               <BookingDetailsDialogContent
                 booking={selectedBooking}
                 services={services}
+                isOwner={isOwner}
                 onClose={() => setSelectedBookingId(null)}
                 onOptimisticUpdate={handleOptimisticUpdate}
                 onOptimisticServiceUpdate={handleOptimisticServiceUpdate}
                 onOptimisticPaymentUpdate={handleOptimisticPaymentUpdate}
+                onOptimisticClientUpdate={handleOptimisticClientUpdate}
               />
             </Suspense>
           )}
