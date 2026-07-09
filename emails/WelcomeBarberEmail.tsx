@@ -123,8 +123,8 @@ export const WelcomeBarberEmail = ({
             La herramienta de gestión para barberos
           </Text>
           <Text style={footerLinks}>
-            <Link href="https://turnix.app" style={footerLink}>
-              turnix.app
+            <Link href="https://hypeh.com.ar" style={footerLink}>
+              hypeh.com.ar
             </Link>
           </Text>
         </Section>

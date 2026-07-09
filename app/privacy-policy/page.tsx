@@ -4,11 +4,11 @@ export default function PrivacyPolicyPage() {
     <p><em>Última actualización: 08 de julio de 2025</em></p>
     <p>Este Aviso de Privacidad para <strong>Turnix</strong> ("nosotros", "nos" o "nuestro"), describe cómo y por qué podríamos acceder, recopilar, almacenar, usar y/o compartir ("procesar") tu información personal cuando utilizas nuestros servicios ("Servicios"), incluyendo cuando:</p>
     <ul>
-      <li>Visitas nuestro sitio web en <a href="https://turnix.app" target="_blank" rel="noopener noreferrer">https://turnix.app</a> o cualquier sitio web nuestro que enlace a este Aviso de Privacidad.</li>
+      <li>Visitas nuestro sitio web en <a href="https://hypeh.com.ar" target="_blank" rel="noopener noreferrer">https://hypeh.com.ar</a> o cualquier sitio web nuestro que enlace a este Aviso de Privacidad.</li>
       <li>Usas Turnix. Es una plataforma web diseñada para ayudar a barberos y profesionales similares a gestionar su negocio. El servicio les permite administrar sus horarios de trabajo, lista de servicios, clientes y recibir reservas online a través de una página de perfil pública y personalizada.</li>
       <li>Interactúas con nosotros de otras maneras relacionadas, incluyendo ventas, marketing o eventos.</li>
     </ul>
-    <p><strong>¿Preguntas o inquietudes?</strong> Leer este Aviso de Privacidad te ayudará a entender tus derechos y opciones de privacidad. Si no estás de acuerdo con nuestras políticas y prácticas, por favor no uses nuestros Servicios. Si aún tienes alguna pregunta o inquietud, por favor contáctanos en <strong>privacidad@turnix.app</strong>.</p>
+    <p><strong>¿Preguntas o inquietudes?</strong> Leer este Aviso de Privacidad te ayudará a entender tus derechos y opciones de privacidad. Si no estás de acuerdo con nuestras políticas y prácticas, por favor no uses nuestros Servicios. Si aún tienes alguna pregunta o inquietud, por favor contáctanos en <strong>privacidad@hypeh.com.ar</strong>.</p>
     
     <h2>RESUMEN DE PUNTOS CLAVE</h2>
     <p><strong><em>Este resumen proporciona los puntos clave de nuestro Aviso de Privacidad, pero puedes encontrar más detalles sobre cualquiera de estos temas utilizando nuestra <a href="#toc">tabla de contenidos</a> a continuación para encontrar la sección que buscas.</em></strong></p>
@@ -46,7 +46,7 @@ export default function PrivacyPolicyPage() {
     <h3>Información recopilada automáticamente</h3>
     <p><strong><em>En resumen:</em></strong><em> Cierta información (como tu dirección IP y características de tu navegador/dispositivo) se recopila automáticamente cuando visitas nuestros Servicios.</em></p>
     <p>Recopilamos automáticamente cierta información cuando visitas, usas o navegas por los Servicios. Esta información no revela tu identidad específica pero puede incluir información de dispositivo y uso, como tu dirección IP, características del navegador y dispositivo, sistema operativo, preferencias de idioma, URLs de referencia, nombre del dispositivo, país, ubicación y otra información técnica. Esta información es necesaria principalmente para mantener la seguridad y el funcionamiento de nuestros Servicios, y para nuestros fines internos de análisis.</p>
-    <p>Como muchas empresas, también recopilamos información a través de cookies y tecnologías similares. Puedes obtener más información en nuestro Aviso de Cookies: <a href="/cookie-policy" target="_blank" rel="noopener noreferrer">https://turnix.app/cookie-policy</a>.</p>
+    <p>Como muchas empresas, también recopilamos información a través de cookies y tecnologías similares. Puedes obtener más información en nuestro Aviso de Cookies: <a href="/cookie-policy" target="_blank" rel="noopener noreferrer">https://hypeh.com.ar/cookie-policy</a>.</p>
     
     <h2 id="infouse">2. ¿CÓMO PROCESAMOS TU INFORMACIÓN?</h2>
     <p><strong><em>En resumen:</em></strong><em> Procesamos tu información para proporcionar, mejorar y administrar nuestros Servicios, comunicarnos contigo, para seguridad y prevención de fraudes, y para cumplir con la ley.</em></p>
@@ -74,7 +74,7 @@ export default function PrivacyPolicyPage() {
 
     <h2 id="cookies">5. ¿USAMOS COOKIES Y OTRAS TECNOLOGÍAS DE SEGUIMIENTO?</h2>
     <p><strong><em>En resumen:</em></strong><em> Podemos usar cookies y otras tecnologías para recopilar y almacenar tu información.</em></p>
-    <p>Para información específica sobre cómo usamos estas tecnologías y cómo puedes rechazar ciertas cookies, por favor consulta nuestro Aviso de Cookies: <a href="/cookie-policy" target="_blank" rel="noopener noreferrer">https://turnix.app/cookie-policy</a>.</p>
+    <p>Para información específica sobre cómo usamos estas tecnologías y cómo puedes rechazar ciertas cookies, por favor consulta nuestro Aviso de Cookies: <a href="/cookie-policy" target="_blank" rel="noopener noreferrer">https://hypeh.com.ar/cookie-policy</a>.</p>
     
     <h2 id="sociallogins">6. ¿CÓMO MANEJAMOS TUS INICIOS DE SESIÓN SOCIALES?</h2>
     <p><strong><em>En resumen:</em></strong><em> Si te registras usando una cuenta de red social, podemos acceder a cierta información sobre ti.</em></p>
@@ -111,11 +111,11 @@ export default function PrivacyPolicyPage() {
     <p>Podemos actualizar este Aviso de Privacidad de vez en cuando. La versión actualizada se indicará con una fecha "Revisada" actualizada y entrará en vigor tan pronto como sea accesible.</p>
 
     <h2 id="contact">15. ¿CÓMO PUEDES CONTACTARNOS SOBRE ESTE AVISO?</h2>
-    <p>Si tienes preguntas o comentarios, puedes enviarnos un correo a <strong>privacidad@turnix.app</strong> o por correo postal a:</p>
+    <p>Si tienes preguntas o comentarios, puedes enviarnos un correo a <strong>privacidad@hypeh.com.ar</strong> o por correo postal a:</p>
     <p>Turnix<br/>Argentina</p>
     
     <h2 id="request">16. ¿CÓMO PUEDES REVISAR, ACTUALIZAR O ELIMINAR LOS DATOS QUE RECOPILAMOS DE TI?</h2>
-    <p>Según las leyes de tu país, puedes tener derecho a solicitar acceso, modificar o eliminar la información personal que recopilamos sobre ti. Para realizar una solicitud, por favor visita: <a href="/contact" target="_blank" rel="noopener noreferrer">https://turnix.app/contact</a>.</p>
+    <p>Según las leyes de tu país, puedes tener derecho a solicitar acceso, modificar o eliminar la información personal que recopilamos sobre ti. Para realizar una solicitud, por favor visita: <a href="/contact" target="_blank" rel="noopener noreferrer">https://hypeh.com.ar/contact</a>.</p>
   `;
 
   return (

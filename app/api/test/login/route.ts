@@ -98,7 +98,7 @@ async function createOwnerSetup(options?: {
       owner: {
         create: {
           name: `Owner E2E ${unique}`,
-          email: `owner-e2e-${unique}@turnix.app`,
+          email: `owner-e2e-${unique}@hypeh.com.ar`,
           emailVerified: new Date(),
           role: Role.OWNER,
           onboardingCompleted: true,
@@ -165,7 +165,7 @@ async function createOwnerSetup(options?: {
   const teamMemberUser = await prisma.user.create({
     data: {
       name: `Barber E2E ${unique}`,
-      email: `barber-e2e-${unique}@turnix.app`,
+      email: `barber-e2e-${unique}@hypeh.com.ar`,
       emailVerified: new Date(),
       role: Role.BARBER,
       onboardingCompleted: true,
@@ -321,7 +321,7 @@ export async function POST(request: Request) {
       const newUser = await prisma.user.create({
         data: {
           name: "Usuario de Prueba Programático",
-          email: `test-user-${Date.now()}@turnix.app`,
+          email: `test-user-${Date.now()}@hypeh.com.ar`,
           emailVerified: new Date(),
         },
       });

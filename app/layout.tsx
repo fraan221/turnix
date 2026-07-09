@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { inter, montserrat } from "./fonts";
 import { LoaderProvider } from "@/context/LoaderContext";
 
-const siteUrl = "https://www.turnix.app";
+const siteUrl = "https://hypeh.com.ar";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -5,7 +5,7 @@ export default function TermsOfServicePage() {
         <h1>Términos y Condiciones de Servicio</h1>
         <p><em>Última actualización: 08 de julio de 2025</em></p>
 
-        <p>Bienvenido a Turnix. Estos términos y condiciones describen las reglas y regulaciones para el uso de los servicios de Turnix, ubicados en https://turnix.app.</p>
+        <p>Bienvenido a Turnix. Estos términos y condiciones describen las reglas y regulaciones para el uso de los servicios de Turnix, ubicados en https://hypeh.com.ar.</p>
         <p>Al acceder a este sitio web, asumimos que aceptas estos términos y condiciones. No continúes usando Turnix si no estás de acuerdo con todos los términos y condiciones establecidos en esta página.</p>
 
         <h2>1. Cuentas de Usuario</h2>
@@ -33,7 +33,7 @@ export default function TermsOfServicePage() {
         <p>Nos reservamos el derecho, a nuestra sola discreción, de modificar o reemplazar estos Términos en cualquier momento. Te notificaremos sobre cualquier cambio publicando los nuevos Términos en esta página.</p>
 
         <h2>9. Contacto</h2>
-        <p>Si tienes alguna pregunta sobre estos Términos, por favor contáctanos en <a href="mailto:privacidad@turnix.app">privacidad@turnix.app</a>.</p>
+        <p>Si tienes alguna pregunta sobre estos Términos, por favor contáctanos en <a href="mailto:privacidad@hypeh.com.ar">privacidad@hypeh.com.ar</a>.</p>
         
         <p><strong>Aviso Legal:</strong> Este es un documento de plantilla y no constituye asesoramiento legal. Te recomendamos que consultes con un profesional legal para asegurarte de que tus Términos y Condiciones se ajusten a tus necesidades específicas.</p>
       </div>

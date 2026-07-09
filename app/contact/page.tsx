@@ -14,8 +14,8 @@ export default function ContactPage() {
           <p className="text-lg">
             Puedes enviarnos un correo electrónico a:
           </p>
-          <a href="mailto:privacidad@turnix.app" className="text-xl font-semibold text-primary hover:underline">
-            privacidad@turnix.app
+          <a href="mailto:privacidad@hypeh.com.ar" className="text-xl font-semibold text-primary hover:underline">
+            privacidad@hypeh.com.ar
           </a>
           <p className="mt-4 text-sm text-muted-foreground">
             Haremos todo lo posible por responderte a la brevedad.
