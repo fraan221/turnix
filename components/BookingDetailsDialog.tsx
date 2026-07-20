@@ -38,7 +38,7 @@ import {
   searchBarbershopClients,
   updateBookingClient,
 } from "@/actions/dashboard.actions";
-import { formatLongDate, formatTime } from "@/lib/date-helpers";
+import { formatLongDate, formatTime, isToday } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
 import { EditBookingTimeSchema, ClientNoteSchema } from "@/lib/schemas";
 import { Label } from "./ui/label";
@@ -552,7 +552,8 @@ export function BookingDetailsDialogContent({
     });
   };
 
-  const isFutureBooking = new Date(booking.startTime) > new Date();
+  const bookingStart = new Date(booking.startTime);
+  const isFutureBooking = !isToday(bookingStart) && bookingStart > new Date();
   const currentStatus = statusMap[booking.status];
 
   const handlePaymentMethodSelect = (
