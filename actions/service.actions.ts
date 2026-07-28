@@ -176,8 +176,8 @@ export async function updateService(serviceId: string, data: ServiceInput) {
       data: {
         name,
         price,
-        durationInMinutes,
-        activeDurationInMinutes,
+        durationInMinutes: durationInMinutes ?? null,
+        activeDurationInMinutes: activeDurationInMinutes ?? null,
         description,
       },
     });

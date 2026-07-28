@@ -141,6 +141,10 @@ export const ServiceSchema = z
         .nullable(),
     ),
 
+    // El preprocess convierte "" y null → undefined para que Prisma aplique el
+    // default del schema en CREATE. En UPDATE, el server action DEBE convertir
+    // undefined → null explícitamente, porque Prisma saltea campos undefined.
+    // ver actions/service.actions.ts:updateService
     activeDurationInMinutes: z.preprocess(
       (val) => (val === "" || val === null ? undefined : val),
       z.coerce
