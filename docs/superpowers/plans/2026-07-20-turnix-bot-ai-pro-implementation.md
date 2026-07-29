@@ -10,28 +10,88 @@
 
 **Audit Status:** All audit findings from `docs/superpowers/audits/2026-07-20-turnix-bot-ai-pro-design-audit.md`, `docs/superpowers/audits/2026-07-20-turnix-bot-ai-pro-plan-audit.md`, and `docs/superpowers/audits/2026-07-20-turnix-bot-ai-pro-red-team.md` incorporated. **Red Team blocking fixes (V1, V2, V4, V9, V10, V11, V15) applied in v0.4.** **v0.5 final pre-implementation fixes (R1, V13, V17) applied.**
 
-## Global Constraints
+## Local Development Setup (Docker)
 
-- **TypeScript strict mode** — no `any`, use proper types or `unknown`
-- **Path alias** `@/*` maps to project root — prefer `@/` imports over relative paths
-- **Argentine Spanish** for all user-facing text (errors, success messages, labels)
-- **Timezone** hardcoded to `America/Argentina/Buenos_Aires` throughout
-- **Phone format** E.164 for WhatsApp — normalize on save via `normalizePhoneToE164()` (audit B1)
-- **Server Actions pattern**: auth check → authorization → Zod validation → try/catch → return `{ success: string } | { error: string }`
-- **No `latest` in package.json** — validate npm versions in Task 4 before installing (audit I5)
-- **Atomic cron updates** — use `updateMany where { id: booking.id, reminderSentAt: null }` to prevent race conditions (audit B6)
-- **Idempotency FIRST** — check `@@unique([metaMessageId, direction])` before any business logic or LLM call (audit B3)
-- **State gating** — crons and bot inbound only execute if `whatsappState === CONNECTED` (audit B4)
-- **Rate limiting centralized** in `lib/kapso/send.ts` — 1000/month cap + 20/min per phone_number_id (audit I6)
-- **PII policy** — inbound message body NOT persisted in `WhatsAppMessageLog` (only metadata), outbound body persisted (audit I7)
-- **Signature verification** — header `X-Webhook-Signature`, HMAC-SHA256, verify against raw body BEFORE JSON parsing (audit B7)
-- **BLOCKED state** — lifecycle webhook transitions to BLOCKED on quality_block/policy_violation, notifies OWNER via push + Notification (audit B2)
-- **Template approval** — crons only send if `whatsappState === CONNECTED` (not PENDING_SETUP or PENDING_APPROVAL) (audit B4)
-- **Unknown client rate limit** — 1 message per 24h per wa_id, opt-out notification to OWNER (audit B5)
-- **Cron frequency** — every 5 minutes (`*/5 * * * *`) with specific time windows (audit I1)
-- **Rollback** — destructive with DB backup, documented in `docs/ROLLBACK.md` (audit I3)
-- **Telemetry** — AI SDK Telemetry for token usage tracking, no PII in logs (audit I7)
-- **Notification format** — clear, consistent messages for OWNER (audit C4)
+Before starting Task 1, set up the local development environment:
+
+```bash
+# 1. Create worktree
+git worktree add ~/Documents/Projects/turnix-agent -b feature/turnix-bot-ai-pro dev
+cd ~/Documents/Projects/turnix-agent
+
+# 2. Create docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: turnix
+      POSTGRES_PASSWORD: turnix
+      POSTGRES_DB: turnix_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - turnix_pg_data:/var/lib/postgresql/data
+volumes:
+  turnix_pg_data:
+EOF
+
+# 3. Start Postgres
+docker compose up -d
+docker compose ps  # verify "postgres" is running
+
+# 4. Install dependencies
+pnpm install
+
+# 5. Create .env.local
+cat > .env.local << 'EOF'
+DATABASE_URL=postgresql://turnix:turnix@localhost:5432/turnix_dev
+NEXTAUTH_SECRET=local-dev-secret
+NEXTAUTH_URL=http://localhost:3001
+KAPSO_API_BASE_URL=https://api.kapso.ai
+KAPSO_API_KEY=placeholder
+KAPSO_WEBHOOK_SECRET=placeholder
+TURNIX_AI_PROVIDER=openai
+OPENAI_API_KEY=placeholder
+TURNIX_AI_MODEL=gpt-4o-mini
+TURNIX_AI_MAX_TOKENS_PER_REPLY=400
+TURNIX_BOT_ENABLED=true
+TURNIX_REMINDERS_ENABLED=true
+TURNIX_ABSENTEE_ENABLED=true
+TURNIX_BASELINE_TRACKER_ENABLED=true
+CRON_SECRET=local-dev-cron-secret
+COFOUNDER_EMAILS=test@turnix.com
+EOF
+
+# 6. Apply existing migrations
+pnpm dlx prisma migrate deploy
+
+# 7. Verify TypeScript compiles
+pnpm dlx tsc --noEmit
+```
+
+**Dev server runs on port 3001** (main repo uses 3000, so worktree avoids conflict).
+
+## Execution Model
+
+**Subagent-driven development** with OpenCode's `task` tool. Model distribution:
+
+| Task complexity | Default model | Rationale |
+|-----------------|---------------|-----------|
+| Schema, types, simple helpers (Tasks 1-4, 6B) | Kimi K2.7 Code | Good at structured code, cheap |
+| TypeScript with complex types (Tasks 5, 9, 9B) | Qwen 3.7 Plus | Strong TypeScript type inference |
+| Stateful logic, rate limiting (Tasks 6, 11) | Qwen 3.7 Plus | Better at conditional logic |
+| **Task 10 (AI agent — most critical)** | **Kimi K3** ⚠️ 2x usage | Justified by criticality (7 tools with closure pattern, system prompt with security) |
+| Crons, UI, verification (Tasks 12-18) | Kimi K2.7 Code | Mechanical tasks |
+| Code reviewers | Kimi K2.7 Code | Sufficient for code review, cheaper than GLM 5.2 |
+| Final whole-branch review | Qwen 3.7 Plus | Most important review |
+
+**Escalation rules**:
+- If a task fails 2 iterations with K2.7 Code, escalate to Qwen 3.7 Plus
+- Task 10 starts with K3 (not K2.7 Code) — too critical to risk
+- If at any point usage approaches 80% of any limit, pause and notify
+
+**Path convention**: All UI routes for this feature use `/dashboard/agent/*` (not `/dashboard/whatsapp/*`). The agent is a meta-feature, not channel-specific.
 
 ---
 
@@ -3340,7 +3400,7 @@ git commit -m "feat: add admin metrics dashboard API for AI PRO costs and margin
 ## Task 17: Create WhatsApp Dashboard UI
 
 **Files:**
-- Create: `app/dashboard/whatsapp/page.tsx`
+- Create: `app/dashboard/agent/page.tsx`
 - Create: `components/whatsapp/ConnectWhatsAppCard.tsx`
 - Create: `components/whatsapp/WhatsAppStatusBadge.tsx`
 - Create: `components/whatsapp/WhatsAppSettingsForm.tsx`
@@ -3392,7 +3452,7 @@ export async function updateWhatsAppSettings(data: z.infer<typeof UpdateWhatsApp
       data: validated.data,
     });
 
-    revalidatePath("/dashboard/whatsapp");
+    revalidatePath("/dashboard/agent");
     return { success: "Settings actualizados." };
   } catch (error) {
     console.error("Error updating WhatsApp settings:", error);
@@ -3427,7 +3487,7 @@ export async function disconnectWhatsApp() {
     // audit I9 — optionally clean up in Kapso if API supports it
     // await kapsoClient.disconnectPhoneNumber(barbershop.whatsappPhoneNumberId!);
 
-    revalidatePath("/dashboard/whatsapp");
+    revalidatePath("/dashboard/agent");
     return { success: "WhatsApp desconectado." };
   } catch (error) {
     console.error("Error disconnecting WhatsApp:", error);
@@ -3474,12 +3534,12 @@ export function WhatsAppStatusBadge({ state }: WhatsAppStatusBadgeProps) {
 
 - [ ] **Step 3: Create WhatsApp dashboard page**
 
-Create `app/dashboard/whatsapp/page.tsx` with state machine UI showing appropriate messages for each state and settings form.
+Create `app/dashboard/agent/page.tsx` with state machine UI showing appropriate messages for each state and settings form.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add app/dashboard/whatsapp/ components/whatsapp/ actions/whatsapp.actions.ts
+git add app/dashboard/agent/ components/whatsapp/ actions/whatsapp.actions.ts
 git commit -m "feat: add WhatsApp dashboard UI with state machine and settings"
 ```
 
