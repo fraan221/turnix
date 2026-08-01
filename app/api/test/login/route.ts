@@ -29,6 +29,9 @@ type TeamSetupData = {
   ownerTimeBlock: {
     id: string;
   };
+  ownerRecurringTimeBlock?: {
+    id: string;
+  };
   teamMember?: {
     id: string;
     name: string;
@@ -85,8 +88,10 @@ async function ensureWorkSchedule(barberId: string) {
 
 async function createOwnerSetup(options?: {
   withTeam?: boolean;
+  withRecurringBlock?: boolean;
 }): Promise<TeamSetupData> {
   const withTeam = Boolean(options?.withTeam);
+  const withRecurringBlock = Boolean(options?.withRecurringBlock);
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
@@ -138,6 +143,21 @@ async function createOwnerSetup(options?: {
     },
   });
 
+  let ownerRecurringTimeBlock: { id: string } | undefined;
+  if (withRecurringBlock) {
+    const recurring = await prisma.timeBlock.create({
+      data: {
+        barberId: barbershop.ownerId,
+        dayOfWeek: 2, // Martes
+        startTimeOfDay: "13:30",
+        endTimeOfDay: "14:30",
+        recurrenceEndDate: null,
+        reason: `Almuerzo e2e ${unique}`,
+      },
+    });
+    ownerRecurringTimeBlock = { id: recurring.id };
+  }
+
   if (!withTeam) {
     return {
       owner: {
@@ -159,6 +179,7 @@ async function createOwnerSetup(options?: {
       ownerTimeBlock: {
         id: ownerTimeBlock.id,
       },
+      ...(ownerRecurringTimeBlock ? { ownerRecurringTimeBlock } : {}),
     };
   }
 
@@ -227,6 +248,7 @@ async function createOwnerSetup(options?: {
     ownerTimeBlock: {
       id: ownerTimeBlock.id,
     },
+    ...(ownerRecurringTimeBlock ? { ownerRecurringTimeBlock } : {}),
     teamMember: {
       id: teamMemberUser.id,
       name: teamMemberUser.name,

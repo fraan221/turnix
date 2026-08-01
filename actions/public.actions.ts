@@ -11,6 +11,7 @@ import {
   formatBookingDateForNotification,
   getArgentinaDayOfWeek,
   createArgentinaDate,
+  clipRecurringBlockToDay,
 } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
@@ -93,8 +94,13 @@ export async function getBarberAvailability(
     prisma.timeBlock.findMany({
       where: {
         barberId: barberId,
-        startTime: { lte: endOfDayUTC },
-        endTime: { gte: startOfDayUTC },
+        OR: [
+          {
+            startTime: { lte: endOfDayUTC },
+            endTime: { gte: startOfDayUTC },
+          },
+          { dayOfWeek: dayOfWeek },
+        ],
       },
     }),
   ]);
@@ -179,14 +185,63 @@ export async function getBarberAvailability(
     }
 
     for (const block of timeBlocks) {
-      const blockStart = new Date(block.startTime);
-      const blockEnd = new Date(block.endTime);
-      if (blockEnd > dayStartTime && blockStart < dayEndTime) {
-        occupiedIntervals.push({
-          start: blockStart,
-          end: blockEnd,
-          isRecurring: false,
-        });
+      // Bloqueo one-off: rango absoluto, clipeado al rango del turno del día
+      if (block.startTime && block.endTime) {
+        const blockStart = new Date(block.startTime);
+        const blockEnd = new Date(block.endTime);
+        // Clipear al rango del turno para evitar que un bloqueo de varios
+        // meses bloquee franjas horarias fuera del rango real del bloqueo
+        const clippedStart = blockStart > dayStartTime ? blockStart : dayStartTime;
+        const clippedEnd = blockEnd < dayEndTime ? blockEnd : dayEndTime;
+        if (clippedEnd > dayStartTime && clippedStart < dayEndTime) {
+          occupiedIntervals.push({
+            start: clippedStart,
+            end: clippedEnd,
+            isRecurring: false,
+          });
+        }
+        continue;
+      }
+
+      // Bloqueo recurrente: clipeo al rango del turno del día
+      if (
+        block.dayOfWeek === dayOfWeek &&
+        block.startTimeOfDay &&
+        block.endTimeOfDay
+      ) {
+        if (block.recurrenceEndDate && block.recurrenceEndDate < now) {
+          continue;
+        }
+
+        const dayStartMinutes =
+          dayStartTime.getHours() * 60 + dayStartTime.getMinutes();
+        const dayEndMinutes =
+          dayEndTime.getHours() * 60 + dayEndTime.getMinutes();
+
+        const clip = clipRecurringBlockToDay(
+          block.startTimeOfDay,
+          block.endTimeOfDay,
+          dayStartMinutes,
+          dayEndMinutes,
+        );
+
+        if (!clip) continue;
+
+        const blockStart = new Date(dayStartTime);
+        blockStart.setHours(0, 0, 0, 0);
+        blockStart.setMinutes(clip.start);
+
+        const blockEnd = new Date(dayStartTime);
+        blockEnd.setHours(0, 0, 0, 0);
+        blockEnd.setMinutes(clip.end);
+
+        if (blockEnd > dayStartTime && blockStart < dayEndTime) {
+          occupiedIntervals.push({
+            start: blockStart,
+            end: blockEnd,
+            isRecurring: false,
+          });
+        }
       }
     }
 

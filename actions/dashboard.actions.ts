@@ -13,7 +13,15 @@ import {
   getArgentinaMinutesOfDay,
   parseTimeToMinutes,
 } from "@/lib/date-helpers";
-import { UpdateBookingServiceSchema, CreateTimeBlockSchema, UpdateTimeBlockSchema, UpdateBookingClientSchema, SearchClientsSchema } from "@/lib/schemas";
+import {
+  UpdateBookingServiceSchema,
+  CreateTimeBlockSchema,
+  UpdateTimeBlockSchema,
+  CreateRecurringTimeBlockSchema,
+  UpdateRecurringTimeBlockSchema,
+  UpdateBookingClientSchema,
+  SearchClientsSchema,
+} from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
 
 export type FormState = {
@@ -1122,8 +1130,17 @@ export async function checkBookingAvailability(
     prisma.timeBlock.findMany({
       where: {
         barberId: barberId,
-        startTime: { lt: getEndOfDay(startTime) },
-        endTime: { gt: getStartOfDay(startTime) },
+        OR: [
+          // Bloqueos one-off: rango absoluto que solapa el día
+          {
+            startTime: { lt: getEndOfDay(startTime) },
+            endTime: { gt: getStartOfDay(startTime) },
+          },
+          // Bloqueos recurrentes que aplican a este día de la semana
+          {
+            dayOfWeek: dayOfWeek,
+          },
+        ],
       },
     }),
   ]);
@@ -1149,9 +1166,30 @@ export async function checkBookingAvailability(
     };
   }
 
-  const overlapsWithTimeBlock = timeBlocks.some(
-    (block) => startTime < block.endTime && overlapEndTime > block.startTime,
-  );
+  const now = new Date();
+  const overlapsWithTimeBlock = timeBlocks.some((block) => {
+    // Bloqueo one-off: startTime/endTime absolutos
+    if (block.startTime && block.endTime) {
+      return startTime < block.endTime && overlapEndTime > block.startTime;
+    }
+
+    // Bloqueo recurrente: dayOfWeek + startTimeOfDay/endTimeOfDay
+    if (
+      block.dayOfWeek !== null &&
+      block.startTimeOfDay &&
+      block.endTimeOfDay
+    ) {
+      if (block.recurrenceEndDate && block.recurrenceEndDate < now) {
+        return false;
+      }
+      return (
+        parseTimeToMinutes(block.endTimeOfDay) > newStartMinutes &&
+        parseTimeToMinutes(block.startTimeOfDay) < newEndMinutes
+      );
+    }
+
+    return false;
+  });
 
   if (overlapsWithTimeBlock) {
     return {
@@ -1261,8 +1299,13 @@ export async function updateBookingTime(
       prisma.timeBlock.findMany({
         where: {
           barberId: barberId,
-          startTime: { lt: getEndOfDay(newStartTime) },
-          endTime: { gt: getStartOfDay(newStartTime) },
+          OR: [
+            {
+              startTime: { lt: getEndOfDay(newStartTime) },
+              endTime: { gt: getStartOfDay(newStartTime) },
+            },
+            { dayOfWeek: dayOfWeek },
+          ],
         },
       }),
     ]);
@@ -1288,9 +1331,28 @@ export async function updateBookingTime(
     }
 
     // VALIDACIÓN 2: Bloqueos de Tiempo (raramente cambian)
-    const overlapsWithTimeBlock = timeBlocks.some(
-      (block) => newStartTime < block.endTime && newEndTime > block.startTime,
-    );
+    const now = new Date();
+    const overlapsWithTimeBlock = timeBlocks.some((block) => {
+      if (block.startTime && block.endTime) {
+        return newStartTime < block.endTime && newEndTime > block.startTime;
+      }
+
+      if (
+        block.dayOfWeek !== null &&
+        block.startTimeOfDay &&
+        block.endTimeOfDay
+      ) {
+        if (block.recurrenceEndDate && block.recurrenceEndDate < now) {
+          return false;
+        }
+        return (
+          parseTimeToMinutes(block.endTimeOfDay) > newStartMinutes &&
+          parseTimeToMinutes(block.startTimeOfDay) < newEndMinutes
+        );
+      }
+
+      return false;
+    });
 
     if (overlapsWithTimeBlock) {
       return {
@@ -1651,5 +1713,226 @@ export async function updateBookingClient(
   } catch (error) {
     console.error("Error al reasignar cliente del turno:", error);
     return { error: "No se pudo reasignar el cliente del turno." };
+  }
+}
+
+type RecurringTimeBlockInput = {
+  daysOfWeek: number[];
+  startTimeOfDay: string;
+  endTimeOfDay: string;
+  recurrenceEndDate?: string | null;
+  reason?: string | null;
+  barberId?: string | null;
+};
+
+async function validateRecurringBlockAgainstWorkingHours(
+  barberId: string,
+  dayOfWeek: number,
+  startTimeOfDay: string,
+  endTimeOfDay: string,
+): Promise<{ valid: true } | { valid: false; reason: string }> {
+  const workingHours = await prisma.workingHours.findUnique({
+    where: { barberId_dayOfWeek: { barberId, dayOfWeek } },
+    include: { blocks: true },
+  });
+
+  if (!workingHours || !workingHours.isWorking) {
+    return {
+      valid: false,
+      reason: "No tenés horarios configurados para uno o más de los días seleccionados. Configuralos antes de bloquearlos.",
+    };
+  }
+
+  const startMin = parseTimeToMinutes(startTimeOfDay);
+  const endMin = parseTimeToMinutes(endTimeOfDay);
+
+  const overlapsShift = workingHours.blocks.some((shift) => {
+    const shiftStart = parseTimeToMinutes(shift.startTime);
+    const shiftEnd = parseTimeToMinutes(shift.endTime);
+    return startMin < shiftEnd && endMin > shiftStart;
+  });
+
+  if (!overlapsShift) {
+    return {
+      valid: false,
+      reason: "La franja seleccionada no coincide con tus horarios de atención para uno o más días.",
+    };
+  }
+
+  return { valid: true };
+}
+
+async function findOverlappingRecurringBlock(
+  barberId: string,
+  dayOfWeek: number,
+  startTimeOfDay: string,
+  endTimeOfDay: string,
+  excludeBlockId?: string,
+) {
+  const startMin = parseTimeToMinutes(startTimeOfDay);
+  const endMin = parseTimeToMinutes(endTimeOfDay);
+
+  const candidates = await prisma.timeBlock.findMany({
+    where: {
+      barberId,
+      dayOfWeek,
+      id: excludeBlockId ? { not: excludeBlockId } : undefined,
+    },
+  });
+
+  return candidates.find((block) => {
+    if (!block.startTimeOfDay || !block.endTimeOfDay) return false;
+    const otherStart = parseTimeToMinutes(block.startTimeOfDay);
+    const otherEnd = parseTimeToMinutes(block.endTimeOfDay);
+    return otherStart < endMin && otherEnd > startMin;
+  });
+}
+
+export async function createRecurringTimeBlock(input: RecurringTimeBlockInput) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  const validated = CreateRecurringTimeBlockSchema.safeParse(input);
+  if (!validated.success) {
+    return { error: validated.error.issues[0].message };
+  }
+
+  const data = validated.data;
+  const managed = await resolveManagedBarberId(user, data.barberId ?? null);
+  if ("error" in managed) {
+    return { error: managed.error };
+  }
+
+  const barberIdToUse = managed.barberId;
+
+  try {
+    // Validar cada día contra workingHours y solapamientos ANTES de escribir
+    for (const dayOfWeek of data.daysOfWeek) {
+      const workCheck = await validateRecurringBlockAgainstWorkingHours(
+        barberIdToUse,
+        dayOfWeek,
+        data.startTimeOfDay,
+        data.endTimeOfDay,
+      );
+      if (!workCheck.valid) {
+        return { error: workCheck.reason };
+      }
+
+      const overlap = await findOverlappingRecurringBlock(
+        barberIdToUse,
+        dayOfWeek,
+        data.startTimeOfDay,
+        data.endTimeOfDay,
+      );
+      if (overlap) {
+        return { error: "Ya existe un bloqueo recurrente que se superpone con este horario para uno o más días." };
+      }
+    }
+
+    const recurrenceEndDate = data.recurrenceEndDate
+      ? new Date(`${data.recurrenceEndDate}T23:59:59`)
+      : null;
+
+    await prisma.timeBlock.createMany({
+      data: data.daysOfWeek.map((dayOfWeek) => ({
+        barberId: barberIdToUse,
+        reason: data.reason || null,
+        dayOfWeek,
+        startTimeOfDay: data.startTimeOfDay,
+        endTimeOfDay: data.endTimeOfDay,
+        recurrenceEndDate,
+        startTime: null,
+        endTime: null,
+      })),
+    });
+
+    revalidatePath("/dashboard/schedule", "layout");
+    return { success: "Bloqueo recurrente creado con éxito." };
+  } catch (error) {
+    console.error("Error al crear el bloqueo recurrente:", error);
+    return { error: "No se pudo crear el bloqueo recurrente." };
+  }
+}
+
+type UpdateRecurringTimeBlockInput = {
+  dayOfWeek: number;
+  startTimeOfDay: string;
+  endTimeOfDay: string;
+  recurrenceEndDate?: string | null;
+  reason?: string | null;
+};
+
+export async function updateRecurringTimeBlock(
+  blockId: string,
+  input: UpdateRecurringTimeBlockInput,
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "No autorizado." };
+  }
+
+  const validated = UpdateRecurringTimeBlockSchema.safeParse(input);
+  if (!validated.success) {
+    return { error: validated.error.issues[0].message };
+  }
+
+  const block = await prisma.timeBlock.findUnique({ where: { id: blockId } });
+  if (!block) {
+    return { error: "Bloqueo no encontrado." };
+  }
+
+  const managed = await resolveManagedBarberId(user, block.barberId);
+  if ("error" in managed) {
+    return { error: managed.error };
+  }
+
+  const data = validated.data;
+
+  try {
+    const workCheck = await validateRecurringBlockAgainstWorkingHours(
+      block.barberId,
+      data.dayOfWeek,
+      data.startTimeOfDay,
+      data.endTimeOfDay,
+    );
+    if (!workCheck.valid) {
+      return { error: workCheck.reason };
+    }
+
+    const overlap = await findOverlappingRecurringBlock(
+      block.barberId,
+      data.dayOfWeek,
+      data.startTimeOfDay,
+      data.endTimeOfDay,
+      blockId,
+    );
+    if (overlap) {
+      return { error: "Ya existe un bloqueo recurrente que se superponde con este horario." };
+    }
+
+    const recurrenceEndDate = data.recurrenceEndDate
+      ? new Date(`${data.recurrenceEndDate}T23:59:59`)
+      : null;
+
+    await prisma.timeBlock.update({
+      where: { id: blockId },
+      data: {
+        reason: data.reason || null,
+        dayOfWeek: data.dayOfWeek,
+        startTimeOfDay: data.startTimeOfDay,
+        endTimeOfDay: data.endTimeOfDay,
+        recurrenceEndDate,
+        startTime: null,
+        endTime: null,
+      },
+    });
+
+    revalidatePath("/dashboard/schedule", "layout");
+    return { success: "Bloqueo recurrente actualizado con éxito." };
+  } catch (error) {
+    console.error("Error al actualizar el bloqueo recurrente:", error);
+    return { error: "No se pudo actualizar el bloqueo recurrente." };
   }
 }

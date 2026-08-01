@@ -27,6 +27,9 @@ type TestLoginResponse = {
     id: string;
     name: string;
   };
+  ownerRecurringTimeBlock?: {
+    id: string;
+  };
   teamMember?: {
     id: string;
     name: string;

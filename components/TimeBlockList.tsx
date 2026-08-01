@@ -5,7 +5,13 @@ import { Button } from "./ui/button";
 import { deleteTimeBlock } from "@/actions/dashboard.actions";
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Trash2, Pencil, CalendarX, Calendar, Clock } from "lucide-react";
+import {
+  Trash2,
+  Pencil,
+  CalendarX,
+  Calendar,
+  Repeat,
+} from "lucide-react";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -19,9 +25,48 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const DAYS_ES = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
+
 interface TimeBlockItemProps {
   block: TimeBlock;
   selectedBarberId: string;
+}
+
+function isRecurring(block: TimeBlock): boolean {
+  return block.dayOfWeek !== null && block.startTime === null;
+}
+
+function formatOneOffRange(start: Date, end: Date): string {
+  const fmt = (date: Date) =>
+    new Date(date).toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  return `${fmt(start)} → ${fmt(end)}`;
+}
+
+function formatRecurringSummary(block: TimeBlock): string {
+  const day = block.dayOfWeek !== null ? DAYS_ES[block.dayOfWeek] : "";
+  const range = `${block.startTimeOfDay ?? "?"} - ${block.endTimeOfDay ?? "?"}`;
+  if (block.recurrenceEndDate) {
+    const endStr = new Date(block.recurrenceEndDate).toLocaleDateString(
+      "es-AR",
+      { day: "2-digit", month: "2-digit", year: "numeric" }
+    );
+    return `Todos los ${day}, ${range} hs · hasta el ${endStr}`;
+  }
+  return `Todos los ${day}, ${range} hs · permanente`;
 }
 
 function TimeBlockItem({ block, selectedBarberId }: TimeBlockItemProps) {
@@ -43,19 +88,12 @@ function TimeBlockItem({ block, selectedBarberId }: TimeBlockItemProps) {
     });
   };
 
-  // Formatear fechas para mejor legibilidad
-  const formatDateTime = (date: Date) => {
-    return new Date(date).toLocaleString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const startDateTime = formatDateTime(block.startTime);
-  const endDateTime = formatDateTime(block.endTime);
+  const recurring = isRecurring(block);
+  const summary = recurring
+    ? formatRecurringSummary(block)
+    : block.startTime && block.endTime
+      ? formatOneOffRange(block.startTime, block.endTime)
+      : "";
 
   return (
     <div className="flex flex-col justify-between gap-4 p-4 transition-all duration-200 border rounded-lg sm:flex-row sm:items-center bg-card hover:bg-accent/30 hover:shadow-sm">
@@ -71,13 +109,15 @@ function TimeBlockItem({ block, selectedBarberId }: TimeBlockItemProps) {
           </div>
         </div>
 
-        {/* Fecha y hora */}
+        {/* Detalle de fecha/hora */}
         <div className="flex flex-col gap-1.5 text-sm text-muted-foreground ml-6">
           <div className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span className="break-all">
-              {startDateTime} → {endDateTime}
-            </span>
+            {recurring ? (
+              <Repeat className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span className="break-all">{summary}</span>
           </div>
         </div>
       </div>

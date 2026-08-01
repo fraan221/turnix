@@ -333,48 +333,174 @@ export const CreateTimeBlockSchema = TimeBlockBaseSchema.extend({
 
 export const UpdateTimeBlockSchema = TimeBlockBaseSchema;
 
+const timeOfDayRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const RecurringTimeBlockFieldsSchema = z.object({
+  daysOfWeek: z
+    .array(z.number().int().min(0).max(6))
+    .min(1, { message: "Seleccioná al menos un día de la semana." }),
+  startTimeOfDay: z.string().regex(timeOfDayRegex, {
+    message: "Formato de hora de inicio inválido (HH:mm).",
+  }),
+  endTimeOfDay: z.string().regex(timeOfDayRegex, {
+    message: "Formato de hora de fin inválido (HH:mm).",
+  }),
+  recurrenceEndDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: "Formato de fecha inválido (YYYY-MM-DD).",
+    })
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
+  reason: z
+    .string()
+    .max(200, { message: "La razón no puede tener más de 200 caracteres." })
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
+  barberId: z.string().min(1).optional().nullable(),
+});
+
+const recurringRefinement = (
+  data: {
+    startTimeOfDay: string;
+    endTimeOfDay: string;
+    recurrenceEndDate?: string | null;
+  },
+  ctx: z.RefinementCtx
+) => {
+  if (data.startTimeOfDay >= data.endTimeOfDay) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La hora de fin debe ser posterior a la de inicio.",
+      path: ["endTimeOfDay"],
+    });
+  }
+
+  if (data.recurrenceEndDate) {
+    const endDate = new Date(`${data.recurrenceEndDate}T23:59:59`);
+    const now = new Date();
+    if (endDate < now) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La fecha de fin debe ser futura.",
+        path: ["recurrenceEndDate"],
+      });
+    }
+  }
+};
+
+export const CreateRecurringTimeBlockSchema =
+  RecurringTimeBlockFieldsSchema.superRefine(recurringRefinement);
+
+// Update edita un solo día (un solo timeblock existente)
+const UpdateRecurringFieldsSchema = z.object({
+  dayOfWeek: z
+    .number()
+    .int()
+    .min(0, { message: "Día de la semana inválido." })
+    .max(6, { message: "Día de la semana inválido." }),
+  startTimeOfDay: z.string().regex(timeOfDayRegex, {
+    message: "Formato de hora de inicio inválido (HH:mm).",
+  }),
+  endTimeOfDay: z.string().regex(timeOfDayRegex, {
+    message: "Formato de hora de fin inválido (HH:mm).",
+  }),
+  recurrenceEndDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: "Formato de fecha inválido (YYYY-MM-DD).",
+    })
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
+  reason: z
+    .string()
+    .max(200, { message: "La razón no puede tener más de 200 caracteres." })
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
+});
+
+export const UpdateRecurringTimeBlockSchema =
+  UpdateRecurringFieldsSchema.superRefine(recurringRefinement);
+
 export const TimeBlockFormSchema = z
   .object({
-    startDate: z.string().min(1, { message: "La fecha de inicio es requerida." }),
-    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-      message: "Formato de hora de inicio inválido (HH:mm).",
-    }),
-    endDate: z.string().min(1, { message: "La fecha de fin es requerida." }),
-    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-      message: "Formato de hora de fin inválido (HH:mm).",
-    }),
-    reason: z.string().max(200, { message: "La razón no puede tener más de 200 caracteres." }).optional().nullable().or(z.literal("")),
+    type: z.enum(["once", "recurring"]),
+    // Campos del modo "once"
+    startDate: z.string().optional().or(z.literal("")),
+    startTime: z.string().optional().or(z.literal("")),
+    endDate: z.string().optional().or(z.literal("")),
+    endTime: z.string().optional().or(z.literal("")),
+    // Campos del modo "recurring" - add usa daysOfWeek[], edit usa dayOfWeek
+    daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+    dayOfWeek: z.number().int().min(0).max(6).optional(),
+    startTimeOfDay: z.string().optional().or(z.literal("")),
+    endTimeOfDay: z.string().optional().or(z.literal("")),
+    recurrenceEndDate: z.string().optional().or(z.literal("")),
+    // Compartido
+    reason: z
+      .string()
+      .max(200, { message: "La razón no puede tener más de 200 caracteres." })
+      .optional()
+      .or(z.literal("")),
   })
   .superRefine((data, ctx) => {
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (
-      !data.startDate ||
-      !data.endDate ||
-      !timeRegex.test(data.startTime) ||
-      !timeRegex.test(data.endTime)
-    ) {
-      return;
-    }
-
-    const startDateTime = createArgentinaDate(data.startDate, data.startTime);
-    const endDateTime = createArgentinaDate(data.endDate, data.endTime);
-
-    if (endDateTime <= startDateTime) {
-      if (data.endDate < data.startDate) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "La fecha de fin no puede ser anterior a la de inicio.",
-          path: ["endDate"],
-        });
-      } else {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "La hora de fin debe ser posterior a la de inicio en el mismo día.",
-          path: ["endTime"],
-        });
+    if (data.type === "once") {
+      if (!data.startDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La fecha de inicio es requerida.", path: ["startDate"] });
+      }
+      if (!data.startTime || !timeOfDayRegex.test(data.startTime)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de hora de inicio inválido (HH:mm).", path: ["startTime"] });
+      }
+      if (!data.endDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La fecha de fin es requerida.", path: ["endDate"] });
+      }
+      if (!data.endTime || !timeOfDayRegex.test(data.endTime)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de hora de fin inválido (HH:mm).", path: ["endTime"] });
+      }
+      if (data.startDate && data.endDate && data.startTime && data.endTime && timeOfDayRegex.test(data.startTime) && timeOfDayRegex.test(data.endTime)) {
+        const startDateTime = createArgentinaDate(data.startDate, data.startTime);
+        const endDateTime = createArgentinaDate(data.endDate, data.endTime);
+        if (endDateTime <= startDateTime) {
+          if (data.endDate < data.startDate) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La fecha de fin no puede ser anterior a la de inicio.", path: ["endDate"] });
+          } else {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La hora de fin debe ser posterior a la de inicio en el mismo día.", path: ["endTime"] });
+          }
+        }
+      }
+    } else {
+      // Modo "recurring": en add usa daysOfWeek[], en edit usa dayOfWeek (single).
+      // Validar que haya al menos un día seleccionado de alguna de las dos formas.
+      const daysArr = data.daysOfWeek ?? [];
+      const hasDays = daysArr.length > 0 || data.dayOfWeek !== undefined;
+      if (!hasDays) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Seleccioná al menos un día de la semana.", path: ["daysOfWeek"] });
+      }
+      if (!data.startTimeOfDay || !timeOfDayRegex.test(data.startTimeOfDay)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de hora de inicio inválido (HH:mm).", path: ["startTimeOfDay"] });
+      }
+      if (!data.endTimeOfDay || !timeOfDayRegex.test(data.endTimeOfDay)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de hora de fin inválido (HH:mm).", path: ["endTimeOfDay"] });
+      }
+      if (data.startTimeOfDay && data.endTimeOfDay && timeOfDayRegex.test(data.startTimeOfDay) && timeOfDayRegex.test(data.endTimeOfDay) && data.startTimeOfDay >= data.endTimeOfDay) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La hora de fin debe ser posterior a la de inicio.", path: ["endTimeOfDay"] });
+      }
+      if (data.recurrenceEndDate) {
+        const endDate = new Date(`${data.recurrenceEndDate}T23:59:59`);
+        const now = new Date();
+        if (endDate < now) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La fecha de fin debe ser futura.", path: ["recurrenceEndDate"] });
+        }
       }
     }
   });
+
+export type TimeBlockFormValues = z.infer<typeof TimeBlockFormSchema>;
+export type TimeBlockFormInput = TimeBlockFormValues;
 
 export const EditBookingTimeSchema = z
   .object({

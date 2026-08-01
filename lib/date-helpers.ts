@@ -452,3 +452,93 @@ export function getAllTimeStart(): Date {
   return new Date('2020-01-01T00:00:00Z');
 }
 
+/**
+ * Tipos auxiliares para la lógica de intersección entre TimeBlocks y slots.
+ */
+export type SlotInterval = {
+  /** Minutos desde 00:00 en zona horaria de Argentina (0-1439). */
+  startMinutes: number;
+  /** Minutos desde 00:00 en zona horaria de Argentina (0-1440). */
+  endMinutes: number;
+};
+
+export type RecurringTimeBlock = {
+  startTimeOfDay: string;
+  endTimeOfDay: string;
+  recurrenceEndDate: Date | null;
+};
+
+export type OneOffTimeBlock = {
+  startTime: Date;
+  endTime: Date;
+};
+
+/**
+ * Determina si un TimeBlock recurrente solapa con un slot de un día específico.
+ * Retorna true si el bloque recurrente:
+ *   - aplica al `dayOfWeek` dado, Y
+ *   - no caducó (recurrenceEndDate es null o >= ahora), Y
+ *   - la franja horaria [startTimeOfDay, endTimeOfDay) solapa con [startMinutes, endMinutes).
+ */
+export function recurringBlockOverlapsSlot(
+  block: RecurringTimeBlock,
+  dayOfWeek: number,
+  slot: SlotInterval,
+  now: Date = new Date()
+): boolean {
+  if (block.recurrenceEndDate) {
+    const endOfDay = new Date(block.recurrenceEndDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    if (endOfDay < now) {
+      return false;
+    }
+  }
+
+  const blockStartMinutes = parseTimeToMinutes(block.startTimeOfDay);
+  const blockEndMinutes = parseTimeToMinutes(block.endTimeOfDay);
+
+  return (
+    blockEndMinutes > slot.startMinutes && blockStartMinutes < slot.endMinutes
+  );
+}
+
+/**
+ * Helper que determina si un TimeBlock (recurrente o one-off) bloquea un slot
+ * específico. El caller pasa `dayOfWeek` (calculado del slot) y el `slot`.
+ *
+ * Para TimeBlocks one-off, esta función NO aplica: el caller ya filtró por día
+ * con la query SQL (`startTime in [day, day+1]`).
+ */
+export function recurringBlockBlocksSlot(
+  block: RecurringTimeBlock,
+  dayOfWeek: number,
+  slot: SlotInterval,
+  now: Date = new Date()
+): boolean {
+  return recurringBlockOverlapsSlot(block, dayOfWeek, slot, now);
+}
+
+/**
+ * Devuelve la intersección de una franja horaria con el rango del día.
+ * Clipea [startTimeOfDay, endTimeOfDay] contra [dayStartMinutes, dayEndMinutes]
+ * y devuelve los minutos resultantes (start, end) o null si no hay solapamiento.
+ */
+export function clipRecurringBlockToDay(
+  startTimeOfDay: string,
+  endTimeOfDay: string,
+  dayStartMinutes: number,
+  dayEndMinutes: number
+): { start: number; end: number } | null {
+  const blockStartMinutes = parseTimeToMinutes(startTimeOfDay);
+  const blockEndMinutes = parseTimeToMinutes(endTimeOfDay);
+
+  const start = Math.max(blockStartMinutes, dayStartMinutes);
+  const end = Math.min(blockEndMinutes, dayEndMinutes);
+
+  if (end <= start) {
+    return null;
+  }
+
+  return { start, end };
+}
+

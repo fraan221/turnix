@@ -213,13 +213,24 @@ model WorkingHours {
 }
 
 model TimeBlock {
-  id        String   @id @default(cuid())
-  startTime DateTime
-  endTime   DateTime
-  reason    String?
+  id     String   @id @default(cuid())
+  reason String?
+
+  // One-off: fechas absolutas (legacy + nuevo)
+  startTime DateTime?
+  endTime   DateTime?
+
+  // Recurrente: día de la semana + franja horaria + caducidad opcional
+  dayOfWeek         Int?
+  startTimeOfDay    String?
+  endTimeOfDay      String?
+  recurrenceEndDate DateTime?
 
   barber   User   @relation(fields: [barberId], references: [id])
   barberId String
+
+  @@index([barberId, dayOfWeek])
+  @@index([barberId, startTime, endTime])
 }
 
 model Notification {
