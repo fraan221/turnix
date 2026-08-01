@@ -11,7 +11,6 @@ import {
   formatBookingDateForNotification,
   getArgentinaDayOfWeek,
   createArgentinaDate,
-  clipRecurringBlockToDay,
 } from "@/lib/date-helpers";
 import { z } from "zod";
 import { Role, WorkShiftType } from "@prisma/client";
@@ -203,7 +202,9 @@ export async function getBarberAvailability(
         continue;
       }
 
-      // Bloqueo recurrente: clipeo al rango del turno del día
+      // Bloqueo recurrente: construye el intervalo en zona horaria ARG y
+      // clipeo al rango del turno del día. Usa createDateInArgentina para
+      // no acoplar a la zona horaria local del servidor (Vercel = UTC).
       if (
         block.dayOfWeek === dayOfWeek &&
         block.startTimeOfDay &&
@@ -213,27 +214,14 @@ export async function getBarberAvailability(
           continue;
         }
 
-        const dayStartMinutes =
-          dayStartTime.getHours() * 60 + dayStartTime.getMinutes();
-        const dayEndMinutes =
-          dayEndTime.getHours() * 60 + dayEndTime.getMinutes();
+        const blockStartRaw = createDateInArgentina(block.startTimeOfDay);
+        const blockEndRaw = createDateInArgentina(block.endTimeOfDay);
 
-        const clip = clipRecurringBlockToDay(
-          block.startTimeOfDay,
-          block.endTimeOfDay,
-          dayStartMinutes,
-          dayEndMinutes,
-        );
-
-        if (!clip) continue;
-
-        const blockStart = new Date(dayStartTime);
-        blockStart.setHours(0, 0, 0, 0);
-        blockStart.setMinutes(clip.start);
-
-        const blockEnd = new Date(dayStartTime);
-        blockEnd.setHours(0, 0, 0, 0);
-        blockEnd.setMinutes(clip.end);
+        // Clipear al rango del turno del día
+        const blockStart =
+          blockStartRaw > dayStartTime ? blockStartRaw : dayStartTime;
+        const blockEnd =
+          blockEndRaw < dayEndTime ? blockEndRaw : dayEndTime;
 
         if (blockEnd > dayStartTime && blockStart < dayEndTime) {
           occupiedIntervals.push({
