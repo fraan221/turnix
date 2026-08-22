@@ -30,3 +30,7 @@ test-results/
 .vscode
 .github
 dev.sh
+
+# Local environment migration exports
+/turnix-migration-*/
+/scripts/migration/.local/
