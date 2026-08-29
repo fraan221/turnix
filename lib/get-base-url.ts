@@ -4,7 +4,7 @@ export const getBaseUrl = () => {
   }
 
   if (process.env.NODE_ENV === "production") {
-    return process.env.NEXT_PUBLIC_SITE_URL || "https://hypeh.com.ar";
+    return process.env.NEXT_PUBLIC_SITE_URL || "https://turnix.app";
   }
 
   if (process.env.VERCEL_URL) {

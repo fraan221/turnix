@@ -213,7 +213,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
 
       try {
         await resend.emails.send({
-          from: "Turnix <contacto@hypeh.com.ar>",
+          from: "Turnix <contacto@turnix.app>",
           to: email,
           subject: "¡Bienvenido a Turnix! Tu código de conexión",
           react: WelcomeBarberEmail({ name, connectionCode }),
@@ -226,7 +226,7 @@ export async function registerBarber(prevState: any, formData: FormData) {
     if (role === "OWNER") {
       try {
         await resend.emails.send({
-          from: "Turnix <contacto@hypeh.com.ar>",
+          from: "Turnix <contacto@turnix.app>",
           to: email,
           subject: "¡Bienvenido a Turnix!",
           react: WelcomeEmail({ name }),
@@ -301,7 +301,7 @@ export async function completeGoogleRegistration(
       if (user.email) {
         try {
           await resend.emails.send({
-            from: "Turnix <contacto@hypeh.com.ar>",
+            from: "Turnix <contacto@turnix.app>",
             to: user.email,
             subject: "¡Bienvenido a Turnix! Tu código de conexión",
             react: WelcomeBarberEmail({ name: user.name, connectionCode }),
@@ -315,7 +315,7 @@ export async function completeGoogleRegistration(
     if (role === "OWNER" && user.email) {
       try {
         await resend.emails.send({
-          from: "Turnix <contacto@hypeh.com.ar>",
+          from: "Turnix <contacto@turnix.app>",
           to: user.email,
           subject: "¡Bienvenido a Turnix!",
           react: WelcomeEmail({ name: user.name }),
@@ -370,7 +370,7 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
 
   try {
     const data = await resend.emails.send({
-      from: "Turnix <contacto@hypeh.com.ar>",
+      from: "Turnix <contacto@turnix.app>",
       to: user.email,
       subject: "Restablece tu contraseña de Turnix",
       react: ResetPasswordEmail({ userName: user.name, resetLink }),

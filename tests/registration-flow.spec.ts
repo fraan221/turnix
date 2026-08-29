@@ -6,7 +6,7 @@ test.describe("Flujo de Registro de Usuario", () => {
   test(
     `${smoke} ${critical} un nuevo dueño de barbería puede registrarse con email y contraseña`,
     async ({ page }) => {
-    const uniqueEmail = `test-user-${Date.now()}@hypeh.com.ar`;
+    const uniqueEmail = `test-user-${Date.now()}@turnix.app`;
 
     await page.goto("/register");
     await expect(page.getByText("Crea tu cuenta", { exact: true })).toBeVisible();

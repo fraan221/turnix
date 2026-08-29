@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
 
-const siteUrl = "https://hypeh.com.ar";
+const siteUrl = "https://turnix.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [

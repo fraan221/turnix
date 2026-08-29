@@ -64,7 +64,7 @@ const slidesContent = [
     type: "QR",
     title: "Registrate ahora",
     subtitle: "Escaneá y aprovecha la oferta",
-    qrValue: "https://hypeh.com.ar/register",
+    qrValue: "https://turnix.app/register",
   },
   {
     type: "FINAL",
