@@ -9,12 +9,14 @@ const url = new URL(connectionString);
 url.searchParams.delete("sslmode");
 url.searchParams.delete("ssl");
 
+url.searchParams.set("statement_timeout", "30000");
+
 const pool = new Pool({
   connectionString: url.toString(),
   ssl: { rejectUnauthorized: false },
   // Configuración defensiva para serverless (Vercel)
   // Ref: supabase-postgres-best-practices (conn-limits, conn-idle-timeout)
-  max: 5,
+  max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
   allowExitOnIdle: true,
