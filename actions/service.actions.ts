@@ -5,7 +5,8 @@ import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { ServiceSchema } from "@/lib/schemas";
-import { Role } from "@prisma/client";
+import { Role, BookingStatus } from "@prisma/client";
+import { invalidateAnalyticsCache } from "@/lib/cache-utils";
 
 type ServiceInput = z.infer<typeof ServiceSchema>;
 
@@ -171,18 +172,36 @@ export async function updateService(serviceId: string, data: ServiceInput) {
   } = validatedData.data;
 
   try {
-    await prisma.service.update({
-      where: { id: serviceId },
-      data: {
-        name,
-        price,
-        durationInMinutes: durationInMinutes ?? null,
-        activeDurationInMinutes: activeDurationInMinutes ?? null,
-        description,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.service.update({
+        where: { id: serviceId },
+        data: {
+          name,
+          price,
+          durationInMinutes: durationInMinutes ?? null,
+          activeDurationInMinutes: activeDurationInMinutes ?? null,
+          description,
+        },
+      });
+
+      // Si el precio cambió, actualizamos los turnos futuros/pendientes agendados
+      if (serviceToUpdate.price !== price) {
+        await tx.booking.updateMany({
+          where: {
+            serviceId,
+            status: BookingStatus.SCHEDULED,
+          },
+          data: {
+            priceAtBooking: price,
+          },
+        });
+      }
     });
 
     revalidatePath("/dashboard/services", "layout");
+    revalidatePath("/dashboard", "layout");
+    invalidateAnalyticsCache();
+
     // 2. Invalidamos el caché del perfil público
     const barbershopSlug = serviceToUpdate.barbershop.slug;
     if (barbershopSlug) {
