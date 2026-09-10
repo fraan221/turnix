@@ -134,7 +134,9 @@ model Booking {
   activeDurationAtBooking Int?
 
   // Payment tracking
-  paymentMethod PaymentMethod?
+  paymentMethod         PaymentMethod?
+  transferAccountHolder String?
+  transferAccountAlias  String?
 
   // Deposit tracking fields
   depositAmount        Decimal?       @db.Decimal(10, 2)

@@ -579,3 +579,9 @@ export const SearchClientsSchema = z.object({
     .min(1, { message: "La búsqueda no puede estar vacía." })
     .max(100, { message: "La búsqueda no puede superar los 100 caracteres." }),
 });
+
+export const DeleteTransferAccountSchema = z.object({
+  holder: z.string().max(100),
+  alias: z.string().max(100),
+});
+

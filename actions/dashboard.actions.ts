@@ -21,6 +21,7 @@ import {
   UpdateRecurringTimeBlockSchema,
   UpdateBookingClientSchema,
   SearchClientsSchema,
+  DeleteTransferAccountSchema,
 } from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
 
@@ -283,6 +284,7 @@ export async function updateBookingStatus(
   bookingId: string,
   newStatus: BookingStatus,
   paymentMethod?: PaymentMethod,
+  transferAccount?: { holder: string; alias: string } | null,
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -330,12 +332,28 @@ export async function updateBookingStatus(
       data: {
         status: newStatus,
         ...(newStatus === BookingStatus.COMPLETED && paymentMethod
-          ? { paymentMethod }
+          ? {
+              paymentMethod,
+              transferAccountHolder:
+                paymentMethod === PaymentMethod.TRANSFER &&
+                transferAccount?.holder?.trim()
+                  ? transferAccount.holder.trim()
+                  : null,
+              transferAccountAlias:
+                paymentMethod === PaymentMethod.TRANSFER &&
+                transferAccount?.alias?.trim()
+                  ? transferAccount.alias.trim()
+                  : null,
+            }
           : {}),
         // Limpiar paymentMethod al cancelar un turno completado
         ...(booking.status === BookingStatus.COMPLETED &&
         newStatus === BookingStatus.CANCELLED
-          ? { paymentMethod: null }
+          ? {
+              paymentMethod: null,
+              transferAccountHolder: null,
+              transferAccountAlias: null,
+            }
           : {}),
       },
     });
@@ -842,6 +860,7 @@ export async function updateClientNotes(
 export async function setPaymentMethod(
   bookingId: string,
   paymentMethod: PaymentMethod,
+  transferAccount?: { holder: string; alias: string } | null,
 ) {
   const user = await getCurrentUser();
   if (!user) {
@@ -872,7 +891,19 @@ export async function setPaymentMethod(
 
     await prisma.booking.update({
       where: { id: bookingId },
-      data: { paymentMethod },
+      data: {
+        paymentMethod,
+        transferAccountHolder:
+          paymentMethod === PaymentMethod.TRANSFER &&
+          transferAccount?.holder?.trim()
+            ? transferAccount.holder.trim()
+            : null,
+        transferAccountAlias:
+          paymentMethod === PaymentMethod.TRANSFER &&
+          transferAccount?.alias?.trim()
+            ? transferAccount.alias.trim()
+            : null,
+      },
     });
 
     revalidatePath("/dashboard");
@@ -1936,3 +1967,88 @@ export async function updateRecurringTimeBlock(
     return { error: "No se pudo actualizar el bloqueo recurrente." };
   }
 }
+
+export type TransferAccountSuggestion = {
+  holder: string;
+  alias: string;
+};
+
+export async function getTransferAccountSuggestions(): Promise<TransferAccountSuggestion[]> {
+  const user = await getUserForSettings();
+  if (!user) return [];
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershop?.id;
+  if (!barbershopId) return [];
+
+  try {
+    const results = await prisma.booking.findMany({
+      where: {
+        barbershopId,
+        paymentMethod: PaymentMethod.TRANSFER,
+        transferAccountHolder: { not: null },
+        transferAccountAlias: { not: null },
+      },
+      select: {
+        transferAccountHolder: true,
+        transferAccountAlias: true,
+      },
+      distinct: ["transferAccountHolder", "transferAccountAlias"],
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    });
+
+    return results
+      .filter(
+        (r): r is { transferAccountHolder: string; transferAccountAlias: string } =>
+          Boolean(r.transferAccountHolder && r.transferAccountAlias),
+      )
+      .map((r) => ({
+        holder: r.transferAccountHolder,
+        alias: r.transferAccountAlias,
+      }));
+  } catch (error) {
+    console.error("Error al obtener sugerencias de cuentas MP:", error);
+    return [];
+  }
+}
+
+export async function deleteTransferAccountSuggestion(data: {
+  holder: string;
+  alias: string;
+}): Promise<{ success?: string; error?: string }> {
+  const user = await getUserForSettings();
+  if (!user) return { error: "No autorizado." };
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershop?.id;
+  if (!barbershopId) return { error: "Barbería no encontrada." };
+
+  const parsed = DeleteTransferAccountSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: "Datos de cuenta inválidos." };
+  }
+
+  try {
+    await prisma.booking.updateMany({
+      where: {
+        barbershopId,
+        paymentMethod: PaymentMethod.TRANSFER,
+        transferAccountHolder: parsed.data.holder,
+        transferAccountAlias: parsed.data.alias,
+      },
+      data: {
+        transferAccountHolder: null,
+        transferAccountAlias: null,
+      },
+    });
+
+    revalidatePath("/dashboard");
+    return { success: "Cuenta eliminada correctamente." };
+  } catch (error) {
+    console.error("Error al eliminar sugerencia de cuenta MP:", error);
+    return { error: "No se pudo eliminar la cuenta." };
+  }
+}
+
+

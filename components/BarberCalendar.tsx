@@ -379,11 +379,18 @@ export default function BarberCalendar({
   const handleOptimisticPaymentUpdate = (
     bookingId: string,
     method: "CASH" | "TRANSFER" | "CARD",
+    transferAccountHolder?: string | null,
+    transferAccountAlias?: string | null,
   ) => {
     setOptimisticBookings((currentBookings) =>
       currentBookings.map((booking) =>
         booking.id === bookingId
-          ? { ...booking, paymentMethod: method }
+          ? {
+              ...booking,
+              paymentMethod: method,
+              transferAccountHolder: transferAccountHolder ?? null,
+              transferAccountAlias: transferAccountAlias ?? null,
+            }
           : booking,
       ),
     );

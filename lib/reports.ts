@@ -20,6 +20,8 @@ export type ReportBooking = {
   barberName: string;
   amount: number;
   paymentMethod: PaymentMethod | null;
+  transferAccountHolder: string | null;
+  transferAccountAlias: string | null;
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -31,6 +33,14 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 export function formatPaymentMethod(method: PaymentMethod | null): string {
   if (!method) return "Sin clasificar";
   return PAYMENT_METHOD_LABELS[method] ?? method;
+}
+
+export function formatTransferAccount(
+  holder: string | null,
+  alias: string | null,
+): string {
+  if (!holder) return "-";
+  return alias ? `${holder} (${alias})` : holder;
 }
 
 /**
@@ -182,6 +192,8 @@ export async function getDetailedBookingsForReport(
         barberName: booking.barber?.name ?? "Barbero",
         amount,
         paymentMethod: booking.paymentMethod,
+        transferAccountHolder: booking.transferAccountHolder,
+        transferAccountAlias: booking.transferAccountAlias,
       };
     });
   } catch (error) {

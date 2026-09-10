@@ -37,6 +37,9 @@ import {
   updateBookingService,
   searchBarbershopClients,
   updateBookingClient,
+  getTransferAccountSuggestions,
+  deleteTransferAccountSuggestion,
+  type TransferAccountSuggestion,
 } from "@/actions/dashboard.actions";
 import { formatLongDate, formatTime, isToday } from "@/lib/date-helpers";
 import { cn } from "@/lib/utils";
@@ -61,6 +64,9 @@ import {
   Clock,
   Check,
   X,
+  Plus,
+  Trash2,
+  Save,
   Pencil,
   AlertTriangle,
   User,
@@ -103,6 +109,8 @@ interface BookingDetailsDialogContentProps {
   onOptimisticPaymentUpdate?: (
     bookingId: string,
     method: PaymentMethod,
+    transferAccountHolder?: string | null,
+    transferAccountAlias?: string | null,
   ) => void;
   onOptimisticClientUpdate?: (
     bookingId: string,
@@ -139,7 +147,7 @@ const PAYMENT_METHODS = [
   },
   {
     value: "TRANSFER" as PaymentMethod,
-    label: "Transferencia / MP",
+    label: "Transferencia",
     shortLabel: "Transf.",
     icon: Smartphone,
     bgClass:
@@ -184,7 +192,8 @@ function PaymentMethodPicker({
     >
       {PAYMENT_METHODS.map((method) => {
         const Icon = method.icon;
-        const isSelected = isLoading && selectedMethod === method.value;
+        const isSelected = selectedMethod === method.value;
+        const isThisLoading = isLoading && isSelected;
 
         return (
           <Button
@@ -202,7 +211,7 @@ function PaymentMethodPicker({
             onClick={() => onSelect(method.value)}
             disabled={isLoading}
           >
-            {isSelected ? (
+            {isThisLoading ? (
               <Loader
                 className={cn(
                   compact ? "w-5 h-5" : "mr-4 w-6 h-6",
@@ -265,6 +274,27 @@ export function BookingDetailsDialogContent({
   const [isClientUpdating, startClientUpdating] = useTransition();
   const [showOverlapAlert, setShowOverlapAlert] = useState(false);
 
+  // Estados para cuentas de Mercado Pago en pagos por transferencia
+  const [transferHolder, setTransferHolder] = useState("");
+  const [transferAlias, setTransferAlias] = useState("");
+  const [accountSuggestions, setAccountSuggestions] = useState<
+    TransferAccountSuggestion[]
+  >([]);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+  const [isAddingNewAccount, setIsAddingNewAccount] = useState(false);
+  const [selectedAccountIndex, setSelectedAccountIndex] = useState<number | null>(
+    null,
+  );
+  const [isSelectingTransferAccount, setIsSelectingTransferAccount] =
+    useState(false);
+  const [retroactiveSelectingTransfer, setRetroactiveSelectingTransfer] =
+    useState(false);
+  const [isDeletingAccountMode, setIsDeletingAccountMode] = useState(false);
+  const [deletingAccountKey, setDeletingAccountKey] = useState<string | null>(
+    null,
+  );
+  const [isDeletingAccount, startDeletingAccount] = useTransition();
+
   const [editingStartTime, setEditingStartTime] = useState("");
   const [editingEndTime, setEditingEndTime] = useState("");
   const [availability, setAvailability] = useState<{
@@ -300,6 +330,12 @@ export function BookingDetailsDialogContent({
     setOverlapMessage("");
     setOptimisticPaymentSet(false);
     setSelectedPayment(null);
+    setIsSelectingTransferAccount(false);
+    setRetroactiveSelectingTransfer(false);
+    setIsAddingNewAccount(false);
+    setSelectedAccountIndex(null);
+    setIsDeletingAccountMode(false);
+    setDeletingAccountKey(null);
   }, [booking.id]);
 
   // Sync data-driven fields when booking data changes (same or different booking).
@@ -307,6 +343,8 @@ export function BookingDetailsDialogContent({
   useEffect(() => {
     setNote(booking.client.notes || "");
     setSelectedServiceId(booking.serviceId || "");
+    setTransferHolder(booking.transferAccountHolder || "");
+    setTransferAlias(booking.transferAccountAlias || "");
 
     const start = new Date(booking.startTime);
     const duration =
@@ -334,6 +372,54 @@ export function BookingDetailsDialogContent({
     booking.durationAtBooking,
     booking.service?.durationInMinutes,
     booking.serviceId,
+    booking.transferAccountHolder,
+    booking.transferAccountAlias,
+  ]);
+
+  // Cargar sugerencias de cuentas de MP cuando se interactúa con transferencias
+  useEffect(() => {
+    if (
+      (view === "selectPayment" ||
+        isInlineEditingPayment ||
+        retroactiveSelectingTransfer ||
+        isSelectingTransferAccount) &&
+      !suggestionsLoaded
+    ) {
+      getTransferAccountSuggestions().then((suggestions) => {
+        setAccountSuggestions(suggestions);
+        setSuggestionsLoaded(true);
+
+        // Preselección inteligente:
+        if (booking.transferAccountHolder) {
+          const matchIdx = suggestions.findIndex(
+            (s) =>
+              s.holder.toLowerCase() ===
+                booking.transferAccountHolder?.toLowerCase() &&
+              s.alias.toLowerCase() ===
+                (booking.transferAccountAlias || "").toLowerCase(),
+          );
+          if (matchIdx >= 0) {
+            setSelectedAccountIndex(matchIdx);
+          } else {
+            setIsAddingNewAccount(true);
+          }
+        } else if (suggestions.length > 0) {
+          setSelectedAccountIndex(0);
+          setTransferHolder(suggestions[0].holder);
+          setTransferAlias(suggestions[0].alias);
+        } else {
+          setIsAddingNewAccount(true);
+        }
+      });
+    }
+  }, [
+    view,
+    isInlineEditingPayment,
+    retroactiveSelectingTransfer,
+    isSelectingTransferAccount,
+    suggestionsLoaded,
+    booking.transferAccountHolder,
+    booking.transferAccountAlias,
   ]);
 
   const calculatedDuration = useMemo(() => {
@@ -444,8 +530,17 @@ export function BookingDetailsDialogContent({
   const handleStatusChange = (
     newStatus: BookingStatus,
     paymentMethod?: PaymentMethod,
+    transferAccount?: { holder: string; alias: string } | null,
   ) => {
     onOptimisticUpdate(booking.id, newStatus);
+    if (paymentMethod) {
+      onOptimisticPaymentUpdate?.(
+        booking.id,
+        paymentMethod,
+        transferAccount?.holder || null,
+        transferAccount?.alias || null,
+      );
+    }
     const transition =
       newStatus === "COMPLETED" ? startCompleting : startCancelling;
     transition(async () => {
@@ -453,6 +548,7 @@ export function BookingDetailsDialogContent({
         booking.id,
         newStatus,
         paymentMethod,
+        transferAccount,
       );
       if (result?.success) {
         toast.success("¡Éxito!", { description: result.success });
@@ -561,12 +657,23 @@ export function BookingDetailsDialogContent({
     isRetroactive: boolean = false,
   ) => {
     setSelectedPayment(method);
+
+    if (method === PaymentMethod.TRANSFER) {
+      if (isRetroactive) {
+        setRetroactiveSelectingTransfer(true);
+      } else {
+        setIsSelectingTransferAccount(true);
+      }
+      return;
+    }
+
     if (isRetroactive) {
       setOptimisticPaymentSet(true);
       startCompleting(async () => {
         const result = await setPaymentMethod(booking.id, method);
         if (result.success) {
           toast.success(result.success);
+          onOptimisticPaymentUpdate?.(booking.id, method, null, null);
           setIsInlineEditingPayment(false);
         } else if (result.error) {
           toast.error(result.error);
@@ -575,22 +682,115 @@ export function BookingDetailsDialogContent({
         }
       });
     } else {
-      handleStatusChange(BookingStatus.COMPLETED, method);
+      handleStatusChange(BookingStatus.COMPLETED, method, null);
     }
   };
 
-  const handleSavePayment = () => {
-    if (
-      !pendingPaymentMethod ||
-      pendingPaymentMethod === booking.paymentMethod
-    ) {
+  const handleConfirmTransferPayment = (
+    accountParam?: { holder: string; alias: string } | null,
+    isRetroactive: boolean = false,
+  ) => {
+    const account =
+      accountParam !== undefined
+        ? accountParam
+        : transferHolder.trim() || transferAlias.trim()
+          ? { holder: transferHolder.trim(), alias: transferAlias.trim() }
+          : null;
+
+    if (isRetroactive) {
+      setOptimisticPaymentSet(true);
+      startCompleting(async () => {
+        const result = await setPaymentMethod(
+          booking.id,
+          PaymentMethod.TRANSFER,
+          account,
+        );
+        if (result.success) {
+          toast.success(result.success);
+          onOptimisticPaymentUpdate?.(
+            booking.id,
+            PaymentMethod.TRANSFER,
+            account?.holder || null,
+            account?.alias || null,
+          );
+          setRetroactiveSelectingTransfer(false);
+          setIsInlineEditingPayment(false);
+        } else if (result.error) {
+          toast.error(result.error);
+          setOptimisticPaymentSet(false);
+          setSelectedPayment(null);
+        }
+      });
+    } else {
+      handleStatusChange(
+        BookingStatus.COMPLETED,
+        PaymentMethod.TRANSFER,
+        account,
+      );
+    }
+  };
+
+  const handleSavePayment = (
+    accountParam?: { holder: string; alias: string } | null,
+  ) => {
+    const isTransfer = pendingPaymentMethod === PaymentMethod.TRANSFER;
+    const account = isTransfer
+      ? accountParam !== undefined
+        ? accountParam
+        : transferHolder.trim() || transferAlias.trim()
+          ? { holder: transferHolder.trim(), alias: transferAlias.trim() }
+          : null
+      : null;
+
+    const isUnchanged =
+      pendingPaymentMethod === booking.paymentMethod &&
+      (!isTransfer ||
+        ((account?.holder || "") === (booking.transferAccountHolder || "") &&
+          (account?.alias || "") === (booking.transferAccountAlias || "")));
+
+    if (!pendingPaymentMethod) {
+      return;
+    }
+
+    if (isUnchanged) {
+      setIsInlineEditingPayment(false);
+      setPendingPaymentMethod(null);
+      return;
+    }
+
+    startSavingPayment(async () => {
+      const result = await setPaymentMethod(
+        booking.id,
+        pendingPaymentMethod,
+        account,
+      );
+      if (result.success) {
+        toast.success(result.success);
+        onOptimisticPaymentUpdate?.(
+          booking.id,
+          pendingPaymentMethod,
+          account?.holder || null,
+          account?.alias || null,
+        );
+        setIsInlineEditingPayment(false);
+        setPendingPaymentMethod(null);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    });
+  };
+
+  const handleDirectPaymentChange = (method: PaymentMethod) => {
+    if (method === booking.paymentMethod) {
+      setIsInlineEditingPayment(false);
+      setPendingPaymentMethod(null);
       return;
     }
     startSavingPayment(async () => {
-      const result = await setPaymentMethod(booking.id, pendingPaymentMethod);
+      const result = await setPaymentMethod(booking.id, method, null);
       if (result.success) {
         toast.success(result.success);
-        onOptimisticPaymentUpdate?.(booking.id, pendingPaymentMethod);
+        onOptimisticPaymentUpdate?.(booking.id, method, null, null);
         setIsInlineEditingPayment(false);
         setPendingPaymentMethod(null);
       } else if (result.error) {
@@ -734,6 +934,214 @@ export function BookingDetailsDialogContent({
         setIsInlineEditingService(false);
       }
     });
+  };
+
+  const handleDeleteAccount = (acc: TransferAccountSuggestion) => {
+    const key = `${acc.holder}-${acc.alias}`;
+    setDeletingAccountKey(key);
+    startDeletingAccount(async () => {
+      const result = await deleteTransferAccountSuggestion({
+        holder: acc.holder,
+        alias: acc.alias,
+      });
+
+      if (result.success) {
+        toast.success(result.success);
+        setAccountSuggestions((prev) =>
+          prev.filter(
+            (item) => !(item.holder === acc.holder && item.alias === acc.alias),
+          ),
+        );
+        if (transferHolder === acc.holder && transferAlias === acc.alias) {
+          setTransferHolder("");
+          setTransferAlias("");
+        }
+        setIsDeletingAccountMode(false);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+      setDeletingAccountKey(null);
+    });
+  };
+
+  const renderTransferAccountSection = (
+    onSelectAccount: (
+      account: { holder: string; alias: string } | null,
+    ) => void,
+    isConfirmLoading: boolean,
+    _onCancel?: () => void,
+    compact: boolean = false,
+  ) => {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border border-border bg-white dark:bg-card space-y-2",
+          compact ? "p-2 mt-2" : "p-2.5 mt-2",
+        )}
+      >
+        {accountSuggestions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {accountSuggestions.map((acc, idx) => {
+              const label = acc.alias || acc.holder;
+              const isThisLoading =
+                isConfirmLoading && selectedAccountIndex === idx;
+              const isThisDeleting =
+                deletingAccountKey === `${acc.holder}-${acc.alias}`;
+
+              if (isDeletingAccountMode) {
+                return (
+                  <button
+                    key={`${acc.holder}-${acc.alias}-${idx}`}
+                    type="button"
+                    disabled={isDeletingAccount}
+                    onClick={() => handleDeleteAccount(acc)}
+                    className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-destructive/10 text-destructive border-destructive/50 hover:border-destructive active:scale-95 disabled:opacity-50 group shadow-xs"
+                    title={`Borrar cuenta ${label}`}
+                  >
+                    {isThisDeleting ? (
+                      <Loader className="w-3 h-3 animate-spin mr-1 text-destructive" />
+                    ) : (
+                      <Trash2 className="w-3 h-3 mr-1 opacity-70 group-hover:opacity-100" />
+                    )}
+                    <span>{label}</span>
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={`${acc.holder}-${acc.alias}-${idx}`}
+                  type="button"
+                  disabled={isConfirmLoading || isDeletingAccount}
+                  onClick={() => {
+                    setSelectedAccountIndex(idx);
+                    setTransferHolder(acc.holder);
+                    setTransferAlias(acc.alias);
+                    onSelectAccount({ holder: acc.holder, alias: acc.alias });
+                  }}
+                  className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-muted/40 text-foreground border-border hover:border-foreground/50 active:scale-95 disabled:opacity-50 shadow-xs"
+                >
+                  {isThisLoading && (
+                    <Loader className="w-3 h-3 animate-spin mr-1" />
+                  )}
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+
+            {!isDeletingAccountMode && (
+              <button
+                type="button"
+                disabled={isConfirmLoading || isDeletingAccount}
+                onClick={() => {
+                  setSelectedAccountIndex(-1);
+                  setTransferHolder("");
+                  setTransferAlias("");
+                  onSelectAccount(null);
+                }}
+                className="inline-flex items-center px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground border border-border bg-white dark:bg-background hover:border-foreground/50 hover:bg-muted/40 transition-colors active:scale-95 disabled:opacity-50 shadow-xs"
+              >
+                {isConfirmLoading && selectedAccountIndex === -1 && (
+                  <Loader className="w-3 h-3 animate-spin mr-1" />
+                )}
+                <span>Sin cuenta</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              disabled={isConfirmLoading || isDeletingAccount}
+              onClick={() => {
+                setIsAddingNewAccount((prev) => !prev);
+                setIsDeletingAccountMode(false);
+                setSelectedAccountIndex(null);
+                setTransferHolder("");
+                setTransferAlias("");
+              }}
+              className={cn(
+                "inline-flex items-center justify-center px-2 py-1.5 rounded-md text-xs border transition-colors bg-white dark:bg-background shadow-xs",
+                isAddingNewAccount
+                  ? "border-foreground/60 text-foreground font-medium"
+                  : "border-dashed border-border hover:border-foreground/50 text-muted-foreground hover:text-foreground",
+              )}
+              title={isAddingNewAccount ? "Cerrar" : "Agregar cuenta"}
+            >
+              {isAddingNewAccount ? (
+                <X className="w-3.5 h-3.5" />
+              ) : (
+                <Plus className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              disabled={isConfirmLoading || isDeletingAccount}
+              onClick={() => {
+                setIsDeletingAccountMode((prev) => !prev);
+                setIsAddingNewAccount(false);
+              }}
+              className={cn(
+                "inline-flex items-center justify-center px-2 py-1.5 rounded-md text-xs border transition-colors bg-white dark:bg-background shadow-xs",
+                isDeletingAccountMode
+                  ? "border-destructive text-destructive font-medium bg-destructive/5"
+                  : "border-border hover:border-destructive/60 text-muted-foreground hover:text-destructive",
+              )}
+              title={isDeletingAccountMode ? "Cancelar" : "Borrar cuenta"}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {(isAddingNewAccount || accountSuggestions.length === 0) && (
+          <div className="flex items-center gap-1.5 pt-1">
+            <input
+              type="text"
+              placeholder="Titular (ej. Iván)"
+              value={transferHolder}
+              onChange={(e) => setTransferHolder(e.target.value)}
+              disabled={isConfirmLoading}
+              className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <input
+              type="text"
+              placeholder="Alias (ej. ivan.mp)"
+              value={transferAlias}
+              onChange={(e) => setTransferAlias(e.target.value)}
+              disabled={isConfirmLoading}
+              className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0 shrink-0 bg-white dark:bg-background border border-border hover:border-foreground/60 text-foreground hover:bg-muted/40 transition-colors shadow-xs"
+              disabled={
+                isConfirmLoading ||
+                (!transferHolder.trim() && !transferAlias.trim())
+              }
+              onClick={() => {
+                const account =
+                  transferHolder.trim() || transferAlias.trim()
+                    ? {
+                        holder: transferHolder.trim(),
+                        alias: transferAlias.trim(),
+                      }
+                    : null;
+                onSelectAccount(account);
+              }}
+              title="Guardar cuenta"
+            >
+              {isConfirmLoading ? (
+                <Loader className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderDetailsView = () => (
@@ -967,112 +1375,129 @@ export function BookingDetailsDialogContent({
             {currentStatus.text}
           </span>
         </p>
-        <div className="flex gap-2 items-center">
-          <strong>Cobro:</strong>
-          {isInlineEditingPayment ? (
-            <div className="flex items-center gap-1.5 flex-1">
-              <Select
-                value={
-                  pendingPaymentMethod ?? booking.paymentMethod ?? undefined
-                }
-                onValueChange={(v) =>
-                  setPendingPaymentMethod(v as PaymentMethod)
-                }
-                data-testid="payment-select"
-              >
-                <SelectTrigger className="flex-1 py-0 pr-1 h-7 text-xs">
-                  <SelectValue placeholder="Seleccioná método" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((method) => {
-                    const Icon = method.icon;
-                    return (
-                      <SelectItem
-                        key={method.value}
-                        value={method.value}
-                        className="text-xs"
-                      >
-                        <span className="flex gap-1 items-center">
-                          <Icon className="w-3 h-3" />
-                          {method.label}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-0 w-7 h-7"
-                onClick={handleSavePayment}
-                data-testid="save-payment-button"
-                disabled={
-                  isSavingPayment ||
-                  !pendingPaymentMethod ||
-                  pendingPaymentMethod === booking.paymentMethod
-                }
-              >
-                {isSavingPayment ? (
-                  <Loader className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Check className="w-3 h-3" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-0 w-7 h-7"
-                onClick={handleCancelPayment}
-                data-testid="cancel-payment-button"
-                disabled={isSavingPayment}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-          ) : (
-            <>
-              {booking.paymentMethod || optimisticPaymentSet ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 font-medium",
-                    getPaymentMethodConfig(
-                      booking.paymentMethod ?? selectedPayment!,
-                    ).textClass,
-                  )}
-                  data-testid="payment-value"
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-2 items-center">
+            <strong>Cobro:</strong>
+            {isInlineEditingPayment ? (
+              <div className="flex items-center gap-1.5 flex-1">
+                <Select
+                  value={
+                    pendingPaymentMethod ?? booking.paymentMethod ?? undefined
+                  }
+                  onValueChange={(v) => {
+                    const method = v as PaymentMethod;
+                    if (method === PaymentMethod.TRANSFER) {
+                      setPendingPaymentMethod(method);
+                    } else {
+                      handleDirectPaymentChange(method);
+                    }
+                  }}
+                  data-testid="payment-select"
                 >
-                  {(() => {
-                    const method = booking.paymentMethod ?? selectedPayment;
-                    if (!method) return null;
-                    const config = getPaymentMethodConfig(method);
-                    const Icon = config.icon;
-                    return (
-                      <>
-                        <Icon className="w-4 h-4" />
-                        {config.label}
-                      </>
-                    );
-                  })()}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  Sin registrar
-                </span>
-              )}
-              {booking.status === BookingStatus.COMPLETED && (
+                  <SelectTrigger className="flex-1 py-0 pr-1 h-7 text-xs">
+                    <SelectValue placeholder="Seleccioná método" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((method) => {
+                      const Icon = method.icon;
+                      return (
+                        <SelectItem
+                          key={method.value}
+                          value={method.value}
+                          className="text-xs"
+                        >
+                          <span className="flex gap-1 items-center">
+                            <Icon className="w-3 h-3" />
+                            {method.label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0.5 text-muted-foreground"
-                  onClick={() => setIsInlineEditingPayment(true)}
-                  data-testid="edit-payment-button"
+                  className="p-0 w-7 h-7 text-muted-foreground"
+                  onClick={handleCancelPayment}
+                  data-testid="cancel-payment-button"
+                  disabled={isSavingPayment}
                 >
-                  <Pencil className="w-3 h-3" />
+                  <X className="w-3 h-3" />
                 </Button>
-              )}
-            </>
-          )}
+              </div>
+            ) : (
+              <>
+                {booking.paymentMethod || optimisticPaymentSet ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 font-medium",
+                        getPaymentMethodConfig(
+                          booking.paymentMethod ?? selectedPayment!,
+                        ).textClass,
+                      )}
+                      data-testid="payment-value"
+                    >
+                      {(() => {
+                        const method = booking.paymentMethod ?? selectedPayment;
+                        if (!method) return null;
+                        const config = getPaymentMethodConfig(method);
+                        const Icon = config.icon;
+                        return (
+                          <>
+                            <Icon className="w-4 h-4" />
+                            {config.label}
+                          </>
+                        );
+                      })()}
+                    </span>
+                    {(booking.paymentMethod === PaymentMethod.TRANSFER ||
+                      selectedPayment === PaymentMethod.TRANSFER) &&
+                      (booking.transferAccountAlias ||
+                        transferAlias ||
+                        booking.transferAccountHolder ||
+                        transferHolder) && (
+                        <span className="text-xs text-muted-foreground">
+                          ({booking.transferAccountAlias ||
+                            transferAlias ||
+                            booking.transferAccountHolder ||
+                            transferHolder})
+                        </span>
+                      )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Sin registrar
+                  </span>
+                )}
+                {booking.status === BookingStatus.COMPLETED && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0.5 text-muted-foreground"
+                    onClick={() => {
+                      setPendingPaymentMethod(
+                        booking.paymentMethod ?? PaymentMethod.CASH,
+                      );
+                      setIsInlineEditingPayment(true);
+                    }}
+                    data-testid="edit-payment-button"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+          {isInlineEditingPayment &&
+            pendingPaymentMethod === PaymentMethod.TRANSFER &&
+            renderTransferAccountSection(
+              (account) => handleSavePayment(account),
+              isSavingPayment,
+              handleCancelPayment,
+              true,
+            )}
         </div>
       </div>
 
@@ -1080,10 +1505,10 @@ export function BookingDetailsDialogContent({
         !booking.paymentMethod &&
         !optimisticPaymentSet &&
         !isInlineEditingPayment && (
-          <div className="p-3 mt-4 space-y-3 bg-blue-50 rounded-md border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
-            <p className="flex items-center text-sm font-medium text-blue-800 dark:text-blue-200">
-              <Lightbulb className="flex-shrink-0 mr-2 w-4 h-4" />
-              Falta registrar el método de cobro
+          <div className="p-3 mt-4 space-y-2.5 bg-white dark:bg-card rounded-lg border border-border">
+            <p className="flex items-center text-xs font-medium text-muted-foreground">
+              <Lightbulb className="flex-shrink-0 mr-1.5 w-3.5 h-3.5 text-amber-500" />
+              Falta registrar el medio de cobro
             </p>
             <PaymentMethodPicker
               onSelect={(method) => handlePaymentMethodSelect(method, true)}
@@ -1091,6 +1516,16 @@ export function BookingDetailsDialogContent({
               selectedMethod={selectedPayment}
               compact
             />
+            {retroactiveSelectingTransfer &&
+              renderTransferAccountSection(
+                (account) => handleConfirmTransferPayment(account, true),
+                isCompleting,
+                () => {
+                  setRetroactiveSelectingTransfer(false);
+                  setSelectedPayment(null);
+                },
+                true,
+              )}
           </div>
         )}
 
@@ -1287,8 +1722,8 @@ export function BookingDetailsDialogContent({
   );
 
   const renderSelectPaymentView = () => (
-    <div className="space-y-4">
-      <p className="mb-4 text-sm text-center text-muted-foreground">
+    <div className="space-y-3">
+      <p className="text-sm text-center text-muted-foreground">
         ¿Cómo pagó el cliente?
       </p>
       <PaymentMethodPicker
@@ -1296,11 +1731,20 @@ export function BookingDetailsDialogContent({
         isLoading={isCompleting}
         selectedMethod={selectedPayment}
       />
-      <DialogFooter className="mt-4">
+      {selectedPayment === PaymentMethod.TRANSFER &&
+        renderTransferAccountSection(
+          (account) => handleConfirmTransferPayment(account, false),
+          isCompleting,
+        )}
+      <DialogFooter className="pt-2">
         <Button
           variant="ghost"
           className="w-full"
-          onClick={() => setView("details")}
+          onClick={() => {
+            setView("details");
+            setSelectedPayment(null);
+            setIsSelectingTransferAccount(false);
+          }}
           disabled={isCompleting}
         >
           Volver

@@ -10,6 +10,7 @@ import {
   getDateRangeForPeriod,
   formatPeriodLabel,
   formatPaymentMethod,
+  formatTransferAccount,
   Period,
 } from "@/lib/reports";
 import { formatPrice } from "@/lib/utils";
@@ -132,6 +133,35 @@ export async function GET(request: Request) {
       .reduce((sum, t) => sum + t.amount, 0);
     
     const netBalance = totalIncome - totalExpenses;
+
+    // Calcular sub-desglose de transferencias por cuenta MP
+    const transferAccountsSummary: Record<
+      string,
+      { label: string; count: number; total: number }
+    > = {};
+
+    bookings.forEach((b) => {
+      if (b.paymentMethod === "TRANSFER") {
+        const key = b.transferAccountHolder
+          ? `${b.transferAccountHolder.trim().toLowerCase()}__${(b.transferAccountAlias || "").trim().toLowerCase()}`
+          : "unspecified";
+        const label = b.transferAccountHolder
+          ? b.transferAccountAlias
+            ? `${b.transferAccountHolder} (${b.transferAccountAlias})`
+            : b.transferAccountHolder
+          : "Sin cuenta especificada";
+
+        if (!transferAccountsSummary[key]) {
+          transferAccountsSummary[key] = { label, count: 0, total: 0 };
+        }
+        transferAccountsSummary[key].count++;
+        transferAccountsSummary[key].total += b.amount;
+      }
+    });
+
+    const transferSubAccounts = Object.values(transferAccountsSummary).sort(
+      (a, b) => b.total - a.total,
+    );
 
     const formattedDate = formatToDateInput(new Date());
     const filename = `reporte-${barbershop.slug}-${period}-${formattedDate}.${format}`;
@@ -288,21 +318,58 @@ export async function GET(request: Request) {
         };
       });
 
+      // Sub-desglose opcional de transferencias
+      if (transferSubAccounts.length > 0) {
+        let subRow = nextRow + 5;
+        sheetSummary.getRow(subRow - 1).height = 10;
+        sheetSummary.mergeCells(`A${subRow}:D${subRow}`);
+        sheetSummary.getCell(`A${subRow}`).value = "SUBDESGLOSE DE TRANSFERENCIAS";
+        sheetSummary.getCell(`A${subRow}`).font = { name: "Arial", size: 10, bold: true, color: { argb: "1E293B" } };
+        subRow++;
+
+        sheetSummary.getRow(subRow).values = ["Titular / Cuenta", "Turnos", "", "Monto"];
+        sheetSummary.mergeCells(`B${subRow}:C${subRow}`);
+        sheetSummary.getRow(subRow).font = { name: "Arial", size: 9, bold: true, color: { argb: "FFFFFF" } };
+        sheetSummary.getRow(subRow).eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "64748B" } };
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+        });
+        subRow++;
+
+        transferSubAccounts.forEach((acc) => {
+          sheetSummary.mergeCells(`B${subRow}:C${subRow}`);
+          sheetSummary.getCell(`A${subRow}`).value = acc.label;
+          sheetSummary.getCell(`B${subRow}`).value = acc.count;
+          sheetSummary.getCell(`B${subRow}`).alignment = { horizontal: "center" };
+
+          const amtCell = sheetSummary.getCell(`D${subRow}`);
+          amtCell.value = acc.total;
+          amtCell.numFmt = '"$"#,##0';
+          amtCell.alignment = { horizontal: "right" };
+
+          sheetSummary.getRow(subRow).eachCell((cell) => {
+            cell.font = { name: "Arial", size: 9 };
+            cell.border = { bottom: { style: "thin", color: { argb: "E2E8F0" } } };
+          });
+          subRow++;
+        });
+      }
+
       // --- HOJA 2: DETALLE DE TURNOS COMPLETADOS ---
       const sheetBookings = workbook.addWorksheet("Ingresos por Turnos");
-      sheetBookings.mergeCells("A1:H1");
+      sheetBookings.mergeCells("A1:I1");
       sheetBookings.getCell("A1").value = `INGRESOS POR TURNOS COMPLETADOS - ${barbershop.name.toUpperCase()}`;
       sheetBookings.getCell("A1").font = { name: "Arial", size: 12, bold: true, color: { argb: "1E293B" } };
       sheetBookings.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
 
-      sheetBookings.mergeCells("A2:H2");
+      sheetBookings.mergeCells("A2:I2");
       sheetBookings.getCell("A2").value = `Período: ${periodLabel}`;
       sheetBookings.getCell("A2").font = { name: "Arial", size: 9, italic: true, color: { argb: "475569" } };
       sheetBookings.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
 
       sheetBookings.getRow(3).height = 15;
       
-      const bookingHeaders = ["Fecha", "Hora", "Cliente", "Teléfono", "Servicio", "Barbero", "Monto", "Forma de Pago"];
+      const bookingHeaders = ["Fecha", "Hora", "Cliente", "Teléfono", "Servicio", "Barbero", "Monto", "Forma de Pago", "Cuenta destino"];
       sheetBookings.getRow(4).values = bookingHeaders;
       sheetBookings.getRow(4).font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFF" } };
       sheetBookings.getRow(4).height = 24;
@@ -320,6 +387,7 @@ export async function GET(request: Request) {
         { key: "barber", width: 18 },
         { key: "amount", width: 14 },
         { key: "paymentMethod", width: 16 },
+        { key: "transferAccount", width: 24 },
       ];
 
       bookings.forEach((booking, idx) => {
@@ -334,10 +402,12 @@ export async function GET(request: Request) {
           booking.barberName,
           booking.amount,
           formatPaymentMethod(booking.paymentMethod),
+          formatTransferAccount(booking.transferAccountHolder, booking.transferAccountAlias),
         ];
 
         row.getCell(2).alignment = { horizontal: "center" };
         row.getCell(8).alignment = { horizontal: "center" };
+        row.getCell(9).alignment = { horizontal: "center" };
         row.getCell(7).numFmt = '"$"#,##0';
         row.getCell(7).alignment = { horizontal: "right" };
 
@@ -588,6 +658,31 @@ export async function GET(request: Request) {
       doc.text(formatPrice(totalExpenses), 330, y + 5, { width: 100, align: "right" });
       doc.text(formatPrice(netBalance), 440, y + 5, { width: 100, align: "right" });
 
+      y += 24;
+
+      // Sub-desglose opcional de transferencias en PDF
+      if (transferSubAccounts.length > 0) {
+        doc.fillColor("#1e293b").fontSize(10).font("Helvetica-Bold").text("SUBDESGLOSE DE TRANSFERENCIAS", 40, y);
+        y += 14;
+        doc.rect(40, y, 515, 16).fill("#64748b");
+        doc.fillColor("#ffffff").fontSize(7).font("Helvetica-Bold");
+        doc.text("Titular / Cuenta", 48, y + 4);
+        doc.text("Turnos", 260, y + 4, { width: 100, align: "center" });
+        doc.text("Total", 400, y + 4, { width: 140, align: "right" });
+        y += 16;
+
+        transferSubAccounts.forEach((acc, idx) => {
+          if (idx % 2 === 1) {
+            doc.rect(40, y, 515, 16).fill("#f8fafc");
+          }
+          doc.fillColor("#334155").fontSize(7).font("Helvetica");
+          doc.text(acc.label, 48, y + 4);
+          doc.text(String(acc.count), 260, y + 4, { width: 100, align: "center" });
+          doc.font("Helvetica-Bold").text(formatPrice(acc.total), 400, y + 4, { width: 140, align: "right" });
+          y += 16;
+        });
+      }
+
       // --- PAGINA 2: MOVIMIENTOS DE CAJA ---
       doc.addPage();
       let currentY = 50;
@@ -655,13 +750,14 @@ export async function GET(request: Request) {
         d.rect(40, headerY, 515, 18).fill("#1e293b");
         d.fillColor("#ffffff").fontSize(7).font("Helvetica-Bold");
         
-        d.text("Fecha", 46, headerY + 5);
-        d.text("Hora", 96, headerY + 5);
-        d.text("Cliente", 136, headerY + 5);
-        d.text("Servicio", 246, headerY + 5);
-        d.text("Barbero", 356, headerY + 5);
-        d.text("Monto", 436, headerY + 5, { width: 50, align: "right" });
-        d.text("F. Pago", 496, headerY + 5, { width: 54, align: "right" });
+        d.text("Fecha", 44, headerY + 5);
+        d.text("Hora", 88, headerY + 5);
+        d.text("Cliente", 124, headerY + 5);
+        d.text("Servicio", 211, headerY + 5);
+        d.text("Barbero", 298, headerY + 5);
+        d.text("Monto", 365, headerY + 5, { width: 45, align: "right" });
+        d.text("F. Pago", 415, headerY + 5, { width: 48, align: "center" });
+        d.text("Cuenta", 468, headerY + 5, { width: 84, align: "left" });
         
         return headerY + 18;
       };
@@ -684,16 +780,17 @@ export async function GET(request: Request) {
           }
 
           doc.fillColor("#334155").fontSize(7).font("Helvetica");
-          doc.text(formatDate(booking.date), 46, currentY + 5);
-          doc.text(formatTime(booking.date), 96, currentY + 5);
-          doc.text(booking.clientName, 136, currentY + 5, { width: 105, height: 10, lineBreak: false });
-          doc.text(booking.serviceName, 246, currentY + 5, { width: 105, height: 10, lineBreak: false });
-          doc.text(booking.barberName, 356, currentY + 5, { width: 75, height: 10, lineBreak: false });
+          doc.text(formatDate(booking.date), 44, currentY + 5);
+          doc.text(formatTime(booking.date), 88, currentY + 5);
+          doc.text(booking.clientName, 124, currentY + 5, { width: 83, height: 10, lineBreak: false });
+          doc.text(booking.serviceName, 211, currentY + 5, { width: 83, height: 10, lineBreak: false });
+          doc.text(booking.barberName, 298, currentY + 5, { width: 63, height: 10, lineBreak: false });
           
           doc.font("Helvetica-Bold");
-          doc.text(formatPrice(booking.amount), 436, currentY + 5, { width: 50, align: "right" });
+          doc.text(formatPrice(booking.amount), 365, currentY + 5, { width: 45, align: "right" });
           doc.font("Helvetica");
-          doc.text(formatPaymentMethod(booking.paymentMethod), 496, currentY + 5, { width: 54, align: "right" });
+          doc.text(formatPaymentMethod(booking.paymentMethod), 415, currentY + 5, { width: 48, align: "center" });
+          doc.text(formatTransferAccount(booking.transferAccountHolder, booking.transferAccountAlias), 468, currentY + 5, { width: 84, height: 10, lineBreak: false });
 
           currentY += 18;
         });
@@ -707,8 +804,8 @@ export async function GET(request: Request) {
       }
       doc.rect(40, currentY, 515, 18).fill("#f1f5f9");
       doc.fillColor("#0f172a").fontSize(7).font("Helvetica-Bold");
-      doc.text("TOTAL INGRESOS POR TURNOS", 46, currentY + 5);
-      doc.text(formatPrice(totalBookingIncome), 436, currentY + 5, { width: 50, align: "right" });
+      doc.text("TOTAL INGRESOS POR TURNOS", 44, currentY + 5);
+      doc.text(formatPrice(totalBookingIncome), 365, currentY + 5, { width: 45, align: "right" });
 
       // Agregar pie de página dinámico (Página X de Y)
       const range = doc.bufferedPageRange();
