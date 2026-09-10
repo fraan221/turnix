@@ -336,6 +336,7 @@ export function BookingDetailsDialogContent({
     setSelectedAccountIndex(null);
     setIsDeletingAccountMode(false);
     setDeletingAccountKey(null);
+    setSuggestionsLoaded(false);
   }, [booking.id]);
 
   // Sync data-driven fields when booking data changes (same or different booking).
@@ -389,26 +390,26 @@ export function BookingDetailsDialogContent({
         setAccountSuggestions(suggestions);
         setSuggestionsLoaded(true);
 
-        // Preselección inteligente:
-        if (booking.transferAccountHolder) {
+        const currentHolder = (booking.transferAccountHolder || "").trim();
+        const currentAlias = (booking.transferAccountAlias || "").trim();
+
+        if (currentHolder || currentAlias) {
           const matchIdx = suggestions.findIndex(
             (s) =>
-              s.holder.toLowerCase() ===
-                booking.transferAccountHolder?.toLowerCase() &&
-              s.alias.toLowerCase() ===
-                (booking.transferAccountAlias || "").toLowerCase(),
+              s.holder.toLowerCase() === currentHolder.toLowerCase() &&
+              s.alias.toLowerCase() === currentAlias.toLowerCase(),
           );
           if (matchIdx >= 0) {
             setSelectedAccountIndex(matchIdx);
           } else {
-            setIsAddingNewAccount(true);
+            const currentAcc = { holder: currentHolder, alias: currentAlias };
+            setAccountSuggestions([currentAcc, ...suggestions]);
+            setSelectedAccountIndex(0);
           }
-        } else if (suggestions.length > 0) {
-          setSelectedAccountIndex(0);
-          setTransferHolder(suggestions[0].holder);
-          setTransferAlias(suggestions[0].alias);
-        } else {
+        } else if (suggestions.length === 0) {
           setIsAddingNewAccount(true);
+        } else {
+          setSelectedAccountIndex(null);
         }
       });
     }
@@ -552,6 +553,8 @@ export function BookingDetailsDialogContent({
       );
       if (result?.success) {
         toast.success("¡Éxito!", { description: result.success });
+        setIsAddingNewAccount(false);
+        setIsInlineEditingPayment(false);
         if (newStatus === "COMPLETED") {
           setView("addNote");
         } else if (newStatus === "CANCELLED") {
@@ -697,6 +700,18 @@ export function BookingDetailsDialogContent({
           ? { holder: transferHolder.trim(), alias: transferAlias.trim() }
           : null;
 
+    if (account && (account.holder || account.alias)) {
+      setAccountSuggestions((prev) => {
+        const exists = prev.some(
+          (item) =>
+            item.holder.toLowerCase() === account.holder.toLowerCase() &&
+            item.alias.toLowerCase() === account.alias.toLowerCase(),
+        );
+        return exists ? prev : [account, ...prev];
+      });
+      setIsAddingNewAccount(false);
+    }
+
     if (isRetroactive) {
       setOptimisticPaymentSet(true);
       startCompleting(async () => {
@@ -715,6 +730,7 @@ export function BookingDetailsDialogContent({
           );
           setRetroactiveSelectingTransfer(false);
           setIsInlineEditingPayment(false);
+          setIsAddingNewAccount(false);
         } else if (result.error) {
           toast.error(result.error);
           setOptimisticPaymentSet(false);
@@ -755,6 +771,7 @@ export function BookingDetailsDialogContent({
     if (isUnchanged) {
       setIsInlineEditingPayment(false);
       setPendingPaymentMethod(null);
+      setIsAddingNewAccount(false);
       return;
     }
 
@@ -766,6 +783,16 @@ export function BookingDetailsDialogContent({
       );
       if (result.success) {
         toast.success(result.success);
+        if (account && (account.holder || account.alias)) {
+          setAccountSuggestions((prev) => {
+            const exists = prev.some(
+              (item) =>
+                item.holder.toLowerCase() === account.holder.toLowerCase() &&
+                item.alias.toLowerCase() === account.alias.toLowerCase(),
+            );
+            return exists ? prev : [account, ...prev];
+          });
+        }
         onOptimisticPaymentUpdate?.(
           booking.id,
           pendingPaymentMethod,
@@ -774,6 +801,7 @@ export function BookingDetailsDialogContent({
         );
         setIsInlineEditingPayment(false);
         setPendingPaymentMethod(null);
+        setIsAddingNewAccount(false);
       } else if (result.error) {
         toast.error(result.error);
       }
@@ -949,12 +977,20 @@ export function BookingDetailsDialogContent({
         toast.success(result.success);
         setAccountSuggestions((prev) =>
           prev.filter(
-            (item) => !(item.holder === acc.holder && item.alias === acc.alias),
+            (item) =>
+              !(
+                item.holder.toLowerCase() === acc.holder.toLowerCase() &&
+                item.alias.toLowerCase() === acc.alias.toLowerCase()
+              ),
           ),
         );
-        if (transferHolder === acc.holder && transferAlias === acc.alias) {
+        if (
+          transferHolder.toLowerCase() === acc.holder.toLowerCase() &&
+          transferAlias.toLowerCase() === acc.alias.toLowerCase()
+        ) {
           setTransferHolder("");
           setTransferAlias("");
+          setSelectedAccountIndex(null);
         }
         setIsDeletingAccountMode(false);
       } else if (result.error) {
@@ -972,6 +1008,27 @@ export function BookingDetailsDialogContent({
     _onCancel?: () => void,
     compact: boolean = false,
   ) => {
+    const handleCreateAndSelectAccount = () => {
+      const h = transferHolder.trim();
+      const a = transferAlias.trim();
+      if (!h && !a) return;
+
+      const newAccount = { holder: h, alias: a };
+
+      setAccountSuggestions((prev) => {
+        const exists = prev.some(
+          (item) =>
+            item.holder.toLowerCase() === h.toLowerCase() &&
+            item.alias.toLowerCase() === a.toLowerCase(),
+        );
+        return exists ? prev : [newAccount, ...prev];
+      });
+
+      setSelectedAccountIndex(0);
+      setIsAddingNewAccount(false);
+      onSelectAccount(newAccount);
+    };
+
     return (
       <div
         className={cn(
@@ -979,100 +1036,131 @@ export function BookingDetailsDialogContent({
           compact ? "p-2 mt-2" : "p-2.5 mt-2",
         )}
       >
-        {accountSuggestions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {accountSuggestions.map((acc, idx) => {
-              const label = acc.alias || acc.holder;
-              const isThisLoading =
-                isConfirmLoading && selectedAccountIndex === idx;
-              const isThisDeleting =
-                deletingAccountKey === `${acc.holder}-${acc.alias}`;
+        <div className="flex flex-wrap items-center gap-1.5">
+          {accountSuggestions.map((acc, idx) => {
+            const label = acc.alias || acc.holder;
+            const isThisLoading =
+              isConfirmLoading && selectedAccountIndex === idx;
+            const isThisDeleting =
+              deletingAccountKey === `${acc.holder}-${acc.alias}`;
 
-              if (isDeletingAccountMode) {
-                return (
-                  <button
-                    key={`${acc.holder}-${acc.alias}-${idx}`}
-                    type="button"
-                    disabled={isDeletingAccount}
-                    onClick={() => handleDeleteAccount(acc)}
-                    className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-destructive/10 text-destructive border-destructive/50 hover:border-destructive active:scale-95 disabled:opacity-50 group shadow-xs"
-                    title={`Borrar cuenta ${label}`}
-                  >
-                    {isThisDeleting ? (
-                      <Loader className="w-3 h-3 animate-spin mr-1 text-destructive" />
-                    ) : (
-                      <Trash2 className="w-3 h-3 mr-1 opacity-70 group-hover:opacity-100" />
-                    )}
-                    <span>{label}</span>
-                  </button>
-                );
-              }
-
+            if (isDeletingAccountMode) {
               return (
                 <button
                   key={`${acc.holder}-${acc.alias}-${idx}`}
                   type="button"
-                  disabled={isConfirmLoading || isDeletingAccount}
-                  onClick={() => {
-                    setSelectedAccountIndex(idx);
-                    setTransferHolder(acc.holder);
-                    setTransferAlias(acc.alias);
-                    onSelectAccount({ holder: acc.holder, alias: acc.alias });
-                  }}
-                  className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-muted/40 text-foreground border-border hover:border-foreground/50 active:scale-95 disabled:opacity-50 shadow-xs"
+                  disabled={isDeletingAccount}
+                  onClick={() => handleDeleteAccount(acc)}
+                  className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-destructive/10 text-destructive border-destructive/50 hover:border-destructive active:scale-95 disabled:opacity-50 group shadow-xs"
+                  title={`Borrar cuenta ${label}`}
                 >
-                  {isThisLoading && (
-                    <Loader className="w-3 h-3 animate-spin mr-1" />
+                  {isThisDeleting ? (
+                    <Loader className="w-3 h-3 animate-spin mr-1 text-destructive" />
+                  ) : (
+                    <Trash2 className="w-3 h-3 mr-1 opacity-70 group-hover:opacity-100" />
                   )}
                   <span>{label}</span>
                 </button>
               );
-            })}
+            }
 
-            {!isDeletingAccountMode && (
+            const isSelected =
+              selectedAccountIndex === idx ||
+              (selectedAccountIndex === null &&
+                Boolean(
+                  (booking.transferAccountHolder || booking.transferAccountAlias) &&
+                    acc.holder.toLowerCase() ===
+                      (booking.transferAccountHolder || "").toLowerCase() &&
+                    acc.alias.toLowerCase() ===
+                      (booking.transferAccountAlias || "").toLowerCase(),
+                ));
+
+            return (
               <button
+                key={`${acc.holder}-${acc.alias}-${idx}`}
                 type="button"
                 disabled={isConfirmLoading || isDeletingAccount}
                 onClick={() => {
-                  setSelectedAccountIndex(-1);
-                  setTransferHolder("");
-                  setTransferAlias("");
-                  onSelectAccount(null);
+                  setSelectedAccountIndex(idx);
+                  setTransferHolder(acc.holder);
+                  setTransferAlias(acc.alias);
+                  setIsAddingNewAccount(false);
+                  onSelectAccount({ holder: acc.holder, alias: acc.alias });
                 }}
-                className="inline-flex items-center px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground border border-border bg-white dark:bg-background hover:border-foreground/50 hover:bg-muted/40 transition-colors active:scale-95 disabled:opacity-50 shadow-xs"
+                className={cn(
+                  "inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left active:scale-95 disabled:opacity-50 shadow-xs",
+                  isSelected
+                    ? "border-foreground text-foreground font-semibold bg-muted/40 ring-1 ring-foreground/20"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/50 bg-white dark:bg-background",
+                )}
+                title={
+                  acc.holder && acc.alias ? `${acc.holder} (${acc.alias})` : label
+                }
               >
-                {isConfirmLoading && selectedAccountIndex === -1 && (
+                {isThisLoading && (
                   <Loader className="w-3 h-3 animate-spin mr-1" />
                 )}
-                <span>Sin cuenta</span>
+                <span>{label}</span>
               </button>
-            )}
+            );
+          })}
 
+          {!isDeletingAccountMode && (
             <button
               type="button"
               disabled={isConfirmLoading || isDeletingAccount}
               onClick={() => {
-                setIsAddingNewAccount((prev) => !prev);
-                setIsDeletingAccountMode(false);
-                setSelectedAccountIndex(null);
+                setSelectedAccountIndex(-1);
                 setTransferHolder("");
                 setTransferAlias("");
+                setIsAddingNewAccount(false);
+                onSelectAccount(null);
               }}
               className={cn(
-                "inline-flex items-center justify-center px-2 py-1.5 rounded-md text-xs border transition-colors bg-white dark:bg-background shadow-xs",
-                isAddingNewAccount
-                  ? "border-foreground/60 text-foreground font-medium"
-                  : "border-dashed border-border hover:border-foreground/50 text-muted-foreground hover:text-foreground",
+                "inline-flex items-center px-2 py-1.5 rounded-md text-xs border transition-colors active:scale-95 disabled:opacity-50 shadow-xs",
+                selectedAccountIndex === -1 ||
+                  (selectedAccountIndex === null &&
+                    booking.paymentMethod === PaymentMethod.TRANSFER &&
+                    !booking.transferAccountHolder &&
+                    !booking.transferAccountAlias &&
+                    accountSuggestions.length > 0)
+                  ? "border-foreground text-foreground font-semibold bg-muted/40 ring-1 ring-foreground/20"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/50 bg-white dark:bg-background",
               )}
-              title={isAddingNewAccount ? "Cerrar" : "Agregar cuenta"}
             >
-              {isAddingNewAccount ? (
-                <X className="w-3.5 h-3.5" />
-              ) : (
-                <Plus className="w-3.5 h-3.5" />
+              {isConfirmLoading && selectedAccountIndex === -1 && (
+                <Loader className="w-3 h-3 animate-spin mr-1" />
               )}
+              <span>Sin cuenta</span>
             </button>
+          )}
 
+          <button
+            type="button"
+            disabled={isConfirmLoading || isDeletingAccount}
+            onClick={() => {
+              setIsAddingNewAccount((prev) => !prev);
+              setIsDeletingAccountMode(false);
+              setSelectedAccountIndex(null);
+              setTransferHolder("");
+              setTransferAlias("");
+            }}
+            className={cn(
+              "inline-flex items-center justify-center px-2 py-1.5 rounded-md text-xs border transition-colors bg-white dark:bg-background shadow-xs",
+              isAddingNewAccount
+                ? "border-foreground text-foreground font-medium"
+                : "border-dashed border-border hover:border-foreground/50 text-muted-foreground hover:text-foreground",
+            )}
+            title={isAddingNewAccount ? "Cerrar" : "Agregar cuenta"}
+          >
+            {isAddingNewAccount ? (
+              <X className="w-3.5 h-3.5" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {accountSuggestions.length > 0 && (
             <button
               type="button"
               disabled={isConfirmLoading || isDeletingAccount}
@@ -1086,12 +1174,14 @@ export function BookingDetailsDialogContent({
                   ? "border-destructive text-destructive font-medium bg-destructive/5"
                   : "border-border hover:border-destructive/60 text-muted-foreground hover:text-destructive",
               )}
-              title={isDeletingAccountMode ? "Cancelar" : "Borrar cuenta"}
+              title={
+                isDeletingAccountMode ? "Cancelar borrado" : "Borrar cuenta"
+              }
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {(isAddingNewAccount || accountSuggestions.length === 0) && (
           <div className="flex items-center gap-1.5 pt-1">
@@ -1100,6 +1190,12 @@ export function BookingDetailsDialogContent({
               placeholder="Titular (ej. Iván)"
               value={transferHolder}
               onChange={(e) => setTransferHolder(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleCreateAndSelectAccount();
+                }
+              }}
               disabled={isConfirmLoading}
               className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
@@ -1108,6 +1204,12 @@ export function BookingDetailsDialogContent({
               placeholder="Alias (ej. ivan.mp)"
               value={transferAlias}
               onChange={(e) => setTransferAlias(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleCreateAndSelectAccount();
+                }
+              }}
               disabled={isConfirmLoading}
               className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
@@ -1120,16 +1222,7 @@ export function BookingDetailsDialogContent({
                 isConfirmLoading ||
                 (!transferHolder.trim() && !transferAlias.trim())
               }
-              onClick={() => {
-                const account =
-                  transferHolder.trim() || transferAlias.trim()
-                    ? {
-                        holder: transferHolder.trim(),
-                        alias: transferAlias.trim(),
-                      }
-                    : null;
-                onSelectAccount(account);
-              }}
+              onClick={handleCreateAndSelectAccount}
               title="Guardar cuenta"
             >
               {isConfirmLoading ? (

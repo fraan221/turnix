@@ -580,8 +580,14 @@ export const SearchClientsSchema = z.object({
     .max(100, { message: "La búsqueda no puede superar los 100 caracteres." }),
 });
 
-export const DeleteTransferAccountSchema = z.object({
-  holder: z.string().max(100),
-  alias: z.string().max(100),
-});
+export const DeleteTransferAccountSchema = z
+  .object({
+    holder: z.string().max(100).optional().default(""),
+    alias: z.string().max(100).optional().default(""),
+  })
+  .refine(
+    (data) => Boolean(data.holder?.trim() || data.alias?.trim()),
+    { message: "Debe indicar al menos un titular o alias." },
+  );
+
 

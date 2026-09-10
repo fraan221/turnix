@@ -906,7 +906,7 @@ export async function setPaymentMethod(
       },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     invalidateAnalyticsCache();
 
     return { success: "Método de pago registrado con éxito." };
@@ -1986,8 +1986,10 @@ export async function getTransferAccountSuggestions(): Promise<TransferAccountSu
       where: {
         barbershopId,
         paymentMethod: PaymentMethod.TRANSFER,
-        transferAccountHolder: { not: null },
-        transferAccountAlias: { not: null },
+        OR: [
+          { transferAccountHolder: { not: null } },
+          { transferAccountAlias: { not: null } },
+        ],
       },
       select: {
         transferAccountHolder: true,
@@ -1995,18 +1997,25 @@ export async function getTransferAccountSuggestions(): Promise<TransferAccountSu
       },
       distinct: ["transferAccountHolder", "transferAccountAlias"],
       orderBy: { updatedAt: "desc" },
-      take: 10,
+      take: 20,
     });
 
-    return results
-      .filter(
-        (r): r is { transferAccountHolder: string; transferAccountAlias: string } =>
-          Boolean(r.transferAccountHolder && r.transferAccountAlias),
-      )
-      .map((r) => ({
-        holder: r.transferAccountHolder,
-        alias: r.transferAccountAlias,
-      }));
+    const seen = new Set<string>();
+    const suggestions: TransferAccountSuggestion[] = [];
+
+    for (const r of results) {
+      const holder = r.transferAccountHolder?.trim() || "";
+      const alias = r.transferAccountAlias?.trim() || "";
+      if (!holder && !alias) continue;
+
+      const key = `${holder.toLowerCase()}__${alias.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        suggestions.push({ holder, alias });
+      }
+    }
+
+    return suggestions;
   } catch (error) {
     console.error("Error al obtener sugerencias de cuentas MP:", error);
     return [];
@@ -2030,20 +2039,32 @@ export async function deleteTransferAccountSuggestion(data: {
   }
 
   try {
+    const whereConditions: {
+      barbershopId: string;
+      paymentMethod: PaymentMethod;
+      transferAccountHolder?: string;
+      transferAccountAlias?: string;
+    } = {
+      barbershopId,
+      paymentMethod: PaymentMethod.TRANSFER,
+    };
+
+    if (parsed.data.holder?.trim()) {
+      whereConditions.transferAccountHolder = parsed.data.holder.trim();
+    }
+    if (parsed.data.alias?.trim()) {
+      whereConditions.transferAccountAlias = parsed.data.alias.trim();
+    }
+
     await prisma.booking.updateMany({
-      where: {
-        barbershopId,
-        paymentMethod: PaymentMethod.TRANSFER,
-        transferAccountHolder: parsed.data.holder,
-        transferAccountAlias: parsed.data.alias,
-      },
+      where: whereConditions,
       data: {
         transferAccountHolder: null,
         transferAccountAlias: null,
       },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { success: "Cuenta eliminada correctamente." };
   } catch (error) {
     console.error("Error al eliminar sugerencia de cuenta MP:", error);
