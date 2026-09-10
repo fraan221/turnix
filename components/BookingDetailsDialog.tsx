@@ -38,6 +38,7 @@ import {
   searchBarbershopClients,
   updateBookingClient,
   getTransferAccountSuggestions,
+  createTransferAccountSuggestion,
   deleteTransferAccountSuggestion,
   type TransferAccountSuggestion,
 } from "@/actions/dashboard.actions";
@@ -277,6 +278,9 @@ export function BookingDetailsDialogContent({
   // Estados para cuentas de Mercado Pago en pagos por transferencia
   const [transferHolder, setTransferHolder] = useState("");
   const [transferAlias, setTransferAlias] = useState("");
+  const [newAccountHolder, setNewAccountHolder] = useState("");
+  const [newAccountAlias, setNewAccountAlias] = useState("");
+  const [isSavingAccount, startSavingAccount] = useTransition();
   const [accountSuggestions, setAccountSuggestions] = useState<
     TransferAccountSuggestion[]
   >([]);
@@ -336,6 +340,8 @@ export function BookingDetailsDialogContent({
     setSelectedAccountIndex(null);
     setIsDeletingAccountMode(false);
     setDeletingAccountKey(null);
+    setNewAccountHolder("");
+    setNewAccountAlias("");
     setSuggestionsLoaded(false);
   }, [booking.id]);
 
@@ -1009,24 +1015,36 @@ export function BookingDetailsDialogContent({
     compact: boolean = false,
   ) => {
     const handleCreateAndSelectAccount = () => {
-      const h = transferHolder.trim();
-      const a = transferAlias.trim();
+      const h = newAccountHolder.trim();
+      const a = newAccountAlias.trim();
       if (!h && !a) return;
 
       const newAccount = { holder: h, alias: a };
 
-      setAccountSuggestions((prev) => {
-        const exists = prev.some(
-          (item) =>
-            item.holder.toLowerCase() === h.toLowerCase() &&
-            item.alias.toLowerCase() === a.toLowerCase(),
-        );
-        return exists ? prev : [newAccount, ...prev];
-      });
+      startSavingAccount(async () => {
+        const result = await createTransferAccountSuggestion(newAccount);
+        if (result.success) {
+          toast.success(result.success);
+          setAccountSuggestions((prev) => {
+            const exists = prev.some(
+              (item) =>
+                item.holder.toLowerCase() === h.toLowerCase() &&
+                item.alias.toLowerCase() === a.toLowerCase(),
+            );
+            return exists ? prev : [newAccount, ...prev];
+          });
 
-      setSelectedAccountIndex(0);
-      setIsAddingNewAccount(false);
-      onSelectAccount(newAccount);
+          setSelectedAccountIndex(0);
+          setTransferHolder(h);
+          setTransferAlias(a);
+          setIsAddingNewAccount(false);
+          setNewAccountHolder("");
+          setNewAccountAlias("");
+          onSelectAccount(newAccount);
+        } else if (result.error) {
+          toast.error(result.error);
+        }
+      });
     };
 
     return (
@@ -1049,7 +1067,7 @@ export function BookingDetailsDialogContent({
                 <button
                   key={`${acc.holder}-${acc.alias}-${idx}`}
                   type="button"
-                  disabled={isDeletingAccount}
+                  disabled={isDeletingAccount || isSavingAccount}
                   onClick={() => handleDeleteAccount(acc)}
                   className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs transition-colors border text-left bg-white dark:bg-background hover:bg-destructive/10 text-destructive border-destructive/50 hover:border-destructive active:scale-95 disabled:opacity-50 group shadow-xs"
                   title={`Borrar cuenta ${label}`}
@@ -1079,7 +1097,7 @@ export function BookingDetailsDialogContent({
               <button
                 key={`${acc.holder}-${acc.alias}-${idx}`}
                 type="button"
-                disabled={isConfirmLoading || isDeletingAccount}
+                disabled={isConfirmLoading || isDeletingAccount || isSavingAccount}
                 onClick={() => {
                   setSelectedAccountIndex(idx);
                   setTransferHolder(acc.holder);
@@ -1108,7 +1126,7 @@ export function BookingDetailsDialogContent({
           {!isDeletingAccountMode && (
             <button
               type="button"
-              disabled={isConfirmLoading || isDeletingAccount}
+              disabled={isConfirmLoading || isDeletingAccount || isSavingAccount}
               onClick={() => {
                 setSelectedAccountIndex(-1);
                 setTransferHolder("");
@@ -1137,13 +1155,12 @@ export function BookingDetailsDialogContent({
 
           <button
             type="button"
-            disabled={isConfirmLoading || isDeletingAccount}
+            disabled={isConfirmLoading || isDeletingAccount || isSavingAccount}
             onClick={() => {
               setIsAddingNewAccount((prev) => !prev);
               setIsDeletingAccountMode(false);
-              setSelectedAccountIndex(null);
-              setTransferHolder("");
-              setTransferAlias("");
+              setNewAccountHolder("");
+              setNewAccountAlias("");
             }}
             className={cn(
               "inline-flex items-center justify-center px-2 py-1.5 rounded-md text-xs border transition-colors bg-white dark:bg-background shadow-xs",
@@ -1163,7 +1180,7 @@ export function BookingDetailsDialogContent({
           {accountSuggestions.length > 0 && (
             <button
               type="button"
-              disabled={isConfirmLoading || isDeletingAccount}
+              disabled={isConfirmLoading || isDeletingAccount || isSavingAccount}
               onClick={() => {
                 setIsDeletingAccountMode((prev) => !prev);
                 setIsAddingNewAccount(false);
@@ -1188,29 +1205,29 @@ export function BookingDetailsDialogContent({
             <input
               type="text"
               placeholder="Titular (ej. Iván)"
-              value={transferHolder}
-              onChange={(e) => setTransferHolder(e.target.value)}
+              value={newAccountHolder}
+              onChange={(e) => setNewAccountHolder(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   handleCreateAndSelectAccount();
                 }
               }}
-              disabled={isConfirmLoading}
+              disabled={isSavingAccount || isConfirmLoading}
               className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
             <input
               type="text"
               placeholder="Alias (ej. ivan.mp)"
-              value={transferAlias}
-              onChange={(e) => setTransferAlias(e.target.value)}
+              value={newAccountAlias}
+              onChange={(e) => setNewAccountAlias(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   handleCreateAndSelectAccount();
                 }
               }}
-              disabled={isConfirmLoading}
+              disabled={isSavingAccount || isConfirmLoading}
               className="flex h-8 flex-1 min-w-0 rounded-md border border-border bg-white dark:bg-background px-2.5 py-1 text-xs shadow-xs transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
             <Button
@@ -1219,13 +1236,14 @@ export function BookingDetailsDialogContent({
               variant="outline"
               className="h-8 w-8 p-0 shrink-0 bg-white dark:bg-background border border-border hover:border-foreground/60 text-foreground hover:bg-muted/40 transition-colors shadow-xs"
               disabled={
+                isSavingAccount ||
                 isConfirmLoading ||
-                (!transferHolder.trim() && !transferAlias.trim())
+                (!newAccountHolder.trim() && !newAccountAlias.trim())
               }
               onClick={handleCreateAndSelectAccount}
               title="Guardar cuenta"
             >
-              {isConfirmLoading ? (
+              {isSavingAccount ? (
                 <Loader className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Save className="w-3.5 h-3.5" />

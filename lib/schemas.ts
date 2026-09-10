@@ -580,6 +580,18 @@ export const SearchClientsSchema = z.object({
     .max(100, { message: "La búsqueda no puede superar los 100 caracteres." }),
 });
 
+export const CreateTransferAccountSchema = z
+  .object({
+    holder: z.string().max(100).optional().default(""),
+    alias: z.string().max(100).optional().default(""),
+  })
+  .refine(
+    (data) => Boolean(data.holder?.trim() || data.alias?.trim()),
+    { message: "Debe indicar al menos un titular o alias." },
+  );
+
+export type CreateTransferAccountInput = z.infer<typeof CreateTransferAccountSchema>;
+
 export const DeleteTransferAccountSchema = z
   .object({
     holder: z.string().max(100).optional().default(""),
@@ -589,5 +601,6 @@ export const DeleteTransferAccountSchema = z
     (data) => Boolean(data.holder?.trim() || data.alias?.trim()),
     { message: "Debe indicar al menos un titular o alias." },
   );
+
 
 

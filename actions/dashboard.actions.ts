@@ -21,6 +21,7 @@ import {
   UpdateRecurringTimeBlockSchema,
   UpdateBookingClientSchema,
   SearchClientsSchema,
+  CreateTransferAccountSchema,
   DeleteTransferAccountSchema,
 } from "@/lib/schemas";
 import { Client, User, Barbershop } from "@prisma/client";
@@ -1973,6 +1974,57 @@ export type TransferAccountSuggestion = {
   alias: string;
 };
 
+export async function createTransferAccountSuggestion(data: {
+  holder: string;
+  alias: string;
+}): Promise<{
+  success?: string;
+  error?: string;
+  account?: TransferAccountSuggestion;
+}> {
+  const user = await getUserForSettings();
+  if (!user) return { error: "No autorizado." };
+
+  const barbershopId =
+    user.ownedBarbershop?.id || user.teamMembership?.barbershop?.id;
+  if (!barbershopId) return { error: "Barbería no encontrada." };
+
+  const parsed = CreateTransferAccountSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: "Datos de cuenta inválidos. Ingresá titular o alias." };
+  }
+
+  const holder = parsed.data.holder?.trim() || "";
+  const alias = parsed.data.alias?.trim() || "";
+
+  try {
+    await prisma.transferAccount.upsert({
+      where: {
+        barbershopId_holder_alias: {
+          barbershopId,
+          holder,
+          alias,
+        },
+      },
+      create: {
+        barbershopId,
+        holder,
+        alias,
+      },
+      update: {},
+    });
+
+    revalidatePath("/dashboard", "layout");
+    return {
+      success: "Cuenta guardada exitosamente.",
+      account: { holder, alias },
+    };
+  } catch (error) {
+    console.error("Error al crear cuenta de transferencia:", error);
+    return { error: "No se pudo guardar la cuenta." };
+  }
+}
+
 export async function getTransferAccountSuggestions(): Promise<TransferAccountSuggestion[]> {
   const user = await getUserForSettings();
   if (!user) return [];
@@ -1982,6 +2034,32 @@ export async function getTransferAccountSuggestions(): Promise<TransferAccountSu
   if (!barbershopId) return [];
 
   try {
+    const seen = new Set<string>();
+    const suggestions: TransferAccountSuggestion[] = [];
+
+    // 1. Cuentas guardadas explícitamente para la barbería
+    const savedAccounts = await prisma.transferAccount.findMany({
+      where: { barbershopId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        holder: true,
+        alias: true,
+      },
+    });
+
+    for (const acc of savedAccounts) {
+      const holder = acc.holder?.trim() || "";
+      const alias = acc.alias?.trim() || "";
+      if (!holder && !alias) continue;
+
+      const key = `${holder.toLowerCase()}__${alias.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        suggestions.push({ holder, alias });
+      }
+    }
+
+    // 2. Fallback de compatibilidad: cuentas registradas en turnos históricos
     const results = await prisma.booking.findMany({
       where: {
         barbershopId,
@@ -1999,9 +2077,6 @@ export async function getTransferAccountSuggestions(): Promise<TransferAccountSu
       orderBy: { updatedAt: "desc" },
       take: 20,
     });
-
-    const seen = new Set<string>();
-    const suggestions: TransferAccountSuggestion[] = [];
 
     for (const r of results) {
       const holder = r.transferAccountHolder?.trim() || "";
@@ -2038,7 +2113,20 @@ export async function deleteTransferAccountSuggestion(data: {
     return { error: "Datos de cuenta inválidos." };
   }
 
+  const holder = parsed.data.holder?.trim() || "";
+  const alias = parsed.data.alias?.trim() || "";
+
   try {
+    // 1. Eliminar de las cuentas guardadas de la barbería
+    await prisma.transferAccount.deleteMany({
+      where: {
+        barbershopId,
+        ...(holder ? { holder } : {}),
+        ...(alias ? { alias } : {}),
+      },
+    });
+
+    // 2. Limpiar en turnos existentes que usaban esta cuenta
     const whereConditions: {
       barbershopId: string;
       paymentMethod: PaymentMethod;
@@ -2049,11 +2137,11 @@ export async function deleteTransferAccountSuggestion(data: {
       paymentMethod: PaymentMethod.TRANSFER,
     };
 
-    if (parsed.data.holder?.trim()) {
-      whereConditions.transferAccountHolder = parsed.data.holder.trim();
+    if (holder) {
+      whereConditions.transferAccountHolder = holder;
     }
-    if (parsed.data.alias?.trim()) {
-      whereConditions.transferAccountAlias = parsed.data.alias.trim();
+    if (alias) {
+      whereConditions.transferAccountAlias = alias;
     }
 
     await prisma.booking.updateMany({
@@ -2071,5 +2159,6 @@ export async function deleteTransferAccountSuggestion(data: {
     return { error: "No se pudo eliminar la cuenta." };
   }
 }
+
 
 
