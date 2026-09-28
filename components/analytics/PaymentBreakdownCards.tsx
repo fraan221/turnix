@@ -80,6 +80,52 @@ export function PaymentBreakdownCards({
                 <p className="mt-1 text-xs opacity-70">
                   {item.count} {item.count === 1 ? "turno" : "turnos"}
                 </p>
+
+                {item.method === "TRANSFER" &&
+                  item.transferAccounts &&
+                  item.transferAccounts.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-blue-200/60 dark:border-blue-800/60 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider opacity-75">
+                        <span>Por cuenta</span>
+                        <span>Total</span>
+                      </div>
+                      <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
+                        {item.transferAccounts.map((acc, idx) => {
+                          const share =
+                            item.total > 0
+                              ? Math.round((acc.total / item.total) * 100)
+                              : 0;
+                          return (
+                            <div
+                              key={`${acc.alias}-${acc.holder}-${idx}`}
+                              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background/60 dark:bg-background/40 border border-blue-200/50 dark:border-blue-800/50"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-foreground text-xs truncate leading-tight">
+                                  {acc.holder || acc.alias || "Sin cuenta asignada"}
+                                </p>
+                                {acc.holder && acc.alias && (
+                                  <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5 font-mono">
+                                    {acc.alias}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-semibold text-foreground text-xs">
+                                  {formatPrice(acc.total)}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                                  {acc.count}{" "}
+                                  {acc.count === 1 ? "turno" : "turnos"}
+                                  {item.total > 0 ? ` · ${share}%` : ""}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>

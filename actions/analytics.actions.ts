@@ -2,7 +2,7 @@
 
 import { getUserForSettings } from "@/lib/data";
 import prisma from "@/lib/prisma";
-import { BookingStatus, Role, Prisma } from "@prisma/client";
+import { BookingStatus, Role, Prisma, PaymentMethod } from "@prisma/client";
 import {
   getStartOfDay,
   getEndOfDay,
@@ -1177,11 +1177,68 @@ export async function getBarberClientMetricsData(
   );
 }
 
+export type TransferSubAccountBreakdown = {
+  holder: string;
+  alias: string;
+  label: string;
+  count: number;
+  total: number;
+};
+
 export type PaymentMethodBreakdown = {
   method: string;
   count: number;
   total: number;
+  transferAccounts?: TransferSubAccountBreakdown[];
 };
+
+function processTransferAccountsGroup(
+  transferAccountGroup: {
+    transferAccountHolder: string | null;
+    transferAccountAlias: string | null;
+    _count: { id: number };
+    _sum: { priceAtBooking: number | null };
+  }[],
+): TransferSubAccountBreakdown[] {
+  const map = new Map<string, TransferSubAccountBreakdown>();
+
+  for (const g of transferAccountGroup) {
+    const holder = (g.transferAccountHolder || "").trim();
+    const alias = (g.transferAccountAlias || "").trim();
+    const total = g._sum.priceAtBooking || 0;
+    const count = g._count.id;
+
+    const key =
+      holder || alias
+        ? `${holder.toLowerCase()}__${alias.toLowerCase()}`
+        : "unspecified";
+
+    let label = "Sin cuenta asignada";
+    if (holder && alias) {
+      label = `${holder} (${alias})`;
+    } else if (holder) {
+      label = holder;
+    } else if (alias) {
+      label = alias;
+    }
+
+    const existing = map.get(key);
+    if (existing) {
+      existing.count += count;
+      existing.total += total;
+    } else {
+      map.set(key, {
+        holder,
+        alias,
+        label,
+        count,
+        total,
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
 
 export type FinanceData = {
   breakdown: PaymentMethodBreakdown[];
@@ -1201,41 +1258,61 @@ const getCachedFinanceData = cache(
     endDate: Date,
   ): Promise<FinanceData> => {
     try {
-      const breakdownGroup = await prisma.booking.groupBy({
-        by: ["paymentMethod"],
-        where: {
-          barbershopId,
-          status: BookingStatus.COMPLETED,
-          startTime: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        _count: {
-          id: true,
-        },
-        _sum: {
-          priceAtBooking: true,
-        },
-      });
-
-      const teamGroup = await prisma.booking.groupBy({
-        by: ["barberId"],
-        where: {
-          barbershopId,
-          status: BookingStatus.COMPLETED,
-          startTime: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        _count: {
-          id: true,
-        },
-        _sum: {
-          priceAtBooking: true,
-        },
-      });
+      const [breakdownGroup, teamGroup, transferAccountGroup] =
+        await Promise.all([
+          prisma.booking.groupBy({
+            by: ["paymentMethod"],
+            where: {
+              barbershopId,
+              status: BookingStatus.COMPLETED,
+              startTime: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            _count: {
+              id: true,
+            },
+            _sum: {
+              priceAtBooking: true,
+            },
+          }),
+          prisma.booking.groupBy({
+            by: ["barberId"],
+            where: {
+              barbershopId,
+              status: BookingStatus.COMPLETED,
+              startTime: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            _count: {
+              id: true,
+            },
+            _sum: {
+              priceAtBooking: true,
+            },
+          }),
+          prisma.booking.groupBy({
+            by: ["transferAccountHolder", "transferAccountAlias"],
+            where: {
+              barbershopId,
+              status: BookingStatus.COMPLETED,
+              paymentMethod: PaymentMethod.TRANSFER,
+              startTime: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            _count: {
+              id: true,
+            },
+            _sum: {
+              priceAtBooking: true,
+            },
+          }),
+        ]);
 
       const teamUsers = await prisma.user.findMany({
         where: {
@@ -1245,11 +1322,15 @@ const getCachedFinanceData = cache(
       });
 
       const userMap = new Map(teamUsers.map((u) => [u.id, u.name]));
+      const transferAccounts = processTransferAccountsGroup(transferAccountGroup);
 
       const breakdown = breakdownGroup.map((g) => ({
         method: g.paymentMethod || "UNCLASSIFIED",
         count: g._count.id,
         total: g._sum.priceAtBooking || 0,
+        ...(g.paymentMethod === PaymentMethod.TRANSFER && transferAccounts.length > 0
+          ? { transferAccounts }
+          : {}),
       }));
 
       const teamBreakdown = teamGroup.map((g) => ({
@@ -1310,28 +1391,53 @@ const getCachedBarberFinanceData = cache(
     endDate: Date,
   ): Promise<FinanceData> => {
     try {
-      const breakdownGroup = await prisma.booking.groupBy({
-        by: ["paymentMethod"],
-        where: {
-          barberId,
-          status: BookingStatus.COMPLETED,
-          startTime: {
-            gte: startDate,
-            lte: endDate,
+      const [breakdownGroup, transferAccountGroup] = await Promise.all([
+        prisma.booking.groupBy({
+          by: ["paymentMethod"],
+          where: {
+            barberId,
+            status: BookingStatus.COMPLETED,
+            startTime: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
-        },
-        _count: {
-          id: true,
-        },
-        _sum: {
-          priceAtBooking: true,
-        },
-      });
+          _count: {
+            id: true,
+          },
+          _sum: {
+            priceAtBooking: true,
+          },
+        }),
+        prisma.booking.groupBy({
+          by: ["transferAccountHolder", "transferAccountAlias"],
+          where: {
+            barberId,
+            status: BookingStatus.COMPLETED,
+            paymentMethod: PaymentMethod.TRANSFER,
+            startTime: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          _count: {
+            id: true,
+          },
+          _sum: {
+            priceAtBooking: true,
+          },
+        }),
+      ]);
+
+      const transferAccounts = processTransferAccountsGroup(transferAccountGroup);
 
       const breakdown = breakdownGroup.map((g) => ({
         method: g.paymentMethod || "UNCLASSIFIED",
         count: g._count.id,
         total: g._sum.priceAtBooking || 0,
+        ...(g.paymentMethod === PaymentMethod.TRANSFER && transferAccounts.length > 0
+          ? { transferAccounts }
+          : {}),
       }));
 
       return {
