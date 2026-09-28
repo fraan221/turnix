@@ -1,6 +1,9 @@
-import { PaymentMethodBreakdown } from "@/actions/analytics.actions";
+import {
+  PaymentMethodBreakdown,
+  TransferSubAccountBreakdown,
+} from "@/actions/analytics.actions";
 import { formatPrice } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Banknote, Smartphone, CreditCard, HelpCircle } from "lucide-react";
 
@@ -13,34 +16,36 @@ export function PaymentBreakdownCards({
 }: PaymentBreakdownCardsProps) {
   const methodConfig: Record<
     string,
-    { label: string; icon: React.ReactNode; colorClass: string }
+    {
+      label: string;
+      icon: React.ReactNode;
+      colorClass: string;
+    }
   > = {
     CASH: {
       label: "Efectivo",
-      icon: <Banknote className="w-6 h-6" />,
+      icon: <Banknote className="size-5 text-green-600 dark:text-green-400" />,
       colorClass:
-        "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300 border-green-200 dark:border-green-800",
+        "border-green-200/80 bg-green-50/40 dark:bg-green-950/20 dark:border-green-900/60",
     },
     TRANSFER: {
       label: "Transferencia / MP",
-      icon: <Smartphone className="w-6 h-6" />,
+      icon: <Smartphone className="size-5 text-blue-600 dark:text-blue-400" />,
       colorClass:
-        "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+        "border-blue-200/80 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-900/60",
     },
     CARD: {
       label: "Tarjeta",
-      icon: <CreditCard className="w-6 h-6" />,
+      icon: <CreditCard className="size-5 text-purple-600 dark:text-purple-400" />,
       colorClass:
-        "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+        "border-purple-200/80 bg-purple-50/40 dark:bg-purple-950/20 dark:border-purple-900/60",
     },
     UNCLASSIFIED: {
       label: "Sin clasificar",
-      icon: <HelpCircle className="w-6 h-6" />,
-      colorClass: "bg-muted/50 text-muted-foreground border-muted",
+      icon: <HelpCircle className="size-5 text-muted-foreground" />,
+      colorClass: "border-border/60 bg-muted/30",
     },
   };
-
-  const totalRevenue = breakdown.reduce((sum, item) => sum + item.total, 0);
 
   const displayItems = ["CASH", "TRANSFER", "CARD", "UNCLASSIFIED"]
     .map(
@@ -51,86 +56,74 @@ export function PaymentBreakdownCards({
           total: 0,
         },
     )
-    .filter((item) => item.method !== "UNCLASSIFIED" || item.count > 0);
+    .filter((item) => item.method !== "UNCLASSIFIED" || item.total > 0 || item.count > 0);
+
+  const transferItem = breakdown.find((item) => item.method === "TRANSFER");
+  const transferAccounts: TransferSubAccountBreakdown[] =
+    transferItem?.transferAccounts ?? [];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {displayItems.map((item) => {
-        const config = methodConfig[item.method];
-        const percentage =
-          totalRevenue > 0 ? Math.round((item.total / totalRevenue) * 100) : 0;
+    <div className="flex flex-col gap-4">
+      {/* Tarjetas principales de métodos de cobro */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {displayItems.map((item) => {
+          const config = methodConfig[item.method] || methodConfig.UNCLASSIFIED;
 
-        return (
-          <Card
-            key={item.method}
-            className={cn("border overflow-hidden", config.colorClass)}
-          >
-            <CardContent className="flex flex-col justify-between p-4 h-full">
-              <div className="flex justify-between items-start mb-2">
-                <span aria-hidden="true">{config.icon}</span>
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-background/50">
-                  {percentage}%
-                </span>
-              </div>
-              <div>
-                <p className="mb-1 text-sm font-medium opacity-80">
+          return (
+            <Card
+              key={item.method}
+              className={cn("border shadow-xs", config.colorClass)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-foreground">
                   {config.label}
-                </p>
-                <p className="text-2xl font-bold">{formatPrice(item.total)}</p>
-                <p className="mt-1 text-xs opacity-70">
-                  {item.count} {item.count === 1 ? "turno" : "turnos"}
-                </p>
+                </CardTitle>
+                {config.icon}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tracking-tight text-foreground">
+                  {formatPrice(item.total)}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-                {item.method === "TRANSFER" &&
-                  item.transferAccounts &&
-                  item.transferAccounts.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-blue-200/60 dark:border-blue-800/60 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider opacity-75">
-                        <span>Por cuenta</span>
-                        <span>Total</span>
-                      </div>
-                      <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
-                        {item.transferAccounts.map((acc, idx) => {
-                          const share =
-                            item.total > 0
-                              ? Math.round((acc.total / item.total) * 100)
-                              : 0;
-                          return (
-                            <div
-                              key={`${acc.alias}-${acc.holder}-${idx}`}
-                              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background/60 dark:bg-background/40 border border-blue-200/50 dark:border-blue-800/50"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-foreground text-xs truncate leading-tight">
-                                  {acc.holder || acc.alias || "Sin cuenta asignada"}
-                                </p>
-                                {acc.holder && acc.alias && (
-                                  <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5 font-mono">
-                                    {acc.alias}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="font-semibold text-foreground text-xs">
-                                  {formatPrice(acc.total)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                                  {acc.count}{" "}
-                                  {acc.count === 1 ? "turno" : "turnos"}
-                                  {item.total > 0 ? ` · ${share}%` : ""}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+      {/* Desglose por cuenta de transferencia / MP */}
+      {transferAccounts.length > 0 && (
+        <Card className="border shadow-xs">
+          <CardHeader className="py-3 px-4 border-b border-border/50">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Por cuenta de transferencia
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {transferAccounts.map((acc, idx) => (
+                <div
+                  key={`${acc.alias}-${acc.holder}-${idx}`}
+                  className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/20"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-foreground truncate leading-tight">
+                      {acc.holder || acc.alias || "Sin cuenta asignada"}
+                    </p>
+                    {acc.holder && acc.alias && (
+                      <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+                        {acc.alias}
+                      </p>
+                    )}
+                  </div>
+                  <span className="font-bold text-base text-foreground shrink-0">
+                    {formatPrice(acc.total)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
