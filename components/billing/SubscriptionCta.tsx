@@ -28,7 +28,7 @@ type SubscriptionCtaProps = {
 export function SubscriptionCta({ isTrial, showStatus }: SubscriptionCtaProps) {
   const [discount, setDiscount] = useState<DiscountDetails | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
-    BILLING_PERIODS.ANNUAL,
+    BILLING_PERIODS.MONTHLY,
   );
 
   const isAnnual = billingPeriod === BILLING_PERIODS.ANNUAL;
@@ -45,15 +45,15 @@ export function SubscriptionCta({ isTrial, showStatus }: SubscriptionCtaProps) {
       {showStatus && <SubscriptionStatus />}
 
       <Tabs
-        defaultValue={BILLING_PERIODS.ANNUAL}
+        defaultValue={BILLING_PERIODS.MONTHLY}
         className="w-full"
         onValueChange={(v) => setBillingPeriod(v as BillingPeriod)}
       >
         <TabsList className="grid grid-cols-2 w-full">
+          <TabsTrigger value={BILLING_PERIODS.MONTHLY}>Mensual</TabsTrigger>
           <TabsTrigger value={BILLING_PERIODS.ANNUAL}>
             Anual
           </TabsTrigger>
-          <TabsTrigger value={BILLING_PERIODS.MONTHLY}>Mensual</TabsTrigger>
         </TabsList>
       </Tabs>
 
