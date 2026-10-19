@@ -2,7 +2,6 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import { cn } from "@/lib/utils";
 import { inter, montserrat } from "./fonts";
@@ -78,7 +77,6 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
           </LoaderProvider>
         </SessionProvider>
 
-        <SpeedInsights />
         <Analytics />
       </body>
     </html>
