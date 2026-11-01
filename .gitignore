@@ -31,6 +31,14 @@ test-results/
 .github
 dev.sh
 
+# Local development & agent plans
+.idea/
+.codex/
+.superpowers/
+.agent/
+.agents/skills/impeccable/
+docs/
+
 # Local environment migration exports
 /turnix-migration-*/
 /scripts/migration/.local/
