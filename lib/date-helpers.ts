@@ -542,3 +542,39 @@ export function clipRecurringBlockToDay(
   return { start, end };
 }
 
+/**
+ * Formatea un string de fecha (ej. "2024-05-01") en un label amigable de mes y año (ej. "Mayo 2024").
+ */
+export function formatMonthLabel(dateStr?: string): string {
+  if (!dateStr) return "Seleccionar mes";
+  try {
+    const [year, month] = dateStr.split("-").map(Number);
+    if (!year || !month) return "Seleccionar mes";
+    const date = new Date(year, month - 1, 1);
+    const monthName = new Intl.DateTimeFormat("es-AR", {
+      month: "long",
+      timeZone: ARGENTINA_TIMEZONE,
+    }).format(date);
+    const capitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    return `${capitalized} ${year}`;
+  } catch {
+    return "Seleccionar mes";
+  }
+}
+
+/**
+ * Determina si un mes específico debe estar deshabilitado según los límites mínimos y fecha actual.
+ */
+export function isMonthDisabled(
+  year: number,
+  monthIndex: number,
+  minYear: number = 2024,
+  referenceDate?: Date
+): boolean {
+  const ref = referenceDate || new Date();
+  if (year < minYear) return true;
+  if (year > ref.getFullYear()) return true;
+  if (year === ref.getFullYear() && monthIndex > ref.getMonth()) return true;
+  return false;
+}
+
