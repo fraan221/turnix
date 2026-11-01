@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Period } from "@/actions/analytics.actions";
-import { periodsConfig } from "@/lib/reports";
+import { periodsConfig } from "@/lib/period-constants";
 import { MonthPicker } from "@/components/analytics/MonthPicker";
 import {
   Select,

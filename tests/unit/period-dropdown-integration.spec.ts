@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { periodsConfig } from "../../lib/reports";
+import { periodsConfig } from "../../lib/period-constants";
 
 test.describe("PeriodDropdown Configuration", () => {
   test("includes customMonth with label 'Elegir mes'", () => {
