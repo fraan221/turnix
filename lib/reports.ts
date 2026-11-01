@@ -30,6 +30,17 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CARD: "Tarjeta",
 };
 
+export const periodsConfig: { value: Period; label: string }[] = [
+  { value: "day", label: "Hoy" },
+  { value: "yesterday", label: "Ayer" },
+  { value: "week", label: "Esta Semana" },
+  { value: "month", label: "Este Mes" },
+  { value: "lastMonth", label: "Mes Pasado" },
+  { value: "customMonth", label: "Elegir mes" },
+  { value: "all", label: "Todo el tiempo" },
+  { value: "custom", label: "Elegir día" },
+];
+
 export function formatPaymentMethod(method: PaymentMethod | null): string {
   if (!method) return "Sin clasificar";
   return PAYMENT_METHOD_LABELS[method] ?? method;

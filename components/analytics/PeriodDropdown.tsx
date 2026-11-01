@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Period } from "@/actions/analytics.actions";
+import { periodsConfig } from "@/lib/reports";
+import { MonthPicker } from "@/components/analytics/MonthPicker";
 import {
   Select,
   SelectContent,
@@ -18,22 +20,14 @@ import { es } from "date-fns/locale";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
+export { periodsConfig };
+
 interface PeriodDropdownProps {
   currentPeriod: Period;
   onPeriodChange: (period: Period) => void;
   customDate?: string;
   onCustomDateChange?: (date: string) => void;
 }
-
-export const periodsConfig: { value: Period; label: string }[] = [
-  { value: "day", label: "Hoy" },
-  { value: "yesterday", label: "Ayer" },
-  { value: "week", label: "Esta Semana" },
-  { value: "month", label: "Este Mes" },
-  { value: "lastMonth", label: "Mes Pasado" },
-  { value: "all", label: "Todo el tiempo" },
-  { value: "custom", label: "Elegir día" },
-];
 
 function CustomDatePicker({
   customDate,
@@ -124,6 +118,13 @@ export function PeriodDropdown({
           formatCustomDateLabel={formatCustomDateLabel}
         />
       )}
+
+      {currentPeriod === "customMonth" && (
+        <MonthPicker
+          customDate={customDate}
+          onCustomDateChange={onCustomDateChange}
+        />
+      )}
     </div>
   );
 }
@@ -137,13 +138,18 @@ export function RoutePeriodSelector({ baseUrl }: { baseUrl: string }) {
   const handlePeriodChange = (newPeriod: Period) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("period", newPeriod);
-    params.delete("date");
+    if (newPeriod === "customMonth") {
+      const defaultMonth = format(new Date(), "yyyy-MM-01");
+      params.set("date", customDate || defaultMonth);
+    } else if (newPeriod !== "custom") {
+      params.delete("date");
+    }
     router.push(`${baseUrl}?${params.toString()}`);
   };
 
   const handleCustomDateChange = (date: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("period", "custom");
+    params.set("period", currentPeriod === "customMonth" ? "customMonth" : "custom");
     params.set("date", date);
     router.push(`${baseUrl}?${params.toString()}`);
   };

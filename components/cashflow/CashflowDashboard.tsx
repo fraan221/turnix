@@ -26,6 +26,7 @@ import FixedExpenseForm from "@/components/cashflow/FixedExpenseForm";
 import FixedExpenseTable from "@/components/cashflow/FixedExpenseTable";
 import CategoryManager from "@/components/cashflow/CategoryManager";
 import { formatPrice, cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface Category {
   id: string;
@@ -93,6 +94,7 @@ const periodDescriptions: Record<string, string> = {
   week: "esta semana",
   month: "este mes",
   lastMonth: "el mes pasado",
+  customMonth: "el mes seleccionado",
   custom: "el día seleccionado",
   all: "historial completo",
 };
@@ -117,13 +119,18 @@ export default function CashflowDashboard({
   const handlePeriodChange = (newPeriod: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("period", newPeriod);
-    params.delete("date");
+    if (newPeriod === "customMonth") {
+      const defaultMonth = format(new Date(), "yyyy-MM-01");
+      params.set("date", customDate || defaultMonth);
+    } else if (newPeriod !== "custom") {
+      params.delete("date");
+    }
     router.push(`/dashboard/cashflow?${params.toString()}`);
   };
 
   const handleCustomDateChange = (date: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("period", "custom");
+    params.set("period", period === "customMonth" ? "customMonth" : "custom");
     params.set("date", date);
     router.push(`/dashboard/cashflow?${params.toString()}`);
   };
