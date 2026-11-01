@@ -11,9 +11,14 @@ url.searchParams.delete("ssl");
 
 url.searchParams.set("statement_timeout", "30000");
 
+const isLocal =
+  url.hostname === "localhost" ||
+  url.hostname === "127.0.0.1" ||
+  url.hostname === "0.0.0.0";
+
 const pool = new Pool({
   connectionString: url.toString(),
-  ssl: { rejectUnauthorized: false },
+  ssl: isLocal ? false : { rejectUnauthorized: false },
   // Configuración defensiva para serverless (Vercel)
   // Ref: supabase-postgres-best-practices (conn-limits, conn-idle-timeout)
   max: 10,
