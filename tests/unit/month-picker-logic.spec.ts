@@ -9,7 +9,7 @@ test.describe("MonthPicker logic", () => {
   });
 
   test("disables future months beyond current date", () => {
-    const currentDate = new Date(2026, 10, 1); // Nov 2026 (month index 10)
+    const currentDate = new Date(Date.UTC(2026, 10, 15, 12, 0, 0)); // Nov 15, 2026 (month index 10 in ARG)
     // Nov 2026 is allowed
     expect(isMonthDisabled(2026, 10, 2024, currentDate)).toBe(false);
     // Dec 2026 is future -> disabled

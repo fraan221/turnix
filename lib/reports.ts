@@ -149,11 +149,12 @@ export function formatPeriodLabel(period: Period, startDate: Date, endDate: Date
     case "lastMonth":
       return `Mes Pasado (${startStr} al ${endStr})`;
     case "customMonth": {
+      const midPoint = new Date((startDate.getTime() + endDate.getTime()) / 2);
       const monthLabel = new Intl.DateTimeFormat("es-AR", {
         month: "long",
         year: "numeric",
         timeZone: "America/Argentina/Buenos_Aires",
-      }).format(startDate);
+      }).format(midPoint);
       return `${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} (${startStr} al ${endStr})`;
     }
     case "custom":

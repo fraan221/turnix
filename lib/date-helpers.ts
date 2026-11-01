@@ -550,7 +550,8 @@ export function formatMonthLabel(dateStr?: string): string {
   try {
     const [year, month] = dateStr.split("-").map(Number);
     if (!year || !month) return "Seleccionar mes";
-    const date = new Date(year, month - 1, 1);
+    // Usamos el día 15 en UTC para evitar corrimientos de mes en servidores con timezone UTC
+    const date = new Date(Date.UTC(year, month - 1, 15));
     const monthName = new Intl.DateTimeFormat("es-AR", {
       month: "long",
       timeZone: ARGENTINA_TIMEZONE,
@@ -563,7 +564,7 @@ export function formatMonthLabel(dateStr?: string): string {
 }
 
 /**
- * Determina si un mes específico debe estar deshabilitado según los límites mínimos y fecha actual.
+ * Determina si un mes específico debe estar deshabilitado según los límites mínimos y fecha actual en hora de Argentina.
  */
 export function isMonthDisabled(
   year: number,
@@ -572,9 +573,17 @@ export function isMonthDisabled(
   referenceDate?: Date
 ): boolean {
   const ref = referenceDate || new Date();
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ARGENTINA_TIMEZONE,
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(ref);
+  const currentYear = Number(parts.find((p) => p.type === "year")?.value ?? ref.getFullYear());
+  const currentMonth = Number(parts.find((p) => p.type === "month")?.value ?? (ref.getMonth() + 1)) - 1;
+
   if (year < minYear) return true;
-  if (year > ref.getFullYear()) return true;
-  if (year === ref.getFullYear() && monthIndex > ref.getMonth()) return true;
+  if (year > currentYear) return true;
+  if (year === currentYear && monthIndex > currentMonth) return true;
   return false;
 }
 

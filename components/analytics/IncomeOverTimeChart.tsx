@@ -65,7 +65,7 @@ export function IncomeOverTimeChart({ data, period }: IncomeOverTimeChartProps) 
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          minTickGap={period === "month" || period === "lastMonth" ? 20 : 30}
+          minTickGap={period === "month" || period === "lastMonth" || period === "customMonth" ? 20 : 30}
           interval={shouldShowAllTicks ? 0 : "preserveStartEnd"}
         />
         <YAxis
