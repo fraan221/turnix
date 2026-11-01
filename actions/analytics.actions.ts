@@ -14,7 +14,7 @@ import {
 } from "@/lib/date-helpers";
 import { unstable_cache as cache } from "next/cache";
 
-export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "custom" | "all";
+export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "customMonth" | "custom" | "all";
 
 export type ChartDataPoint = {
   name: string;
@@ -119,7 +119,7 @@ function formatChartDataByPeriod(
     let groupKey = String(item.name);
     let sortKey = year * 10000 + (month + 1) * 100 + day;
 
-    if (period === "month") {
+    if (period === "month" || period === "customMonth") {
       groupKey = `${day.toString().padStart(2, "0")}/${monthStr}`;
       sortKey = day;
     } else if (period === "lastMonth") {
@@ -138,7 +138,7 @@ function formatChartDataByPeriod(
     }
   }
 
-  if (period === "month" && groupedData.size > 0) {
+  if ((period === "month" || period === "customMonth") && groupedData.size > 0) {
     const monthReference = startDate ? new Date(startDate) : new Date();
 
     const year = monthReference.getFullYear();
@@ -260,6 +260,13 @@ function getDateRangeForPeriod(period: Period, customDate?: string) {
         endDate: getEndOfMonth(ref),
       };
     }
+    case "customMonth": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      return {
+        startDate: getStartOfMonth(ref),
+        endDate: getEndOfMonth(ref),
+      };
+    }
     case "custom": {
       const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
       return {
@@ -308,6 +315,12 @@ function getPreviousPeriodRange(period: Period, customDate?: string): { start: D
       const ref = new Date(now);
       ref.setMonth(ref.getMonth() - 2);
       return { start: getStartOfMonth(ref), end: getEndOfMonth(ref) };
+    }
+    case "customMonth": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      const start = getStartOfMonth(ref);
+      start.setMonth(start.getMonth() - 1);
+      return { start, end: getEndOfMonth(start) };
     }
     case "custom": {
       const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);

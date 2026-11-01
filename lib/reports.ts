@@ -10,7 +10,7 @@ import {
   getAllTimeStart,
 } from "@/lib/date-helpers";
 
-export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "custom" | "all";
+export type Period = "day" | "yesterday" | "week" | "month" | "lastMonth" | "customMonth" | "custom" | "all";
 
 export type ReportBooking = {
   date: Date;
@@ -81,6 +81,13 @@ export function getDateRangeForPeriod(period: Period, customDate?: string) {
         endDate: getEndOfMonth(ref),
       };
     }
+    case "customMonth": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      return {
+        startDate: getStartOfMonth(ref),
+        endDate: getEndOfMonth(ref),
+      };
+    }
     case "custom": {
       const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
       return {
@@ -130,6 +137,14 @@ export function formatPeriodLabel(period: Period, startDate: Date, endDate: Date
       return `Este Mes (${startStr} al ${endStr})`;
     case "lastMonth":
       return `Mes Pasado (${startStr} al ${endStr})`;
+    case "customMonth": {
+      const monthLabel = new Intl.DateTimeFormat("es-AR", {
+        month: "long",
+        year: "numeric",
+        timeZone: "America/Argentina/Buenos_Aires",
+      }).format(startDate);
+      return `${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} (${startStr} al ${endStr})`;
+    }
     case "custom":
       return `${startStr}`;
     case "all":

@@ -33,6 +33,7 @@ const periodDescriptions: Record<Period, string> = {
   week: "en los últimos 7 días",
   month: "en los últimos 30 días",
   lastMonth: "el mes pasado",
+  customMonth: "en el mes seleccionado",
   custom: "el día seleccionado",
   all: "en total",
 };

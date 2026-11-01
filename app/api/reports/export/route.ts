@@ -19,7 +19,7 @@ import { formatDate, formatTime, formatToDateInput } from "@/lib/date-helpers";
 // Validaciones con Zod
 const exportQuerySchema = z.object({
   format: z.enum(["xlsx", "pdf"]),
-  period: z.enum(["day", "yesterday", "week", "month", "lastMonth", "custom", "all"]),
+  period: z.enum(["day", "yesterday", "week", "month", "lastMonth", "customMonth", "custom", "all"]),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 

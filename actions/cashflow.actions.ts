@@ -47,6 +47,10 @@ function getDateRange(period: string, customDate?: string) {
       ref.setMonth(ref.getMonth() - 1);
       return { startDate: getStartOfMonth(ref), endDate: getEndOfMonth(ref) };
     }
+    case "customMonth": {
+      const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
+      return { startDate: getStartOfMonth(ref), endDate: getEndOfMonth(ref) };
+    }
     case "custom": {
       const ref = customDate ? new Date(customDate + "T12:00:00") : new Date(now);
       return { startDate: getStartOfDay(ref), endDate: getEndOfDay(ref) };

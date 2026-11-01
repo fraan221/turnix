@@ -15,6 +15,7 @@ const comparisonDescriptions: Record<Period, string> = {
   week: "esta semana",
   month: "este mes",
   lastMonth: "el mes pasado",
+  customMonth: "el mes seleccionado",
   custom: "el día seleccionado",
   all: "histórico",
 };
